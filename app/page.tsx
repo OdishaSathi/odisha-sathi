@@ -14,7 +14,9 @@ export default function HomePage() {
         <div className="container hero-grid">
           <div className="hero-copy">
             <span className="hero-eyebrow">Odisha Jobs • Exams • Results • Admissions</span>
-            <h1>Odisha Sathi</h1>
+            <h1>
+            Odisha Government Jobs, Exams, Results, Admissions & Schemes
+            </h1>
             <p className="hero-tagline">{siteConfig.tagline}</p>
             <p className="hero-description">
               Get latest updates on Odisha government jobs, central jobs, exams,
@@ -47,8 +49,8 @@ export default function HomePage() {
       <section className="section container">
         <div className="section-heading-row">
           <div>
-            <h2>Browse Main Categories</h2>
-            <p>Select a category to find related updates quickly.</p>
+            <h2>Explore Updates by Category</h2>
+            <p>Choose a category to access jobs, exams, results, admissions, scholarships and government schemes.</p>
           </div>
         </div>
 

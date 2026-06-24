@@ -1,3 +1,4 @@
+import SearchBox from "@/components/SearchBox";
 import Image from "next/image";
 import Link from "next/link";
 import { siteConfig } from "@/lib/siteConfig";
@@ -10,8 +11,8 @@ export default function Header() {
           <Image
             src="/odisha-sathi-logo.png"
             alt="Odisha Sathi Logo"
-            width={58}
-            height={58}
+            width={90}
+            height={90}
             className="brand-logo"
             priority
           />
@@ -22,13 +23,17 @@ export default function Header() {
           </span>
         </Link>
 
-        <nav className="main-nav">
-          {siteConfig.headerNav.map((item) => (
-            <Link key={item.label} href={item.href} className="nav-link">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="header-right">
+  <nav className="main-nav">
+    {siteConfig.headerNav.map((item) => (
+      <Link key={item.label} href={item.href} className="nav-link">
+        {item.label}
+      </Link>
+    ))}
+  </nav>
+
+  <SearchBox />
+</div>
       </div>
     </header>
   );

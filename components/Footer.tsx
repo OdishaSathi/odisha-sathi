@@ -27,8 +27,11 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4>Important Note</h4>
+          <h4>About Odisha Sathi</h4>
           <p>
+            Odisha Sathi provides latest updates on jobs, exams, results, admissions,
+            scholarships, government schemes and useful online services for students,
+            job seekers and citizens.
             Odisha Sathi shares information for awareness. Visitors should always
             verify details from official websites before applying.
           </p>
