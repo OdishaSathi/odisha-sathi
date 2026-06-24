@@ -4,14 +4,34 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "Odisha Sathi | Jobs, Exams, Results & Govt. Schemes",
-  description: "Daily updates on Odisha government jobs, exams, results, scholarships, admissions and government schemes.",
-  metadataBase: new URL("https://odishasathi.in")
+  metadataBase: new URL("https://odishasathi.in"),
+  title: {
+    default: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Schemes",
+    template: "%s | Odisha Sathi"
+  },
+  description:
+    "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, scholarships, government schemes, useful tools and online services.",
+  keywords: [
+    "Odisha jobs",
+    "Odisha exams",
+    "Odisha results",
+    "Odisha admissions",
+    "Odisha scholarships",
+    "Odisha govt schemes",
+    "Odisha Sathi",
+    "online works"
+  ],
+  robots: {
+    index: true,
+    follow: true
+  }
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
         <Header />
         <main>{children}</main>

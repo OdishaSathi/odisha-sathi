@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { categories } from "@/lib/categories";
+import { siteConfig } from "@/lib/siteConfig";
 
 export default function CategoryPills() {
   return (
-    <div className="category-pills">
-      {categories.map((cat) => (
-        <Link key={cat.value} href={`/category/${cat.value}`}>{cat.label}</Link>
+    <div className="category-pill-grid">
+      {siteConfig.homeCategories.map((item) => (
+        <Link key={item.label} href={item.href} className="category-pill">
+          {item.label}
+        </Link>
       ))}
     </div>
   );

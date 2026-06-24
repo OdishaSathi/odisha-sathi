@@ -1,26 +1,35 @@
+import Image from "next/image";
 import Link from "next/link";
-import { categories } from "@/lib/categories";
+import { siteConfig } from "@/lib/siteConfig";
 
 export default function Header() {
   return (
     <header className="site-header">
-      <div className="top-strip">Daily updates on Govt. Jobs • Exams • Results • Scholarships • Govt. Schemes</div>
-      <nav className="navbar container">
+      <div className="container header-inner">
         <Link href="/" className="brand">
-          <span className="brand-mark">OS</span>
-          <span>
-            <strong>Odisha Sathi</strong>
-            <small>ଓଡିଶା ସାଥି</small>
+          <Image
+            src="/odisha-sathi-logo.png"
+            alt="Odisha Sathi Logo"
+            width={58}
+            height={58}
+            className="brand-logo"
+            priority
+          />
+
+          <span className="brand-text">
+            <strong>{siteConfig.siteName}</strong>
+            <small>{siteConfig.tagline}</small>
           </span>
         </Link>
-        <div className="nav-links">
-          {categories.slice(0, 5).map((cat) => (
-            <Link key={cat.value} href={`/category/${cat.value}`}>{cat.label}</Link>
+
+        <nav className="main-nav">
+          {siteConfig.headerNav.map((item) => (
+            <Link key={item.label} href={item.href} className="nav-link">
+              {item.label}
+            </Link>
           ))}
-          <Link href="/tools">Tools</Link>
-          <Link href="/admin" className="admin-link">Admin</Link>
-        </div>
-      </nav>
+        </nav>
+      </div>
     </header>
   );
 }

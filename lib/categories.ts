@@ -1,12 +1,15 @@
-export const categories = [
-  { label: "Latest Jobs", value: "jobs" },
-  { label: "Exams", value: "exams" },
-  { label: "Results", value: "results" },
-  { label: "Scholarships", value: "scholarships" },
-  { label: "Govt. Schemes", value: "schemes" },
-  { label: "Admissions", value: "admissions" }
-];
+import Link from "next/link";
+import { siteConfig } from "@/lib/siteConfig";
 
-export function getCategoryLabel(value?: string) {
-  return categories.find((cat) => cat.value === value)?.label ?? "Updates";
+export default function CategoryPills() {
+  return (
+    <div className="category-grid-fixed">
+      {siteConfig.homeCategories.map((item, index) => (
+        <Link key={item.label} href={item.href} className="category-card-fixed">
+          <span className="category-number">{index + 1}</span>
+          <span>{item.label}</span>
+        </Link>
+      ))}
+    </div>
+  );
 }
