@@ -1,15 +1,8 @@
-import Link from "next/link";
-import { siteConfig } from "@/lib/siteConfig";
-
-export default function CategoryPills() {
-  return (
-    <div className="category-grid-fixed">
-      {siteConfig.homeCategories.map((item, index) => (
-        <Link key={item.label} href={item.href} className="category-card-fixed">
-          <span className="category-number">{index + 1}</span>
-          <span>{item.label}</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
+export const categories = [
+  { label: "Jobs", value: "jobs", slug: "jobs", href: "/category/jobs" },
+  { label: "Exams", value: "exams", slug: "exams", href: "/category/exams" },
+  { label: "Results", value: "results", slug: "results", href: "/category/results" },
+  { label: "Admissions", value: "admissions", slug: "admissions", href: "/category/admissions" },
+  { label: "Scholarships", value: "scholarships", slug: "scholarships", href: "/category/scholarships" },
+  { label: "Govt. Schemes", value: "schemes", slug: "schemes", href: "/category/schemes" }
+];
