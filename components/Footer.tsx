@@ -9,8 +9,8 @@ export default function Footer() {
         <div>
           <h3>Odisha Sathi</h3>
           <p>
-            One stop solution for jobs, exams, results, admissions, scholarships,
-            government schemes and online works.
+            Latest updates for jobs, results, admissions, admit cards,
+            government schemes and useful online services.
           </p>
           <SocialLinks />
         </div>
@@ -27,13 +27,11 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4>About Odisha Sathi</h4>
+          <h4>Disclaimer</h4>
           <p>
-            Odisha Sathi provides latest updates on jobs, exams, results, admissions,
-            scholarships, government schemes and useful online services for students,
-            job seekers and citizens.
-            Odisha Sathi shares information for awareness. Visitors should always
-            verify details from official websites before applying.
+            Odisha Sathi shares information for public awareness. Visitors
+            should always verify details from official websites or official PDF
+            notifications before applying or taking any action.
           </p>
         </div>
       </div>

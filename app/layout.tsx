@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import SiteShell from "@/components/SiteShell";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://odishasathi.in"),
   title: {
     default: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Schemes",
-    template: "%s | Odisha Sathi"
+    template: "%s | Odisha Sathi",
   },
   description:
     "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, scholarships, government schemes, useful tools and online services.",
@@ -19,23 +18,27 @@ export const metadata: Metadata = {
     "Odisha scholarships",
     "Odisha govt schemes",
     "Odisha Sathi",
-    "online works"
+    "online works",
   ],
   robots: {
-    index: true,
-    follow: true
-  }
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );

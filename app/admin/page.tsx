@@ -1,282 +1,353 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, User } from "firebase/auth";
-import { categories } from "@/lib/categories";
-import { getFirebase, isFirebaseConfigured } from "@/lib/firebase";
-import { Post } from "@/lib/types";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+import * as AdminLayoutModule from "../../components/admin/AdminLayout";
 
-type FormState = {
+const AdminLayout: any =
+  (AdminLayoutModule as any).default || (AdminLayoutModule as any).AdminLayout;
+
+type AdminPost = {
+  id: string;
   title: string;
-  slug: string;
-  category: string;
-  excerpt: string;
-  content: string;
-  imageUrl: string;
-  sourceUrl: string;
-  tags: string;
-  status: "published" | "draft";
+  slug?: string;
+  category?: string;
+  content?: string;
+  schemeName?: string;
+  department?: string;
+  createdAt?: any;
 };
 
-const initialForm: FormState = {
-  title: "",
-  slug: "",
-  category: "jobs",
-  excerpt: "",
-  content: "",
-  imageUrl: "",
-  sourceUrl: "",
-  tags: "",
-  status: "published"
-};
-
-function makeSlug(text: string) {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 90);
+function getCategoryLabel(category?: string) {
+  if (category === "jobs") return "Job";
+  if (category === "results") return "Result";
+  if (category === "admissions") return "Admission";
+  if (category === "admit-cards") return "Admit Card";
+  if (category === "schemes") return "Scheme";
+  return "Post";
 }
 
-function normalizeDoc(id: string, data: any): Post {
-  return {
-    id,
-    title: data.title ?? "Untitled",
-    slug: data.slug ?? id,
-    category: data.category ?? "jobs",
-    excerpt: data.excerpt ?? "",
-    content: data.content ?? "",
-    status: data.status ?? "published",
-    imageUrl: data.imageUrl ?? "",
-    sourceUrl: data.sourceUrl ?? "",
-    tags: Array.isArray(data.tags) ? data.tags : [],
-    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt ?? "",
-    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt ?? ""
+function getPublicLink(post: AdminPost) {
+  if (post.category === "schemes") {
+    return `/schemes/${post.id}`;
+  }
+
+  return `/post/${post.slug || post.id}`;
+}
+
+function getAdminEditLink(post: AdminPost) {
+  if (post.category === "jobs") return `/admin/jobs/edit/${post.id}`;
+  if (post.category === "results") return `/admin/results/edit/${post.id}`;
+  if (post.category === "admissions") return `/admin/admissions/edit/${post.id}`;
+  if (post.category === "admit-cards") return `/admin/admit-cards/edit/${post.id}`;
+  if (post.category === "schemes") return `/admin/schemes/edit/${post.id}`;
+
+  return "/admin";
+}
+
+function CountCard({
+  title,
+  count,
+  href,
+}: {
+  title: string;
+  count: number;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      style={{
+        background: "white",
+        padding: "18px",
+        borderRadius: "14px",
+        border: "1px solid #e5e7eb",
+        textDecoration: "none",
+        color: "inherit",
+        display: "block",
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          color: "#6b7280",
+          fontSize: "14px",
+          fontWeight: "600",
+        }}
+      >
+        {title}
+      </p>
+
+      <h2
+        style={{
+          margin: "8px 0 0",
+          fontSize: "34px",
+          color: "#111827",
+        }}
+      >
+        {count}
+      </h2>
+    </Link>
+  );
+}
+
+export default function AdminDashboardPage() {
+  const [posts, setPosts] = useState<AdminPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const jobsCount = posts.filter((item) => item.category === "jobs").length;
+  const resultsCount = posts.filter((item) => item.category === "results").length;
+  const admissionsCount = posts.filter(
+    (item) => item.category === "admissions"
+  ).length;
+  const admitCardsCount = posts.filter(
+    (item) => item.category === "admit-cards"
+  ).length;
+  const schemesCount = posts.filter((item) => item.category === "schemes").length;
+
+  const latestPosts = posts.slice(0, 8);
+
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+
+      const snapshot = await getDocs(collection(db, "posts"));
+
+      const postList: AdminPost[] = snapshot.docs
+        .map((docItem) => {
+          const data = docItem.data();
+
+          return {
+            id: docItem.id,
+            title: data.title || "",
+            slug: data.slug || "",
+            category: data.category || "",
+            content: data.content || data.description || "",
+            schemeName: data.schemeName || data.title || "",
+            department: data.department || "",
+            createdAt: data.createdAt || null,
+          };
+        })
+        .filter((item) =>
+          ["jobs", "results", "admissions", "admit-cards", "schemes"].includes(
+            item.category || ""
+          )
+        )
+        .sort((a, b) => {
+          const aTime = a.createdAt?.seconds || 0;
+          const bTime = b.createdAt?.seconds || 0;
+          return bTime - aTime;
+        });
+
+      setPosts(postList);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
   };
-}
-
-export default function AdminPage() {
-  const configured = isFirebaseConfigured();
-  const firebase = useMemo(() => getFirebase(), []);
-  const [user, setUser] = useState<User | null>(null);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!firebase.auth) return;
-    const unsub = onAuthStateChanged(firebase.auth, (nextUser) => setUser(nextUser));
-    return () => unsub();
-  }, [firebase.auth]);
-
-  async function loadPosts() {
-    if (!firebase.db) return;
-    try {
-      const q = query(collection(firebase.db, "posts"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      setPosts(snap.docs.map((item) => normalizeDoc(item.id, item.data())));
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message ?? "Unable to load posts. Check Firestore rules/indexes." });
-    }
-  }
-
-  useEffect(() => {
-    if (user) loadPosts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
-  async function handleLogin(event: React.FormEvent) {
-    event.preventDefault();
-    if (!firebase.auth) return;
-    setLoading(true);
-    setMessage(null);
-    try {
-      await signInWithEmailAndPassword(firebase.auth, email, password);
-      setMessage({ type: "success", text: "Logged in successfully." });
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message ?? "Login failed." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function updateForm(name: keyof FormState, value: string) {
-    setForm((old) => ({ ...old, [name]: value }));
-  }
-
-  function fillForEdit(post: Post) {
-    setEditingId(post.id);
-    setForm({
-      title: post.title,
-      slug: post.slug,
-      category: post.category,
-      excerpt: post.excerpt,
-      content: post.content,
-      imageUrl: post.imageUrl ?? "",
-      sourceUrl: post.sourceUrl ?? "",
-      tags: post.tags?.join(", ") ?? "",
-      status: post.status
-    });
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  async function savePost(event: React.FormEvent) {
-    event.preventDefault();
-    if (!firebase.db) return;
-    setLoading(true);
-    setMessage(null);
-    const finalSlug = form.slug || makeSlug(form.title);
-
-    if (!form.title.trim() || !finalSlug.trim() || !form.content.trim()) {
-      setMessage({ type: "error", text: "Title, slug and content are required." });
-      setLoading(false);
-      return;
-    }
-
-    const payload = {
-      title: form.title.trim(),
-      slug: finalSlug.trim(),
-      category: form.category,
-      excerpt: form.excerpt.trim(),
-      content: form.content.trim(),
-      imageUrl: form.imageUrl.trim(),
-      sourceUrl: form.sourceUrl.trim(),
-      tags: form.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-      status: form.status,
-      updatedAt: serverTimestamp(),
-      ...(editingId ? {} : { createdAt: serverTimestamp() })
-    };
-
-    try {
-      if (editingId) {
-        await updateDoc(doc(firebase.db, "posts", editingId), payload);
-        setMessage({ type: "success", text: "Post updated successfully." });
-      } else {
-        await addDoc(collection(firebase.db, "posts"), payload);
-        setMessage({ type: "success", text: "Post saved successfully. It will open using /post/" + finalSlug });
-      }
-      setForm(initialForm);
-      setEditingId(null);
-      await loadPosts();
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message ?? "Could not save post. Check Firestore rules." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function removePost(id: string) {
-    if (!firebase.db) return;
-    const confirmed = window.confirm("Delete this post?");
-    if (!confirmed) return;
-    try {
-      await deleteDoc(doc(firebase.db, "posts", id));
-      setMessage({ type: "success", text: "Post deleted." });
-      await loadPosts();
-    } catch (error: any) {
-      setMessage({ type: "error", text: error.message ?? "Could not delete post." });
-    }
-  }
-
-  if (!configured) {
-    return (
-      <section className="section container">
-        <div className="notice error">
-          Firebase is not configured. Create <strong>.env.local</strong> from <strong>.env.local.example</strong> and paste your Firebase web app keys.
-        </div>
-      </section>
-    );
-  }
-
-  if (!user) {
-    return (
-      <section className="section container">
-        <div className="auth-panel" style={{ maxWidth: 460, margin: "0 auto" }}>
-          <h1>Admin Login</h1>
-          <p className="admin-status">Login with the email/password user created in Firebase Authentication.</p>
-          {message ? <div className={`notice ${message.type}`}>{message.text}</div> : null}
-          <form onSubmit={handleLogin} className="form-grid">
-            <label>Email<input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required /></label>
-            <label>Password<input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required /></label>
-            <button className="btn" disabled={loading}>{loading ? "Please wait..." : "Login"}</button>
-          </form>
-        </div>
-      </section>
-    );
-  }
+    loadDashboard();
+  }, []);
 
   return (
-    <section className="section container">
-      <div className="section-title">
-        <div>
-          <h1>Admin Dashboard</h1>
-          <p>Create and manage Odisha Sathi posts.</p>
+    <AdminLayout>
+      <div style={{ display: "grid", gap: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "12px",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 style={{ marginBottom: "6px" }}>Admin Dashboard</h1>
+            <p style={{ margin: 0, color: "#4b5563" }}>
+              Overview of Odisha Sathi website content.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={loadDashboard}
+            style={{
+              padding: "9px 13px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+              background: "white",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            Refresh
+          </button>
         </div>
-        <button className="btn outline" onClick={() => firebase.auth && signOut(firebase.auth)}>Logout</button>
+
+        {loading ? (
+          <div
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "14px",
+              border: "1px solid #e5e7eb",
+            }}
+          >
+            <p style={{ margin: 0 }}>Loading dashboard...</p>
+          </div>
+        ) : (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                gap: "14px",
+              }}
+            >
+              <CountCard title="Jobs" count={jobsCount} href="/admin/jobs" />
+              <CountCard
+                title="Results"
+                count={resultsCount}
+                href="/admin/results"
+              />
+              <CountCard
+                title="Admissions"
+                count={admissionsCount}
+                href="/admin/admissions"
+              />
+              <CountCard
+                title="Admit Cards"
+                count={admitCardsCount}
+                href="/admin/admit-cards"
+              />
+              <CountCard
+                title="Schemes"
+                count={schemesCount}
+                href="/admin/schemes"
+              />
+            </div>
+
+            <div
+              style={{
+                background: "white",
+                padding: "20px",
+                borderRadius: "14px",
+                border: "1px solid #e5e7eb",
+              }}
+            >
+              <h2 style={{ marginTop: 0 }}>Latest Posts</h2>
+
+              {latestPosts.length === 0 ? (
+                <p>No posts found.</p>
+              ) : (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {latestPosts.map((post) => {
+                    const displayTitle =
+                      post.category === "schemes"
+                        ? post.schemeName || post.title || "Untitled Scheme"
+                        : post.title || "Untitled Post";
+
+                    return (
+                      <div
+                        key={post.id}
+                        style={{
+                          padding: "14px",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "10px",
+                          display: "grid",
+                          gap: "10px",
+                        }}
+                      >
+                        <div>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "4px 8px",
+                              background: "#eff6ff",
+                              color: "#1d4ed8",
+                              borderRadius: "999px",
+                              fontSize: "12px",
+                              fontWeight: "700",
+                              marginBottom: "8px",
+                            }}
+                          >
+                            {getCategoryLabel(post.category)}
+                          </span>
+
+                          <h3 style={{ margin: 0 }}>{displayTitle}</h3>
+
+                          {post.category === "schemes" ? (
+                            <p
+                              style={{
+                                margin: "6px 0 0",
+                                color: "#4b5563",
+                                fontSize: "14px",
+                              }}
+                            >
+                              {post.department || "Department not added"}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "74px 74px",
+                            gap: "10px",
+                            width: "fit-content",
+                          }}
+                        >
+                          <Link
+                            href={getPublicLink(post)}
+                            target="_blank"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "74px",
+                              height: "36px",
+                              background: "#16a34a",
+                              color: "white",
+                              borderRadius: "8px",
+                              textDecoration: "none",
+                              fontSize: "14px",
+                            }}
+                          >
+                            View
+                          </Link>
+
+                          <Link
+                            href={getAdminEditLink(post)}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: "74px",
+                              height: "36px",
+                              background: "#2563eb",
+                              color: "white",
+                              borderRadius: "8px",
+                              textDecoration: "none",
+                              fontSize: "14px",
+                            }}
+                          >
+                            Edit
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
-
-      {message ? <div className={`notice ${message.type}`}>{message.text}</div> : null}
-
-      <div className="admin-wrap">
-        <aside className="auth-panel">
-          <h3>Logged in</h3>
-          <p className="admin-status">{user.email}</p>
-          <p className="admin-status">Tip: Use unique slugs. Example: ossc-cglre-specialist-2026</p>
-        </aside>
-
-        <div className="form-panel">
-          <h2>{editingId ? "Edit Post" : "Create Post"}</h2>
-          <form onSubmit={savePost} className="form-grid">
-            <label>Title<input value={form.title} onChange={(e) => updateForm("title", e.target.value)} onBlur={() => !form.slug && updateForm("slug", makeSlug(form.title))} required /></label>
-            <label>Slug<input value={form.slug} onChange={(e) => updateForm("slug", makeSlug(e.target.value))} placeholder="post-url-slug" required /></label>
-            <label>Category
-              <select value={form.category} onChange={(e) => updateForm("category", e.target.value)}>
-                {categories.map((cat) => <option key={cat.value} value={cat.value}>{cat.label}</option>)}
-              </select>
-            </label>
-            <label>Short Summary<textarea value={form.excerpt} onChange={(e) => updateForm("excerpt", e.target.value)} style={{ minHeight: 90 }} /></label>
-            <label>Full Content<textarea value={form.content} onChange={(e) => updateForm("content", e.target.value)} required /></label>
-            <label>Image URL<input value={form.imageUrl} onChange={(e) => updateForm("imageUrl", e.target.value)} placeholder="Optional poster/image URL" /></label>
-            <label>Official Link<input value={form.sourceUrl} onChange={(e) => updateForm("sourceUrl", e.target.value)} placeholder="Optional official website link" /></label>
-            <label>Tags<input value={form.tags} onChange={(e) => updateForm("tags", e.target.value)} placeholder="OSSC, Job, Odisha" /></label>
-            <label>Status
-              <select value={form.status} onChange={(e) => updateForm("status", e.target.value as "published" | "draft")}>
-                <option value="published">Published</option>
-                <option value="draft">Draft</option>
-              </select>
-            </label>
-            <button className="btn" disabled={loading}>{loading ? "Saving..." : editingId ? "Update Post" : "Save Post"}</button>
-            {editingId ? <button type="button" className="btn outline" onClick={() => { setEditingId(null); setForm(initialForm); }}>Cancel Edit</button> : null}
-          </form>
-        </div>
-      </div>
-
-      <div className="section">
-        <div className="section-title">
-          <div><h2>Existing Posts</h2><p>Edit, delete or open published posts.</p></div>
-        </div>
-        <div className="post-grid">
-          {posts.map((post) => (
-            <article className="post-card" key={post.id}>
-              <div className="card-badge">{post.status} • {post.category}</div>
-              <h3>{post.title}</h3>
-              <p>{post.excerpt}</p>
-              <div className="article-actions">
-                <a className="btn outline" href={`/post/${post.slug || post.id}`} target="_blank">Open</a>
-                <button className="btn" onClick={() => fillForEdit(post)}>Edit</button>
-                <button className="btn danger" onClick={() => removePost(post.id)}>Delete</button>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
+    </AdminLayout>
   );
 }

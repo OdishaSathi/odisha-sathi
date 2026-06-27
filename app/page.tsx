@@ -1,76 +1,218 @@
-import Link from "next/link";
-import CategoryPills from "@/components/CategoryPills";
-import LatestPosts from "@/components/LatestPosts";
-import SocialLinks from "@/components/SocialLinks";
-import { siteConfig } from "@/lib/siteConfig";
+"use client";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../lib/firebase";
+
+type PostItem = {
+  id: string;
+  title: string;
+  slug?: string;
+  category?: string;
+  content?: string;
+  schemeName?: string;
+  department?: string;
+  createdAt?: any;
+};
+
+function SectionCard({
+  title,
+  viewAllLink,
+  items,
+  emptyText,
+  isScheme = false,
+}: {
+  title: string;
+  viewAllLink: string;
+  items: PostItem[];
+  emptyText: string;
+  isScheme?: boolean;
+}) {
+  return (
+    <section className="home-section-card">
+      <div className="home-section-head">
+        <h2>{title}</h2>
+
+        <Link href={viewAllLink} className="home-view-all">
+          View All
+        </Link>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="home-empty-text">{emptyText}</p>
+      ) : (
+        <div className="home-post-list">
+          {items.map((item) => {
+            const displayTitle = isScheme
+              ? item.schemeName || item.title || "Untitled Scheme"
+              : item.title || "Untitled Post";
+
+            const linkHref = isScheme
+              ? `/schemes/${item.id}`
+              : `/post/${item.slug || item.id}`;
+
+            return (
+              <Link key={item.id} href={linkHref} className="home-post-card">
+                <h3>{displayTitle}</h3>
+
+                {isScheme ? (
+                  <p>{item.department || "Department not added"}</p>
+                ) : item.content ? (
+                  <p>
+                    {item.content.length > 90
+                      ? `${item.content.slice(0, 90)}...`
+                      : item.content}
+                  </p>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function HomePage() {
+  const [jobs, setJobs] = useState<PostItem[]>([]);
+  const [results, setResults] = useState<PostItem[]>([]);
+  const [admissions, setAdmissions] = useState<PostItem[]>([]);
+  const [admitCards, setAdmitCards] = useState<PostItem[]>([]);
+  const [schemes, setSchemes] = useState<PostItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadHomePosts = async () => {
+      try {
+        setLoading(true);
+
+        const snapshot = await getDocs(collection(db, "posts"));
+
+        const allPosts: PostItem[] = snapshot.docs
+          .map((docItem) => {
+            const data = docItem.data();
+
+            return {
+              id: docItem.id,
+              title: data.title || "",
+              slug: data.slug || "",
+              category: data.category || "",
+              content: data.content || data.description || "",
+              schemeName: data.schemeName || data.title || "",
+              department: data.department || "",
+              createdAt: data.createdAt || null,
+            };
+          })
+          .sort((a, b) => {
+            const aTime = a.createdAt?.seconds || 0;
+            const bTime = b.createdAt?.seconds || 0;
+            return bTime - aTime;
+          });
+
+        setJobs(allPosts.filter((item) => item.category === "jobs").slice(0, 5));
+
+        setResults(
+          allPosts.filter((item) => item.category === "results").slice(0, 5)
+        );
+
+        setAdmissions(
+          allPosts.filter((item) => item.category === "admissions").slice(0, 5)
+        );
+
+        setAdmitCards(
+          allPosts.filter((item) => item.category === "admit-cards").slice(0, 5)
+        );
+
+        setSchemes(
+          allPosts.filter((item) => item.category === "schemes").slice(0, 5)
+        );
+      } catch (error) {
+        console.error(error);
+        alert("Failed to load home page posts");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadHomePosts();
+  }, []);
+
   return (
-    <>
-      <section className="home-hero">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <span className="hero-eyebrow">Odisha Jobs • Exams • Results • Admissions</span>
-            <h1>
-            Odisha Government Jobs, Exams, Results, Admissions & Schemes
-            </h1>
-            <p className="hero-tagline">{siteConfig.tagline}</p>
-            <p className="hero-description">
-              Get latest updates on Odisha government jobs, central jobs, exams,
-              results, admissions, scholarships, government schemes and useful online services.
-            </p>
+    <main className="home-page-main">
+      <section className="home-hero-card">
+        <h1>Odisha Sathi</h1>
 
-            <div className="hero-actions">
-              <Link href="#latest" className="btn">
-                Latest Updates
-              </Link>
-              <Link href="/tools" className="btn secondary">
-                Online Tools
-              </Link>
-            </div>
-          </div>
-
-          <aside className="promo-card">
-            <p className="promo-label">Stay Connected</p>
-            <h2>Follow Odisha Sathi</h2>
-            <p>
-              Follow our social media pages for daily updates on jobs, exams,
-              results, admissions, scholarships and government schemes.
-            </p>
-
-            <SocialLinks />
-          </aside>
-        </div>
+        <p>
+          Latest updates for jobs, results, admissions, admit cards and
+          government schemes.
+        </p>
       </section>
 
-      <section className="section container">
-        <div className="section-heading-row">
-          <div>
-            <h2>Explore Updates by Category</h2>
-            <p>Choose a category to access jobs, exams, results, admissions, scholarships and government schemes.</p>
-          </div>
-        </div>
-
-        <CategoryPills />
+      <section className="home-quick-grid">
+        <Link href="/jobs" className="home-quick-link">
+          Jobs
+        </Link>
+        <Link href="/results" className="home-quick-link">
+          Results
+        </Link>
+        <Link href="/admissions" className="home-quick-link">
+          Admissions
+        </Link>
+        <Link href="/admit-cards" className="home-quick-link">
+          Admit Cards
+        </Link>
+        <Link href="/schemes" className="home-quick-link">
+          Schemes
+        </Link>
+        <Link href="/tools" className="home-quick-link">
+          Tools
+        </Link>
       </section>
 
-      <section className="section container" id="latest">
-        <div className="section-heading-row">
-          <div>
-            <h2>Latest Updates</h2>
-            <p>Fresh posts from Odisha Sathi.</p>
-          </div>
-
-          <Link href="/category/jobs" className="btn secondary">
-            View Jobs
-          </Link>
+      {loading ? (
+        <div className="home-loading-card">
+          <p>Loading latest updates...</p>
         </div>
+      ) : (
+        <div className="home-latest-grid">
+          <SectionCard
+            title="Latest Jobs"
+            viewAllLink="/jobs"
+            items={jobs}
+            emptyText="No jobs added yet."
+          />
 
-        <LatestPosts />
-      </section>
-    </>
+          <SectionCard
+            title="Latest Results"
+            viewAllLink="/results"
+            items={results}
+            emptyText="No results added yet."
+          />
+
+          <SectionCard
+            title="Latest Admissions"
+            viewAllLink="/admissions"
+            items={admissions}
+            emptyText="No admissions added yet."
+          />
+
+          <SectionCard
+            title="Latest Admit Cards"
+            viewAllLink="/admit-cards"
+            items={admitCards}
+            emptyText="No admit cards added yet."
+          />
+
+          <SectionCard
+            title="Government Schemes"
+            viewAllLink="/schemes"
+            items={schemes}
+            emptyText="No schemes added yet."
+            isScheme
+          />
+        </div>
+      )}
+    </main>
   );
 }

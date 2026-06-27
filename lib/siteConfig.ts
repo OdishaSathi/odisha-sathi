@@ -1,34 +1,33 @@
 export const siteConfig = {
   siteName: "Odisha Sathi",
   siteUrl: "https://odishasathi.in",
-  tagline: "One stop solution for all online works",
+  tagline: "Jobs, Results, Admissions, Admit Cards & Schemes",
   description:
-    "Odisha Sathi provides latest updates on Odisha jobs, exams, results, admissions, scholarships, government schemes, useful tools and online services.",
+    "Odisha Sathi provides latest updates on Odisha jobs, results, admissions, admit cards, government schemes, useful tools and online services.",
 
   socialLinks: {
     whatsapp: "#",
     youtube: "#",
     facebook: "#",
-    instagram: "#"
+    instagram: "#",
   },
 
   headerNav: [
     { label: "Home", href: "/" },
-    { label: "Jobs", href: "/category/jobs" },
-    { label: "Exams", href: "/category/exams" },
-    { label: "Results", href: "/category/results" },
-    { label: "Admissions", href: "/category/admissions" },
-    { label: "Scholarships", href: "/category/scholarships" },
-    { label: "Govt. Schemes", href: "/category/schemes" },
-    { label: "Tools", href: "/tools" }
+    { label: "Jobs", href: "/jobs" },
+    { label: "Results", href: "/results" },
+    { label: "Admissions", href: "/admissions" },
+    { label: "Admit Cards", href: "/admit-cards" },
+    { label: "Schemes", href: "/schemes" },
+    { label: "Tools", href: "/tools" },
   ],
 
   homeCategories: [
-    { label: "Jobs", href: "/category/jobs" },
-    { label: "Exams", href: "/category/exams" },
-    { label: "Results", href: "/category/results" },
-    { label: "Admissions", href: "/category/admissions" },
-    { label: "Scholarships", href: "/category/scholarships" },
-    { label: "Govt. Schemes", href: "/category/schemes" }
-  ]
+    { label: "Jobs", href: "/jobs" },
+    { label: "Results", href: "/results" },
+    { label: "Admissions", href: "/admissions" },
+    { label: "Admit Cards", href: "/admit-cards" },
+    { label: "Schemes", href: "/schemes" },
+    { label: "Tools", href: "/tools" },
+  ],
 };
