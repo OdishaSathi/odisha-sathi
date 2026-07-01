@@ -80,7 +80,7 @@ img { max-width: 100%; }
 .hero-card li { margin: 8px 0; }
 
 .section { padding: 42px 0; }
-.section-title { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.section-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 .section-title h2 { margin: 0; font-size: 28px; }
 .section-title p { margin: 6px 0 0; color: var(--muted); }
 .category-pills { display: flex; gap: 12px; overflow-x: auto; padding: 4px 0 14px; }
@@ -2463,5 +2463,789 @@ textarea { min-height: 180px; resize: vertical; }
     height: 15px !important;
     min-width: 15px !important;
     max-width: 15px !important;
+  }
+}
+/* ================================
+   Admit Cards Public UI
+================================ */
+
+.admit-container {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.admit-section-label {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.admit-list-page,
+.admit-detail-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+.admit-list-hero,
+.admit-detail-hero {
+  padding: 36px 0;
+  background: linear-gradient(135deg, #eef5ff 0%, #ffffff 55%, #f5f7fb 100%);
+  border-bottom: 1px solid #dbe5f5;
+}
+
+.admit-list-hero h1,
+.admit-detail-hero h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.15;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+.admit-list-hero p,
+.admit-detail-hero p {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.admit-list-section,
+.admit-detail-section {
+  padding: 28px 0 46px;
+}
+
+.admit-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.admit-post-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admit-post-card h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+  color: #0f172a;
+}
+
+.admit-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admit-status-pill {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admit-status-released {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admit-status-coming-soon {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.admit-status-closed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admit-meta-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admit-meta-list p {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 135px 1fr;
+  gap: 8px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.admit-meta-list strong {
+  color: #0f172a;
+}
+
+.admit-card-desc {
+  margin: 0;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.admit-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  border: 0;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admit-primary-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.admit-full-btn {
+  width: 100%;
+}
+
+.admit-empty-box {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.admit-empty-box h1,
+.admit-empty-box h2 {
+  margin: 0 0 10px;
+  color: #0f172a;
+}
+
+.admit-empty-box p {
+  margin: 0 0 16px;
+  color: #475569;
+}
+
+.admit-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 24px;
+  align-items: start;
+}
+
+.admit-detail-main,
+.admit-detail-sidebar {
+  display: grid;
+  gap: 22px;
+}
+
+.admit-detail-sidebar {
+  position: sticky;
+  top: 90px;
+}
+
+.admit-detail-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.admit-detail-card h2 {
+  margin: 0 0 16px;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+.admit-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admit-info-grid div {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.admit-info-grid strong {
+  display: block;
+  color: #475569;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.admit-info-grid span {
+  display: block;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.admit-description {
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.admit-description p {
+  margin: 0 0 12px;
+}
+
+.admit-description p:last-child {
+  margin-bottom: 0;
+}
+
+.admit-youtube-box {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #0f172a;
+  aspect-ratio: 16 / 9;
+}
+
+.admit-youtube-box iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.admit-important-links {
+  display: grid;
+  gap: 12px;
+}
+
+.admit-important-links a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  text-align: center;
+  transition: 0.2s ease;
+}
+
+.admit-important-links a:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.admit-detail-sidebar p {
+  margin: 0 0 14px;
+  color: #475569;
+  line-height: 1.6;
+}
+
+/* ================================
+   Admit Cards Admin UI
+================================ */
+
+.admit-admin-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+  color: #111827;
+}
+
+.admit-admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.admit-admin-header h1 {
+  margin: 0;
+  font-size: 30px;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.admit-admin-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.admit-admin-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
+}
+
+.admit-admin-card-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.admit-admin-card-title h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.admit-admin-card-title span {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admit-admin-page .admin-form {
+  display: grid;
+  gap: 18px;
+}
+
+.admit-admin-page .admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admit-admin-page .admin-form-group {
+  display: grid;
+  gap: 7px;
+}
+
+.admit-admin-page .admin-form-group label {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.admit-admin-page .admin-form-group input,
+.admit-admin-page .admin-form-group select,
+.admit-admin-page .admin-form-group textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.admit-admin-page .admin-form-group textarea {
+  min-height: 150px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.admit-admin-page .admin-form-group input:focus,
+.admit-admin-page .admin-form-group select:focus,
+.admit-admin-page .admin-form-group textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+
+.admit-admin-page .admin-section-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 18px;
+}
+
+.admit-admin-page .admin-section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admit-admin-page .admin-section-title-row h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.admit-admin-page .admin-link-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.admit-admin-page .admin-link-row input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 12px;
+  padding: 11px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.admit-admin-page .admin-form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admit-admin-page .admin-submit-btn,
+.admit-admin-page .admin-small-btn,
+.admit-admin-page .admin-cancel-btn,
+.admit-admin-page .admin-danger-btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admit-admin-page .admin-submit-btn,
+.admit-admin-page .admin-small-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.admit-admin-page .admin-submit-btn:hover,
+.admit-admin-page .admin-small-btn:hover {
+  background: #1d4ed8;
+}
+
+.admit-admin-page .admin-cancel-btn {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+.admit-admin-page .admin-danger-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.admit-admin-page .admin-danger-btn:hover {
+  background: #fecaca;
+}
+
+.admit-admin-page .admin-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.admit-admin-page .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 780px;
+}
+
+.admit-admin-page .admin-table th {
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 13px;
+  text-align: left;
+  padding: 13px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admit-admin-page .admin-table td {
+  padding: 13px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #334155;
+  font-size: 14px;
+  vertical-align: top;
+}
+
+.admit-admin-page .admin-table td small {
+  color: #64748b;
+}
+
+.admit-admin-page .admin-table-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.admit-admin-page .admin-status-pill {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admit-admin-empty {
+  text-align: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+  padding: 26px;
+  background: #f8fafc;
+}
+
+.admit-admin-empty h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.admit-admin-empty p,
+.admit-admin-muted {
+  margin: 0;
+  color: #64748b;
+}
+
+@media (max-width: 980px) {
+  .admit-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admit-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admit-detail-sidebar {
+    position: static;
+  }
+}
+
+@media (max-width: 720px) {
+  .admit-container {
+    width: min(100% - 24px, 1120px);
+  }
+
+  .admit-list-hero,
+  .admit-detail-hero {
+    padding: 28px 0;
+  }
+
+  .admit-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admit-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admit-meta-list p {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .admit-admin-page {
+    padding: 16px;
+  }
+
+  .admit-admin-header,
+  .admit-admin-card-title,
+  .admit-admin-page .admin-section-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admit-admin-page .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admit-admin-page .admin-link-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admit-admin-page .admin-form-actions {
+    flex-direction: column;
+  }
+
+  .admit-admin-page .admin-submit-btn,
+  .admit-admin-page .admin-cancel-btn {
+    width: 100%;
+  }
+}
+/* Admit Card detail back link and share icons */
+
+.admit-back-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 14px;
+  color: #1d4ed8;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.admit-back-link:hover {
+  text-decoration: underline;
+}
+
+.admit-detail-hero .admit-status-pill {
+  margin-bottom: 12px;
+}
+
+.admit-share-icons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admit-share-icon-btn {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admit-share-icon-btn svg {
+  width: 28px;
+  height: 28px;
+  fill: #ffffff;
+}
+
+.admit-whatsapp-btn {
+  background: #25d366;
+}
+
+.admit-telegram-btn {
+  background: #229ed9;
+}
+
+.admit-share-icon-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+}
+
+@media (max-width: 720px) {
+  .admit-share-icons {
+    justify-content: flex-start;
+  }
+
+  .admit-share-icon-btn {
+    width: 46px;
+    height: 46px;
+  }
+}
+
+.floating-whatsapp {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  width: 68px;
+  height: 68px;
+  border-radius: 999px;
+  background: #25d366;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 16px 34px rgba(37, 211, 102, 0.38);
+  animation: whatsappFloat 2.4s ease-in-out infinite;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.floating-whatsapp:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 20px 42px rgba(37, 211, 102, 0.5);
+}
+
+.floating-whatsapp svg {
+  width: 38px;
+  height: 38px;
+  fill: currentColor;
+  position: relative;
+  z-index: 2;
+}
+
+.floating-whatsapp-pulse {
+  position: absolute;
+  inset: -7px;
+  border-radius: 999px;
+  background: rgba(37, 211, 102, 0.22);
+  animation: whatsappPulse 1.8s ease-out infinite;
+}
+
+@keyframes whatsappFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes whatsappPulse {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .floating-whatsapp {
+    right: 16px;
+    bottom: 18px;
+    width: 54px;
+    height: 54px;
+  }
+
+  .floating-whatsapp svg {
+    width: 31px;
+    height: 31px;
   }
 }

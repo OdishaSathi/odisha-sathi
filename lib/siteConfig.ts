@@ -6,7 +6,7 @@ export const siteConfig = {
     "Odisha Sathi provides latest updates on Odisha jobs, results, admissions, admit cards, government schemes, useful tools and online services.",
 
   socialLinks: {
-    whatsapp: "#",
+    whatsapp: "https://whatsapp.com/channel/0029Va9mvn72P59nNU9nEJ3I",
     youtube: "#",
     facebook: "#",
     instagram: "#",

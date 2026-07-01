@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import FloatingWhatsApp from "@/components/public/FloatingWhatsApp";
 
 export default function SiteShell({
   children,
@@ -22,6 +23,7 @@ export default function SiteShell({
       <Header />
       <main>{children}</main>
       <Footer />
+      <FloatingWhatsApp />
     </>
   );
 }
