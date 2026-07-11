@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+
+const POSTS_PER_PAGE = 30;
+const LATEST_STACK_COUNT = 8;
 
 type ImportantDate = {
   label?: string;
@@ -12,87 +16,136 @@ type ImportantDate = {
 
 type SchemePost = {
   id: string;
-  title?: string;
+  title: string;
+  slug?: string;
+  content?: string;
+  category?: string;
+  subCategory?: string;
+  subCategories?: string[];
   schemeName?: string;
   department?: string;
-  category?: string;
-  schemeCategory?: string;
-  schemeCategorySlug?: string;
-  benefit?: string;
+  organization?: string;
   startDate?: string;
+  startDateDisplay?: string;
+  schemeStartDate?: string;
   applicationStartDate?: string;
   openingDate?: string;
   lastDate?: string;
+  lastDateDisplay?: string;
+  schemeLastDate?: string;
   applicationLastDate?: string;
   applicationEndDate?: string;
   closingDate?: string;
   endDate?: string;
-  status?: string;
   importantDates?: ImportantDate[];
   createdAt?: any;
 };
-
-type SchemeCategory = {
-  id: string;
-  categoryName: string;
-  slug: string;
-};
-
-function makeSlug(text: string) {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function getTimeValue(item: SchemePost) {
   return item.createdAt?.seconds || 0;
 }
 
+function normalizeText(value?: any) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+}
+
+function hasSchemeText(value?: any) {
+  const text = normalizeText(value);
+
+  return (
+    text.includes("scheme") ||
+    text.includes("schemes") ||
+    text.includes("scholarship") ||
+    text.includes("scholarships")
+  );
+}
+
+function isSchemePost(item: SchemePost) {
+  if (hasSchemeText(item.category)) return true;
+  if (hasSchemeText(item.subCategory)) return true;
+  if (hasSchemeText(item.schemeName)) return true;
+
+  if (Array.isArray(item.subCategories)) {
+    return item.subCategories.some((subCategoryItem) =>
+      hasSchemeText(subCategoryItem)
+    );
+  }
+
+  return false;
+}
+
+function parseDateValue(value?: any) {
+  if (!value) return null;
+
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    const date = new Date(value.seconds * 1000);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const cleanValue = value.trim();
+  if (!cleanValue) return null;
+
+  const ddMmYyyy = cleanValue.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+
+  if (ddMmYyyy) {
+    const day = Number(ddMmYyyy[1]);
+    const month = Number(ddMmYyyy[2]);
+    const year = Number(ddMmYyyy[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const yyyyMmDd = cleanValue.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+
+  if (yyyyMmDd) {
+    const year = Number(yyyyMmDd[1]);
+    const month = Number(yyyyMmDd[2]);
+    const day = Number(yyyyMmDd[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const date = new Date(cleanValue);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 function formatDate(value?: any) {
   if (!value) return "";
 
-  if (typeof value === "object" && typeof value.seconds === "number") {
-    return new Date(value.seconds * 1000).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  const parsedDate = parseDateValue(value);
+
+  if (!parsedDate) {
+    return typeof value === "string" ? value.trim() : "";
   }
 
-  if (typeof value === "string") {
-    const cleanValue = value.trim();
-
-    if (!cleanValue) return "";
-
-    const date = new Date(cleanValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return cleanValue;
-    }
-
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  return "";
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function getPublishedDate(item: SchemePost) {
-  return formatDate(item.createdAt);
-}
-
-function getStartDate(item: SchemePost) {
+function getRawStartDate(item: SchemePost) {
   const directDate =
-    item.startDate || item.applicationStartDate || item.openingDate || "";
+    item.startDateDisplay ||
+    item.startDate ||
+    item.schemeStartDate ||
+    item.applicationStartDate ||
+    item.openingDate ||
+    "";
 
-  if (directDate) {
-    return formatDate(directDate);
-  }
+  if (directDate) return directDate;
 
   const matchedDate = item.importantDates?.find((dateItem) => {
     const label = (dateItem.label || "").toLowerCase();
@@ -104,21 +157,21 @@ function getStartDate(item: SchemePost) {
     );
   });
 
-  return formatDate(matchedDate?.value);
+  return matchedDate?.value || "";
 }
 
-function getLastDate(item: SchemePost) {
+function getRawLastDate(item: SchemePost) {
   const directDate =
+    item.lastDateDisplay ||
     item.lastDate ||
+    item.schemeLastDate ||
     item.applicationLastDate ||
     item.applicationEndDate ||
     item.closingDate ||
     item.endDate ||
     "";
 
-  if (directDate) {
-    return formatDate(directDate);
-  }
+  if (directDate) return directDate;
 
   const matchedDate = item.importantDates?.find((dateItem) => {
     const label = (dateItem.label || "").toLowerCase();
@@ -130,171 +183,309 @@ function getLastDate(item: SchemePost) {
     );
   });
 
-  return formatDate(matchedDate?.value);
+  return matchedDate?.value || "";
 }
 
-function getMeta(item: SchemePost) {
-  const text =
+function getPublishedDate(item: SchemePost) {
+  return formatDate(item.createdAt);
+}
+
+function getStartDate(item: SchemePost) {
+  return formatDate(getRawStartDate(item));
+}
+
+function getLastDate(item: SchemePost) {
+  return formatDate(getRawLastDate(item));
+}
+
+function getSchemeName(item: SchemePost) {
+  return (
+    item.schemeName ||
     item.department ||
-    item.benefit ||
-    "Click to read scheme details, eligibility, benefit and official links.";
-
-  return text.length > 110 ? `${text.slice(0, 110)}...` : text;
+    item.organization ||
+    "Scheme details available"
+  );
 }
 
-function SchemeRow({ scheme }: { scheme: SchemePost }) {
-  const name = scheme.schemeName || scheme.title || "Untitled Scheme";
-  const publishedDate = getPublishedDate(scheme);
+function isDeadlineWithinNext7Days(item: SchemePost) {
+  const lastDate = parseDateValue(
+    item.lastDate ||
+      item.schemeLastDate ||
+      item.applicationLastDate ||
+      item.applicationEndDate ||
+      item.closingDate ||
+      item.endDate ||
+      getRawLastDate(item)
+  );
+
+  if (!lastDate) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const nextSevenDays = new Date(today);
+  nextSevenDays.setDate(today.getDate() + 7);
+
+  return lastDate >= today && lastDate <= nextSevenDays;
+}
+
+function mapSchemeDocument(docItem: any, collectionName: string): SchemePost {
+  const data = docItem.data();
+
+  return {
+    id: docItem.id,
+    title: data.title || "",
+    slug: data.slug || "",
+    content: data.content || data.description || "",
+    category:
+      data.category ||
+      data.postCategory ||
+      data.postType ||
+      data.type ||
+      data.section ||
+      data.module ||
+      collectionName ||
+      "",
+    subCategory:
+      data.subCategory ||
+      data.subcategory ||
+      data.schemeCategory ||
+      data.categoryName ||
+      "",
+    subCategories: Array.isArray(data.subCategories)
+      ? data.subCategories
+      : Array.isArray(data.subcategories)
+      ? data.subcategories
+      : data.subCategory
+      ? [data.subCategory]
+      : [],
+    schemeName:
+      data.schemeName ||
+      data.scheme ||
+      data.programName ||
+      data.programmeName ||
+      "",
+    department: data.department || "",
+    organization: data.organization || "",
+    startDateDisplay: data.startDateDisplay || "",
+    startDate:
+      data.startDate ||
+      data.schemeStartDate ||
+      data.applicationStartDate ||
+      data.openingDate ||
+      "",
+    schemeStartDate: data.schemeStartDate || "",
+    applicationStartDate: data.applicationStartDate || "",
+    openingDate: data.openingDate || "",
+    lastDateDisplay: data.lastDateDisplay || "",
+    lastDate:
+      data.lastDate ||
+      data.schemeLastDate ||
+      data.applicationLastDate ||
+      data.applicationEndDate ||
+      data.closingDate ||
+      data.endDate ||
+      "",
+    schemeLastDate: data.schemeLastDate || "",
+    applicationLastDate: data.applicationLastDate || "",
+    applicationEndDate: data.applicationEndDate || "",
+    closingDate: data.closingDate || "",
+    endDate: data.endDate || "",
+    importantDates: data.importantDates || [],
+    createdAt: data.createdAt || null,
+  };
+}
+
+async function loadSchemeCollection(collectionName: string) {
+  try {
+    const snapshot = await getDocs(collection(db, collectionName));
+
+    return snapshot.docs.map((docItem) =>
+      mapSchemeDocument(docItem, collectionName)
+    );
+  } catch (error) {
+    console.warn(`Could not load ${collectionName}`, error);
+    return [];
+  }
+}
+
+function LatestSchemeStack({
+  scheme,
+  index,
+}: {
+  scheme: SchemePost;
+  index: number;
+}) {
   const startDate = getStartDate(scheme);
   const lastDate = getLastDate(scheme);
+  const schemeName = getSchemeName(scheme);
 
   return (
-    <Link href={`/schemes/${scheme.id}`} className="os-scheme-row">
-      <div className="os-scheme-row-content">
-        <div className="os-scheme-title-line">
-          <h3>{name}</h3>
+    <Link
+      href={`/post/${scheme.slug || scheme.id}`}
+      className={`os-scheme-stack-card os-scheme-stack-color-${index % 8}`}
+    >
+      <h3>{scheme.title || "Untitled Scheme"}</h3>
 
-          <div className="os-scheme-date-line">
-            {publishedDate ? (
-              <span className="os-date-published">
-                Published: {publishedDate}
-              </span>
-            ) : null}
+      <p>{schemeName}</p>
 
-            {startDate ? (
-              <span className="os-date-start">Start: {startDate}</span>
-            ) : null}
-
-            {lastDate ? (
-              <span className="os-date-end">Last: {lastDate}</span>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="os-scheme-tag-row">
-          <span>{scheme.schemeCategory || "Government Schemes"}</span>
-
-          <span
-            className={
-              scheme.status === "closed"
-                ? "os-scheme-status closed"
-                : "os-scheme-status active"
-            }
-          >
-            {scheme.status === "closed" ? "Closed" : "Active"}
+      <div className="os-scheme-stack-date-row">
+        {startDate ? (
+          <span className="os-scheme-stack-start">
+            Start Date - {startDate}
           </span>
-        </div>
+        ) : null}
 
-        <p>{getMeta(scheme)}</p>
-
-        {scheme.benefit ? (
-          <p className="os-scheme-benefit">Benefit: {scheme.benefit}</p>
+        {lastDate ? (
+          <span className="os-scheme-stack-end">Last Date - {lastDate}</span>
         ) : null}
       </div>
-
-      <span className="os-scheme-arrow">›</span>
     </Link>
   );
 }
 
+function AllSchemeItem({ scheme }: { scheme: SchemePost }) {
+  const publishedDate = getPublishedDate(scheme);
+
+  return (
+    <Link
+      href={`/post/${scheme.slug || scheme.id}`}
+      className="os-all-scheme-item"
+    >
+      <h3>{scheme.title || "Untitled Scheme"}</h3>
+
+      {publishedDate ? (
+        <span>Published: {publishedDate}</span>
+      ) : (
+        <span>Published date not available</span>
+      )}
+    </Link>
+  );
+}
+
+function ReminderItem({ scheme }: { scheme: SchemePost }) {
+  const lastDate = getLastDate(scheme);
+
+  return (
+    <Link
+      href={`/post/${scheme.slug || scheme.id}`}
+      className="os-reminder-item"
+    >
+      <span>{scheme.title || "Untitled Scheme"}</span>
+      {lastDate ? <strong>Last Date: {lastDate}</strong> : null}
+    </Link>
+  );
+}
+
+function buildReminderShareText(reminderSchemes: SchemePost[], origin: string) {
+  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
+
+  reminderSchemes.forEach((scheme, index) => {
+    const title = scheme.title || "Untitled Scheme";
+    const lastDate = getLastDate(scheme) || "Date not available";
+    const postLink = `${origin}/post/${scheme.slug || scheme.id}`;
+
+    lines.push(title);
+    lines.push(`Last Date: ${lastDate}`);
+    lines.push(postLink);
+
+    if (index < reminderSchemes.length - 1) {
+      lines.push("");
+    }
+  });
+
+  return lines.join("\n");
+}
+
+function getSchemeCategories(schemes: SchemePost[]) {
+  const categorySet = new Set<string>();
+
+  schemes.forEach((scheme) => {
+    if (scheme.subCategory) {
+      categorySet.add(scheme.subCategory);
+    }
+
+    if (Array.isArray(scheme.subCategories)) {
+      scheme.subCategories.forEach((item) => {
+        if (item) categorySet.add(item);
+      });
+    }
+  });
+
+  return Array.from(categorySet).sort((a, b) => a.localeCompare(b));
+}
+
 export default function SchemesPage() {
   const [schemes, setSchemes] = useState<SchemePost[]>([]);
-  const [categories, setCategories] = useState<SchemeCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
   const [loading, setLoading] = useState(true);
+
+  const latestSchemes = schemes.slice(0, LATEST_STACK_COUNT);
+  const visibleSchemes = schemes.slice(0, visibleCount);
+  const canViewMore = visibleCount < schemes.length;
+  const schemeCategories = getSchemeCategories(schemes);
+
+  const reminderSchemes = schemes
+    .filter((scheme) => isDeadlineWithinNext7Days(scheme))
+    .sort((a, b) => {
+      const dateA = parseDateValue(getRawLastDate(a))?.getTime() || 0;
+      const dateB = parseDateValue(getRawLastDate(b))?.getTime() || 0;
+
+      return dateA - dateB;
+    });
+
+  const handleShareReminder = () => {
+    if (reminderSchemes.length === 0) return;
+
+    const shareText = buildReminderShareText(
+      reminderSchemes,
+      window.location.origin
+    );
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     const loadSchemes = async () => {
       try {
         setLoading(true);
 
-        const snapshot = await getDocs(collection(db, "posts"));
+        const collectionNames = [
+          "posts",
+          "schemes",
+          "scheme",
+          "governmentSchemes",
+          "government-schemes",
+        ];
 
-        const allItems = snapshot.docs.map((docItem) => {
-          const data = docItem.data();
-
-          return {
-            id: docItem.id,
-            ...data,
-          } as any;
-        });
-
-        const schemeList: SchemePost[] = allItems
-          .filter(
-            (item) => item.category === "schemes" && item.published !== false
+        const loadedGroups = await Promise.all(
+          collectionNames.map((collectionName) =>
+            loadSchemeCollection(collectionName)
           )
-          .map((item) => {
-            const schemeCategory = item.schemeCategory || "Government Schemes";
+        );
 
-            return {
-              id: item.id,
-              title: item.title || "",
-              schemeName: item.schemeName || item.title || "",
-              department: item.department || "",
-              category: item.category || "",
-              schemeCategory,
-              schemeCategorySlug:
-                item.schemeCategorySlug || makeSlug(schemeCategory),
-              benefit: item.benefit || item.amountBenefit || "",
-              startDate:
-                item.startDate ||
-                item.applicationStartDate ||
-                item.applicationOpenDate ||
-                item.openingDate ||
-                "",
-              applicationStartDate: item.applicationStartDate || "",
-              openingDate: item.openingDate || "",
-              lastDate:
-                item.lastDate ||
-                item.applicationLastDate ||
-                item.applicationEndDate ||
-                item.closingDate ||
-                item.endDate ||
-                "",
-              applicationLastDate: item.applicationLastDate || "",
-              applicationEndDate: item.applicationEndDate || "",
-              closingDate: item.closingDate || "",
-              endDate: item.endDate || "",
-              status: item.status || "active",
-              importantDates: item.importantDates || [],
-              createdAt: item.createdAt || null,
-            };
-          })
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+        const combinedList = loadedGroups.flat();
 
-        const categoryDocs: SchemeCategory[] = allItems
-          .filter(
-            (item) =>
-              item.category === "scheme-category" &&
-              item.type === "scheme-category"
-          )
-          .map((item) => ({
-            id: item.id,
-            categoryName: item.categoryName || item.title || "",
-            slug: item.slug || makeSlug(item.categoryName || item.title || ""),
-          }))
-          .filter((item) => item.categoryName && item.slug);
+        const uniqueMap = new Map<string, SchemePost>();
 
-        const categoryFromPosts: SchemeCategory[] = schemeList.map((item) => ({
-          id: item.schemeCategorySlug || makeSlug(item.schemeCategory || ""),
-          categoryName: item.schemeCategory || "Government Schemes",
-          slug: item.schemeCategorySlug || makeSlug(item.schemeCategory || ""),
-        }));
+        combinedList
+          .filter((item) => isSchemePost(item))
+          .forEach((item) => {
+            const uniqueKey = item.slug || item.id;
 
-        const mergedMap = new Map<string, SchemeCategory>();
+            if (!uniqueMap.has(uniqueKey)) {
+              uniqueMap.set(uniqueKey, item);
+            }
+          });
 
-        [...categoryDocs, ...categoryFromPosts].forEach((item) => {
-          if (item.slug && !mergedMap.has(item.slug)) {
-            mergedMap.set(item.slug, item);
-          }
-        });
-
-        const mergedCategories = Array.from(mergedMap.values()).sort((a, b) =>
-          a.categoryName.localeCompare(b.categoryName)
+        const schemeList = Array.from(uniqueMap.values()).sort(
+          (a, b) => getTimeValue(b) - getTimeValue(a)
         );
 
         setSchemes(schemeList);
-        setCategories(mergedCategories);
+        setVisibleCount(POSTS_PER_PAGE);
       } catch (error) {
         console.error(error);
         alert("Failed to load schemes");
@@ -306,80 +497,95 @@ export default function SchemesPage() {
     loadSchemes();
   }, []);
 
-  const filteredSchemes = useMemo(() => {
-    if (selectedCategory === "all") {
-      return schemes;
-    }
-
-    return schemes.filter(
-      (scheme) => scheme.schemeCategorySlug === selectedCategory
-    );
-  }, [schemes, selectedCategory]);
-
-  const selectedCategoryName =
-    selectedCategory === "all"
-      ? "Latest Schemes"
-      : categories.find((item) => item.slug === selectedCategory)?.categoryName ||
-        "Latest Schemes";
-
   return (
-    <main className="os-scheme-page">
-      <div className="os-scheme-container">
-        <section className="os-scheme-top">
-          <p>Odisha Sathi Schemes</p>
-          <h1>Government Schemes</h1>
-          <span>
-            Government schemes, scholarships and public welfare updates with
-            official links.
-          </span>
+    <main className="os-list-page">
+      <div className="os-list-container">
+        <section className="os-list-top">
+          <p>
+            ODISHA SATHI SCHEMES  (Find all the government scheme updates in
+            this page)
+          </p>
         </section>
 
-        <section className="os-scheme-layout">
-          <div className="os-scheme-main">
-            <section className="os-scheme-section">
-              <div className="os-scheme-section-head">
-                <h2>{selectedCategoryName}</h2>
-                <span>{filteredSchemes.length} Updates</span>
+        <section className="os-schemes-layout">
+          <div className="os-schemes-main">
+            <section className="os-list-section">
+              <div className="os-list-section-head">
+                <h2>Latest Schemes</h2>
               </div>
 
               {loading ? (
-                <p className="os-scheme-status-text">Loading schemes...</p>
-              ) : filteredSchemes.length === 0 ? (
-                <p className="os-scheme-status-text">No schemes found.</p>
+                <p className="os-list-status">Loading schemes...</p>
+              ) : latestSchemes.length === 0 ? (
+                <p className="os-list-status">No schemes found.</p>
               ) : (
-                <div className="os-scheme-board">
-                  {filteredSchemes.map((scheme) => (
-                    <SchemeRow key={scheme.id} scheme={scheme} />
+                <div className="os-scheme-stack-grid">
+                  {latestSchemes.map((scheme, index) => (
+                    <LatestSchemeStack
+                      key={scheme.id}
+                      scheme={scheme}
+                      index={index}
+                    />
                   ))}
                 </div>
               )}
             </section>
+
+            <section className="os-list-section">
+              <div className="os-list-section-head">
+                <h2>All Schemes</h2>
+              </div>
+
+              {loading ? (
+                <p className="os-list-status">Loading schemes...</p>
+              ) : schemes.length === 0 ? (
+                <p className="os-list-status">No schemes found.</p>
+              ) : (
+                <>
+                  <div className="os-all-scheme-grid">
+                    {visibleSchemes.map((scheme) => (
+                      <AllSchemeItem key={scheme.id} scheme={scheme} />
+                    ))}
+                  </div>
+
+                  {canViewMore ? (
+                    <div className="os-view-more-wrap">
+                      <button
+                        type="button"
+                        className="os-view-more-btn"
+                        onClick={() =>
+                          setVisibleCount((current) => current + POSTS_PER_PAGE)
+                        }
+                      >
+                        View More
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </section>
           </div>
 
-          <aside className="os-scheme-sidebar">
+          <aside className="os-schemes-sidebar">
             <section className="os-side-card">
               <h2>Scheme Categories</h2>
 
-              <div className="os-side-category-list">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory("all")}
-                  className={selectedCategory === "all" ? "active" : ""}
-                >
-                  All Schemes
-                </button>
-
-                {categories.map((item) => (
-                  <button
-                    key={item.slug}
-                    type="button"
-                    onClick={() => setSelectedCategory(item.slug)}
-                    className={selectedCategory === item.slug ? "active" : ""}
-                  >
-                    {item.categoryName}
-                  </button>
-                ))}
-              </div>
+              {loading ? (
+                <p className="os-side-status">Loading categories...</p>
+              ) : schemeCategories.length === 0 ? (
+                <p className="os-side-status">No categories found.</p>
+              ) : (
+                <div className="os-side-category-list">
+                  {schemeCategories.map((item) => (
+                    <Link
+                      key={item}
+                      href={`/schemes/${encodeURIComponent(item)}`}
+                    >
+                      {item}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="os-side-card">
@@ -388,81 +594,85 @@ export default function SchemesPage() {
               <Link href="/jobs">Latest Jobs</Link>
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
-              <Link href="/admit-cards">Admit Cards</Link>
+              <Link href="/admit-cards">Admit Cards & Exams</Link>
               <Link href="/schemes">Schemes</Link>
               <Link href="/tools">Tools</Link>
             </section>
 
-            <section className="os-side-card os-side-note">
-              <h2>Scheme Updates</h2>
-              <p>
-                Check this page regularly for government schemes, scholarships,
-                benefits, eligibility and official application links.
-              </p>
+            <section className="os-side-card os-reminder-card">
+              <div className="os-reminder-head">
+                <h2>Last Date Reminder</h2>
+
+                <ReminderShareButtons
+                  getShareText={() =>
+                    buildReminderShareText(reminderSchemes, window.location.origin)
+                  }
+                  disabled={loading || reminderSchemes.length === 0}
+                  label="Last Date Reminder"
+                />
+              </div>
+
+              {loading ? (
+                <p className="os-side-status">Loading reminders...</p>
+              ) : reminderSchemes.length === 0 ? (
+                <p className="os-side-status">
+                  No scheme deadline in the next 7 days.
+                </p>
+              ) : (
+                <div className="os-reminder-list">
+                  {reminderSchemes.map((scheme) => (
+                    <ReminderItem key={scheme.id} scheme={scheme} />
+                  ))}
+                </div>
+              )}
             </section>
           </aside>
         </section>
       </div>
 
       <style jsx global>{`
-        .os-scheme-page {
+        .os-list-page {
           min-height: 100vh;
           background: #ffffff;
           color: #0f172a;
         }
 
-        .os-scheme-container {
+        .os-list-container {
           width: min(100% - 32px, 1180px);
           margin: 0 auto;
           padding: 22px 0 42px;
         }
 
-        .os-scheme-top {
+        .os-list-top {
           margin-bottom: 16px;
           padding-bottom: 14px;
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .os-scheme-top p {
-          margin: 0 0 5px;
-          color: #ea580c;
+        .os-list-top p {
+          margin: 0;
+          color: #c2410c;
           font-size: 13px;
-          line-height: 1.2;
+          line-height: 1.35;
           font-weight: 900;
-          letter-spacing: 0.08em;
+          letter-spacing: 0.06em;
           text-transform: uppercase;
         }
 
-        .os-scheme-top h1 {
-          margin: 0;
-          color: #0f172a;
-          font-size: 32px;
-          line-height: 1.12;
-          font-weight: 900;
-          letter-spacing: -0.04em;
-        }
-
-        .os-scheme-top span {
-          display: block;
-          margin-top: 6px;
-          color: #475569;
-          font-size: 14px;
-          line-height: 1.45;
-          font-weight: 700;
-        }
-
-        .os-scheme-layout {
+        .os-schemes-layout {
           display: grid;
           grid-template-columns: minmax(0, 1fr) 300px;
           gap: 18px;
           align-items: start;
         }
 
-        .os-scheme-main {
+        .os-schemes-main {
+          display: grid;
+          gap: 16px;
           min-width: 0;
         }
 
-        .os-scheme-section,
+        .os-list-section,
         .os-side-card {
           border: 1px solid #e5e7eb;
           border-radius: 16px;
@@ -470,7 +680,7 @@ export default function SchemesPage() {
           background: #ffffff;
         }
 
-        .os-scheme-section-head {
+        .os-list-section-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -480,7 +690,7 @@ export default function SchemesPage() {
           background: #ffffff;
         }
 
-        .os-scheme-section-head h2,
+        .os-list-section-head h2,
         .os-side-card h2 {
           margin: 0;
           color: #0f172a;
@@ -490,161 +700,198 @@ export default function SchemesPage() {
           letter-spacing: -0.025em;
         }
 
-        .os-scheme-section-head span {
-          color: #64748b;
-          font-size: 13px;
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .os-scheme-board {
+        .os-scheme-stack-grid {
           display: grid;
-        }
-
-        .os-scheme-row {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 12px;
-          padding: 13px 16px;
+          padding: 14px;
+        }
+
+        .os-scheme-stack-card {
+          min-height: 112px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          border-radius: 10px;
+          text-decoration: none;
+          color: #0f172a;
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+          transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-scheme-stack-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09);
+        }
+
+        .os-scheme-stack-card h3 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 14.5px;
+          line-height: 1.3;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+        }
+
+        .os-scheme-stack-card p {
+          margin: 0;
+          color: #1f2937;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 800;
+        }
+
+        .os-scheme-stack-date-row {
+          display: grid;
+          gap: 4px;
+          margin-top: auto;
+        }
+
+        .os-scheme-stack-date-row span {
+          font-size: 12px;
+          line-height: 1.2;
+          font-weight: 900;
+        }
+
+        .os-scheme-stack-start {
+          color: #166534;
+        }
+
+        .os-scheme-stack-end {
+          color: #dc2626;
+        }
+
+        .os-scheme-stack-color-0 {
+          background: linear-gradient(135deg, #fff7ed, #fed7aa);
+        }
+
+        .os-scheme-stack-color-1 {
+          background: linear-gradient(135deg, #eff6ff, #bfdbfe);
+        }
+
+        .os-scheme-stack-color-2 {
+          background: linear-gradient(135deg, #ecfdf5, #86efac);
+        }
+
+        .os-scheme-stack-color-3 {
+          background: linear-gradient(135deg, #fff1f2, #fecdd3);
+        }
+
+        .os-scheme-stack-color-4 {
+          background: linear-gradient(135deg, #f5f3ff, #ddd6fe);
+        }
+
+        .os-scheme-stack-color-5 {
+          background: linear-gradient(135deg, #fefce8, #fde68a);
+        }
+
+        .os-scheme-stack-color-6 {
+          background: linear-gradient(135deg, #ecfeff, #a5f3fc);
+        }
+
+        .os-scheme-stack-color-7 {
+          background: linear-gradient(135deg, #fdf2f8, #fbcfe8);
+        }
+
+        .os-all-scheme-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .os-all-scheme-item {
+          min-height: 62px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          flex-direction: column;
+          gap: 5px;
+          padding: 12px 14px;
           text-decoration: none;
           color: inherit;
           background: #ffffff;
+          border-right: 1px solid #f1f5f9;
           border-bottom: 1px solid #f1f5f9;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease;
         }
 
-        .os-scheme-row:last-child {
-          border-bottom: none;
+        .os-all-scheme-item:nth-child(2n) {
+          border-right: none;
         }
 
-        .os-scheme-row:hover {
+        .os-all-scheme-item:hover {
           background: #fff7ed;
         }
 
-        .os-scheme-row-content {
-          min-width: 0;
-        }
-
-        .os-scheme-title-line {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: start;
-          gap: 12px;
-        }
-
-        .os-scheme-row h3 {
+        .os-all-scheme-item h3 {
           margin: 0;
           color: #1d4ed8;
-          font-size: 15.5px;
-          line-height: 1.38;
-          font-weight: 800;
+          font-size: 14px;
+          line-height: 1.35;
+          font-weight: 900;
           letter-spacing: -0.01em;
-          transition: color 0.15s ease;
         }
 
-        .os-scheme-row:hover h3,
-        .os-scheme-row:hover .os-scheme-arrow {
+        .os-all-scheme-item:hover h3 {
           color: #ea580c;
         }
 
-        .os-scheme-date-line {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          gap: 5px;
-          max-width: 390px;
-        }
-
-        .os-scheme-date-line span {
-          color: #475569;
+        .os-all-scheme-item span {
+          color: #64748b;
           font-size: 12px;
           line-height: 1.2;
           font-weight: 800;
-          white-space: nowrap;
-          transition: color 0.15s ease;
         }
 
-        .os-scheme-row:hover .os-date-start {
-          color: #16a34a;
-        }
-
-        .os-scheme-row:hover .os-date-end {
-          color: #dc2626;
-        }
-
-        .os-scheme-tag-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin-top: 8px;
-        }
-
-        .os-scheme-tag-row span {
-          display: inline-flex;
-          width: fit-content;
-          padding: 4px 8px;
-          border-radius: 999px;
-          background: #f8fafc;
-          color: #475569;
-          border: 1px solid #e2e8f0;
-          font-size: 11px;
-          line-height: 1;
-          font-weight: 800;
-        }
-
-        .os-scheme-tag-row .os-scheme-status.active {
-          background: #dcfce7;
-          color: #15803d;
-          border-color: #bbf7d0;
-        }
-
-        .os-scheme-tag-row .os-scheme-status.closed {
-          background: #fee2e2;
-          color: #dc2626;
-          border-color: #fecaca;
-        }
-
-        .os-scheme-row p {
-          margin: 6px 0 0;
-          color: #64748b;
-          font-size: 13px;
-          line-height: 1.45;
-          font-weight: 500;
-        }
-
-        .os-scheme-row .os-scheme-benefit {
-          color: #475569;
-          font-weight: 700;
-        }
-
-        .os-scheme-arrow {
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
-          font-size: 22px;
-          line-height: 1;
-          font-weight: 700;
-          transition: color 0.15s ease, background 0.15s ease;
-        }
-
-        .os-scheme-row:hover .os-scheme-arrow {
-          background: #ffedd5;
-        }
-
-        .os-scheme-status-text {
+        .os-list-status {
           margin: 0;
           padding: 14px 16px;
           color: #64748b;
           font-size: 14px;
           line-height: 1.5;
+          font-weight: 600;
         }
 
-        .os-scheme-sidebar {
+        .os-view-more-wrap {
+          display: flex;
+          justify-content: center;
+          padding: 16px;
+          border-top: 1px solid #f1f5f9;
+          background: #ffffff;
+        }
+
+        .os-view-more-btn {
+          min-width: 150px;
+          min-height: 42px;
+          padding: 10px 22px;
+          border: none;
+          border-radius: 999px;
+          background: #0b63ce;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-view-more-btn:hover {
+          background: #e85d04;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(232, 93, 4, 0.2);
+        }
+
+        .os-schemes-sidebar {
           display: grid;
           gap: 16px;
           position: sticky;
@@ -660,104 +907,192 @@ export default function SchemesPage() {
           font-size: 17px;
         }
 
-        .os-side-card a,
-        .os-side-category-list button {
+        .os-side-card a {
           display: block;
-          width: 100%;
           padding: 10px 0;
-          border: none;
           border-bottom: 1px solid #f1f5f9;
-          background: transparent;
           color: #1d4ed8;
-          text-align: left;
           text-decoration: none;
           font-size: 14px;
-          line-height: 1.3;
           font-weight: 800;
-          cursor: pointer;
-          transition: color 0.15s ease, background 0.15s ease;
+          transition:
+            color 0.15s ease,
+            background 0.15s ease;
         }
 
-        .os-side-card a:last-child,
-        .os-side-category-list button:last-child {
+        .os-side-card a:last-child {
           border-bottom: none;
         }
 
-        .os-side-card a:hover,
-        .os-side-category-list button:hover,
-        .os-side-category-list button.active {
+        .os-side-card a:hover {
           color: #ea580c;
-          background: #fff7ed;
-          text-decoration: none;
+          text-decoration: underline;
         }
 
         .os-side-category-list {
           display: grid;
         }
 
-        .os-side-category-list button {
+        .os-side-category-list a {
           border-radius: 10px;
           padding: 10px 8px;
         }
 
-        .os-side-note p {
+        .os-side-category-list a:hover {
+          background: #fff7ed;
+          text-decoration: none;
+        }
+
+        .os-reminder-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+
+        .os-reminder-head h2 {
+          margin: 0;
+          color: #dc2626;
+        }
+
+        .os-whatsapp-share-btn {
+          width: 34px;
+          height: 34px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 999px;
+          background: #25d366;
+          color: #ffffff;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 211, 102, 0.24);
+          transition:
+            transform 0.18s ease,
+            opacity 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-whatsapp-share-btn svg {
+          width: 21px;
+          height: 21px;
+          fill: currentColor;
+        }
+
+        .os-whatsapp-share-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(37, 211, 102, 0.32);
+        }
+
+        .os-whatsapp-share-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+          box-shadow: none;
+        }
+
+        .os-whatsapp-share-btn:disabled:hover {
+          transform: none;
+        }
+
+        .os-side-status {
           margin: 0;
           color: #64748b;
           font-size: 14px;
-          line-height: 1.6;
-          font-weight: 500;
+          line-height: 1.5;
+          font-weight: 600;
+        }
+
+        .os-reminder-list {
+          display: grid;
+          gap: 8px;
+        }
+
+        .os-reminder-item {
+          display: grid !important;
+          gap: 4px;
+          padding: 9px 8px !important;
+          border: 1px solid #fee2e2 !important;
+          border-radius: 10px;
+          background: #fff7f7;
+          text-decoration: none !important;
+        }
+
+        .os-reminder-item span {
+          color: #1d4ed8;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 900;
+        }
+
+        .os-reminder-item strong {
+          color: #dc2626;
+          font-size: 12px;
+          line-height: 1.2;
+          font-weight: 900;
+        }
+
+        .os-reminder-item:hover {
+          background: #fff1f2 !important;
+        }
+
+        .os-reminder-item:hover span {
+          color: #ea580c;
+        }
+
+        @media (max-width: 1000px) {
+          .os-scheme-stack-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 900px) {
-          .os-scheme-container {
+          .os-list-container {
             width: min(100% - 24px, 1180px);
             padding-top: 18px;
           }
 
-          .os-scheme-top h1 {
-            font-size: 26px;
-          }
-
-          .os-scheme-top span {
-            font-size: 13px;
-          }
-
-          .os-scheme-layout {
-            grid-template-columns: 1fr;
-          }
-
-          .os-scheme-sidebar {
-            position: static;
-          }
-
-          .os-scheme-row {
-            padding: 13px 14px;
-          }
-
-          .os-scheme-title-line {
-            grid-template-columns: 1fr;
-            gap: 6px;
-          }
-
-          .os-scheme-date-line {
-            justify-content: flex-start;
-            max-width: 100%;
-          }
-
-          .os-scheme-row h3 {
-            font-size: 15px;
-          }
-
-          .os-scheme-date-line span {
+          .os-list-top p {
             font-size: 12px;
           }
 
-          .os-scheme-row p {
-            font-size: 12.8px;
+          .os-schemes-layout {
+            grid-template-columns: 1fr;
           }
 
-          .os-scheme-section-head {
+          .os-schemes-sidebar {
+            position: static;
+          }
+
+          .os-list-section-head {
             padding: 13px 14px;
+          }
+
+          .os-view-more-wrap {
+            padding: 14px;
+          }
+
+          .os-view-more-btn {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .os-scheme-stack-grid {
+            grid-template-columns: 1fr;
+            padding: 12px;
+          }
+
+          .os-all-scheme-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .os-all-scheme-item {
+            border-right: none;
+          }
+
+          .os-scheme-stack-card {
+            min-height: 104px;
           }
         }
       `}</style>

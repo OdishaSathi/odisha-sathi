@@ -41,6 +41,9 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeUrl2, setYoutubeUrl2] = useState("");
+  const [youtubeUrl3, setYoutubeUrl3] = useState("");
   const [subCategories, setSubCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,7 +77,15 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
         const data = snap.data();
 
         setTitle(data.title || "");
-        setContent(data.content || "");
+        setContent(data.content || data.description || "");
+
+        const savedYoutubeUrls = Array.isArray(data.youtubeUrls)
+          ? data.youtubeUrls
+          : [];
+
+        setYoutubeUrl(data.youtubeUrl || "");
+        setYoutubeUrl2(savedYoutubeUrls[0] || data.youtubeUrl2 || data.videoUrl2 || "");
+        setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
 
         if (Array.isArray(data.subCategories)) {
           setSubCategories(data.subCategories);
@@ -122,10 +133,17 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
 
       const slug = makeSlug(title);
 
+      const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
+        .map((item) => item.trim())
+        .filter(Boolean);
+
       await updateDoc(doc(db, "posts", routeId), {
         title: title.trim(),
         slug,
         content: content.trim(),
+        description: content.trim(),
+        youtubeUrl: youtubeUrl.trim(),
+        youtubeUrls: cleanedYoutubeUrls,
         category: "admit-cards",
         subCategories: [...subCategories],
         updatedAt: serverTimestamp(),
@@ -181,6 +199,65 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
             resize: "vertical",
           }}
         />
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "14px",
+        }}
+      >
+        <div>
+          <label>YouTube Video 1</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginTop: "6px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+            }}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 2</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl2}
+            onChange={(e) => setYoutubeUrl2(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginTop: "6px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+            }}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 3</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl3}
+            onChange={(e) => setYoutubeUrl3(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px",
+              marginTop: "6px",
+              border: "1px solid #ddd",
+              borderRadius: "8px",
+            }}
+          />
+        </div>
       </div>
 
       <div>

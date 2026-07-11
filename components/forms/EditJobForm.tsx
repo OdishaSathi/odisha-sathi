@@ -15,6 +15,11 @@ import {
   createEmptyLinkRow,
 } from "@/lib/postOptions";
 
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryNames,
+} from "@/lib/adminSubCategories";
+
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
   "Central Jobs",
@@ -28,7 +33,7 @@ const JOB_SUB_CATEGORIES = [
   "Post Graduate Jobs",
 ];
 
-const STATUS_OPTIONS = ["published", "draft", "archived"] as const;
+const STATUS_OPTIONS = ["published"] as const;
 
 type JobInfoPanel = {
   id: string;
@@ -162,6 +167,9 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
 
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
+  const [syllabus, setSyllabus] = useState("");
+  const [examPattern, setExamPattern] = useState("");
+  const [selectionProcedure, setSelectionProcedure] = useState("");
 
   const [jobInfoPanels, setJobInfoPanels] = useState<JobInfoPanel[]>([
     createPanel(),
@@ -169,10 +177,13 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
 
   const [previewImageUrl, setPreviewImageUrl] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
+const [youtubeUrl2, setYoutubeUrl2] = useState("");
+const [youtubeUrl3, setYoutubeUrl3] = useState("");
 
   const [shareTitle, setShareTitle] = useState("");
   const [shareDescription, setShareDescription] = useState("");
 
+  const [subCategoryOptions, setSubCategoryOptions] = useState<string[]>(JOB_SUB_CATEGORIES);
   const [subCategories, setSubCategories] = useState<string[]>([]);
   const [status, setStatus] =
     useState<(typeof STATUS_OPTIONS)[number]>("published");
@@ -189,6 +200,27 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
 
   const autoSlug = useMemo(() => makeSlug(title), [title]);
   const finalSlug = manualSlug.trim() ? makeSlug(manualSlug) : autoSlug;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadManagedSubCategories() {
+      try {
+        const managed = await getActiveAdminSubCategories("jobs");
+        if (isMounted) {
+          setSubCategoryOptions(mergeSubCategoryNames(JOB_SUB_CATEGORIES, managed));
+        }
+      } catch (error) {
+        console.warn("Could not load managed job subcategories.", error);
+      }
+    }
+
+    loadManagedSubCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   function toggleSubCategory(value: string) {
     setSubCategories((oldItems) =>
@@ -248,11 +280,21 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
 
         setShortDescription(data.shortDescription || data.excerpt || "");
         setDescription(data.description || data.content || "");
+        setSyllabus(data.syllabus || "");
+        setExamPattern(data.examPattern || "");
+        setSelectionProcedure(data.selectionProcedure || "");
 
         setJobInfoPanels(normalizeJobInfoPanels(data));
 
         setPreviewImageUrl(data.previewImageUrl || data.imageUrl || "");
         setYoutubeUrl(data.youtubeUrl || "");
+
+const savedYoutubeUrls = Array.isArray(data.youtubeUrls)
+  ? data.youtubeUrls
+  : [];
+
+setYoutubeUrl2(savedYoutubeUrls[0] || data.youtubeUrl2 || data.videoUrl2 || "");
+setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
 
         setShareTitle(data.shareTitle || "");
         setShareDescription(data.shareDescription || "");
@@ -265,11 +307,7 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
           setSubCategories([]);
         }
 
-        setStatus(
-          data.status === "draft" || data.status === "archived"
-            ? data.status
-            : "published"
-        );
+        setStatus("published");
 
         setImportantDates(normalizeDateRows(data.importantDates));
         setImportantLinks(normalizeLinkRows(data.importantLinks, data.sourceUrl || ""));
@@ -330,8 +368,12 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
       const firstPanel = cleanedPanels[0];
 
       const cleanedDates = cleanImportantDates(importantDates);
-      const cleanedLinks = cleanImportantLinks(importantLinks);
-      const excerpt = makeExcerpt(shortDescription, description);
+const cleanedLinks = cleanImportantLinks(importantLinks);
+const excerpt = makeExcerpt(shortDescription, description);
+
+const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
+  .map((item) => item.trim())
+  .filter(Boolean);
 
       await updateDoc(doc(db, "posts", routeId), {
         title: title.trim(),
@@ -344,6 +386,9 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
 
         shortDescription: shortDescription.trim(),
         description: description.trim(),
+        syllabus: syllabus.trim(),
+        examPattern: examPattern.trim(),
+        selectionProcedure: selectionProcedure.trim(),
 
         jobInfoPanels: cleanedPanels,
 
@@ -360,6 +405,7 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
         imageUrl: previewImageUrl.trim(),
 
         youtubeUrl: youtubeUrl.trim(),
+youtubeUrls: cleanedYoutubeUrls,
 
         shareTitle: shareTitle.trim(),
         shareDescription: shareDescription.trim(),
@@ -443,7 +489,7 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
         <h3 style={sectionTitleStyle}>Job Subcategories *</h3>
 
         <div style={checkboxGridStyle}>
-          {JOB_SUB_CATEGORIES.map((item) => (
+          {subCategoryOptions.map((item) => (
             <label
               key={item}
               style={{
@@ -603,36 +649,91 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
               style={textareaStyle}
             />
           </label>
+
+          <label style={labelStyle}>
+            Syllabus
+            <textarea
+              placeholder="Add syllabus details if available. This will appear in the job detail Table of Contents."
+              value={syllabus}
+              onChange={(e) => setSyllabus(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </label>
+
+          <label style={labelStyle}>
+            Exam Pattern
+            <textarea
+              placeholder="Add exam pattern details if available."
+              value={examPattern}
+              onChange={(e) => setExamPattern(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </label>
+
+          <label style={labelStyle}>
+            Selection Procedure
+            <textarea
+              placeholder="Add selection process/procedure if available."
+              value={selectionProcedure}
+              onChange={(e) => setSelectionProcedure(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </label>
         </div>
       </section>
 
       <section style={sectionStyle}>
-        <h3 style={sectionTitleStyle}>Preview and YouTube</h3>
+  <h3 style={sectionTitleStyle}>Preview and Video Guide</h3>
 
-        <div style={gridStyle}>
-          <label style={labelStyle}>
-            Custom Preview Image URL
-            <input
-              type="url"
-              placeholder="https://example.com/image.jpg"
-              value={previewImageUrl}
-              onChange={(e) => setPreviewImageUrl(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
+  <div style={gridStyle}>
+    <label style={labelStyle}>
+      Custom Preview Image URL
+      <input
+        type="url"
+        placeholder="https://example.com/image.jpg"
+        value={previewImageUrl}
+        onChange={(e) => setPreviewImageUrl(e.target.value)}
+        style={inputStyle}
+      />
+    </label>
 
-          <label style={labelStyle}>
-            YouTube URL
-            <input
-              type="url"
-              placeholder="https://www.youtube.com/watch?v=..."
-              value={youtubeUrl}
-              onChange={(e) => setYoutubeUrl(e.target.value)}
-              style={inputStyle}
-            />
-          </label>
-        </div>
-      </section>
+    <label style={labelStyle}>
+      YouTube Video 1
+      <input
+        type="url"
+        placeholder="Long video, short video, or YouTube Shorts link"
+        value={youtubeUrl}
+        onChange={(e) => setYoutubeUrl(e.target.value)}
+        style={inputStyle}
+      />
+    </label>
+
+    <label style={labelStyle}>
+      YouTube Video 2
+      <input
+        type="url"
+        placeholder="Optional second video link"
+        value={youtubeUrl2}
+        onChange={(e) => setYoutubeUrl2(e.target.value)}
+        style={inputStyle}
+      />
+    </label>
+
+    <label style={labelStyle}>
+      YouTube Video 3
+      <input
+        type="url"
+        placeholder="Optional third video link"
+        value={youtubeUrl3}
+        onChange={(e) => setYoutubeUrl3(e.target.value)}
+        style={inputStyle}
+      />
+    </label>
+  </div>
+</section>
 
       <PostDynamicTables
         importantDates={importantDates}

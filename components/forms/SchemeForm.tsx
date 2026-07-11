@@ -39,13 +39,17 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
   const [eligibility, setEligibility] = useState("");
   const [benefit, setBenefit] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [startDateDisplay, setStartDateDisplay] = useState("");
   const [lastDate, setLastDate] = useState("");
+  const [lastDateDisplay, setLastDateDisplay] = useState("");
   const [description, setDescription] = useState("");
   const [officialSite, setOfficialSite] = useState("");
   const [officialPdf, setOfficialPdf] = useState("");
   const [applyLink, setApplyLink] = useState("");
   const [notificationLink, setNotificationLink] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeUrl2, setYoutubeUrl2] = useState("");
+  const [youtubeUrl3, setYoutubeUrl3] = useState("");
   const [schemeStatus, setSchemeStatus] = useState("active");
   const [saving, setSaving] = useState(false);
 
@@ -87,9 +91,13 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
       const slug = makeSlug(schemeName);
 
       const importantDates = [
-        { label: "Application Start Date", value: startDate },
-        { label: "Last Date", value: lastDate },
+        { label: "Application Start Date", value: startDateDisplay.trim() || startDate },
+        { label: "Last Date", value: lastDateDisplay.trim() || lastDate },
       ].filter((item) => item.value);
+
+      const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
+        .map((item) => item.trim())
+        .filter(Boolean);
 
       const importantLinks = [
         { label: "Official Site", url: officialSite.trim() },
@@ -110,7 +118,9 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
         eligibility: eligibility.trim(),
         benefit: benefit.trim(),
         startDate,
+        startDateDisplay: startDateDisplay.trim(),
         lastDate,
+        lastDateDisplay: lastDateDisplay.trim(),
         description: description.trim(),
         content: description.trim(),
         officialSite: officialSite.trim(),
@@ -118,6 +128,7 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
         applyLink: applyLink.trim(),
         notificationLink: notificationLink.trim(),
         youtubeUrl: youtubeUrl.trim(),
+        youtubeUrls: cleanedYoutubeUrls,
         status: schemeStatus,
         published: true,
         importantDates,
@@ -135,13 +146,17 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
       setEligibility("");
       setBenefit("");
       setStartDate("");
+      setStartDateDisplay("");
       setLastDate("");
+      setLastDateDisplay("");
       setDescription("");
       setOfficialSite("");
       setOfficialPdf("");
       setApplyLink("");
       setNotificationLink("");
       setYoutubeUrl("");
+      setYoutubeUrl2("");
+      setYoutubeUrl3("");
       setSchemeStatus("active");
 
       await onSaved?.();
@@ -236,6 +251,13 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
             onChange={(e) => setStartDate(e.target.value)}
             style={fieldStyle}
           />
+          <input
+            type="text"
+            value={startDateDisplay}
+            onChange={(e) => setStartDateDisplay(e.target.value)}
+            placeholder="Optional display: July 2026 / Coming Soon"
+            style={fieldStyle}
+          />
         </div>
 
         <div>
@@ -244,6 +266,13 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
             type="date"
             value={lastDate}
             onChange={(e) => setLastDate(e.target.value)}
+            style={fieldStyle}
+          />
+          <input
+            type="text"
+            value={lastDateDisplay}
+            onChange={(e) => setLastDateDisplay(e.target.value)}
+            placeholder="Optional display: Expected in July 2026"
             style={fieldStyle}
           />
         </div>
@@ -304,15 +333,45 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
         />
       </div>
 
-      <div>
-        <label>YouTube Video Link</label>
-        <input
-          type="url"
-          placeholder="https://www.youtube.com/watch?v=..."
-          value={youtubeUrl}
-          onChange={(e) => setYoutubeUrl(e.target.value)}
-          style={fieldStyle}
-        />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "14px",
+        }}
+      >
+        <div>
+          <label>YouTube Video 1</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 2</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl2}
+            onChange={(e) => setYoutubeUrl2(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 3</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl3}
+            onChange={(e) => setYoutubeUrl3(e.target.value)}
+            style={fieldStyle}
+          />
+        </div>
       </div>
 
       <div>

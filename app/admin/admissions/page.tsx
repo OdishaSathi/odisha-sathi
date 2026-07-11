@@ -15,14 +15,25 @@ import {
 } from "firebase/firestore";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { db } from "@/lib/firebase";
+import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryOptions,
+} from "@/lib/adminSubCategories";
 
-const admissionCategoryOptions = [
+const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "+2 Admission", value: "plus-two-admission" },
   { label: "+3 Admission", value: "plus-three-admission" },
   { label: "Diploma Admission", value: "diploma-admission" },
   { label: "ITI Admission", value: "iti-admission" },
   { label: "B.Ed / Teacher Training", value: "bed-teacher-training" },
-  { label: "Other Admissions", value: "other-admissions" },
+];
+
+const OTHER_ADMISSION_OPTION = { label: "Other Admissions", value: "other-admissions" };
+
+const admissionCategoryOptions = [
+  ...ADMISSION_BASE_CATEGORY_OPTIONS,
+  OTHER_ADMISSION_OPTION,
 ];
 
 type DateRow = {
@@ -39,10 +50,14 @@ type AdmissionForm = {
   title: string;
   admissionCategory: string;
   subCategory: string;
+  customAdmissionCategory: string;
   department: string;
   applicationStartDate: string;
+  applicationStartDateDisplay: string;
   lastDate: string;
+  lastDateDisplay: string;
   meritListDate: string;
+  meritListDateDisplay: string;
   selectionDates: DateRow[];
   description: string;
   applicationLink: string;
@@ -51,6 +66,7 @@ type AdmissionForm = {
   commonProspectusPdfLink: string;
   extraLinks: LinkRow[];
   youtubeUrl: string;
+  youtubeUrls: string[];
   sharingImageUrl: string;
   status: "active" | "closed";
 };
@@ -68,10 +84,14 @@ const emptyForm: AdmissionForm = {
   title: "",
   admissionCategory: "+2 Admission",
   subCategory: "plus-two-admission",
+  customAdmissionCategory: "",
   department: "",
   applicationStartDate: "",
+  applicationStartDateDisplay: "",
   lastDate: "",
+  lastDateDisplay: "",
   meritListDate: "",
+  meritListDateDisplay: "",
   selectionDates: [],
   description: "",
   applicationLink: "",
@@ -80,6 +100,7 @@ const emptyForm: AdmissionForm = {
   commonProspectusPdfLink: "",
   extraLinks: [],
   youtubeUrl: "",
+  youtubeUrls: [],
   sharingImageUrl: "",
   status: "active",
 };
@@ -132,6 +153,26 @@ function makeSlug(title: string) {
   return slug || `admission-${Date.now()}`;
 }
 
+function getDateDisplayValue(exactDate: string, displayText: string) {
+  return displayText.trim() || exactDate;
+}
+
+function resolveAdmissionCategory(form: AdmissionForm) {
+  if (form.subCategory === "other-admissions" && form.customAdmissionCategory.trim()) {
+    const label = form.customAdmissionCategory.trim();
+
+    return {
+      label,
+      slug: makeSlug(label),
+    };
+  }
+
+  return {
+    label: form.admissionCategory,
+    slug: form.subCategory,
+  };
+}
+
 function cleanDateRows(rows: DateRow[]) {
   return rows
     .map((row) => ({
@@ -153,19 +194,23 @@ function cleanLinkRows(rows: LinkRow[]) {
 function buildAdmissionPayload(form: AdmissionForm) {
   const selectionDates = cleanDateRows(form.selectionDates);
   const extraLinks = cleanLinkRows(form.extraLinks);
+  const resolvedCategory = resolveAdmissionCategory(form);
 
   const importantDates = [
     {
       label: "Application Start Date",
-      value: form.applicationStartDate,
+      value: getDateDisplayValue(
+        form.applicationStartDate,
+        form.applicationStartDateDisplay
+      ),
     },
     {
       label: "Last Date",
-      value: form.lastDate,
+      value: getDateDisplayValue(form.lastDate, form.lastDateDisplay),
     },
     {
       label: "Selection / Merit List Date",
-      value: form.meritListDate,
+      value: getDateDisplayValue(form.meritListDate, form.meritListDateDisplay),
     },
     ...selectionDates,
   ].filter((item) => item.value);
@@ -195,12 +240,24 @@ function buildAdmissionPayload(form: AdmissionForm) {
     slug: "",
     category: "admissions",
     type: "admissions",
-    subCategory: form.subCategory,
-    admissionCategory: form.admissionCategory,
+    subCategory: resolvedCategory.slug,
+    subCategories: [resolvedCategory.label, resolvedCategory.slug],
+    admissionCategory: resolvedCategory.label,
+    admissionCategories: [resolvedCategory.label],
+    categoryName: resolvedCategory.label,
+    categorySlug: resolvedCategory.slug,
+    subCategorySlug: resolvedCategory.slug,
     department: form.department.trim(),
     applicationStartDate: form.applicationStartDate,
+    applicationStartDateDisplay: form.applicationStartDateDisplay.trim(),
+    startDateDisplay: getDateDisplayValue(
+      form.applicationStartDate,
+      form.applicationStartDateDisplay
+    ),
     lastDate: form.lastDate,
+    lastDateDisplay: form.lastDateDisplay.trim(),
     meritListDate: form.meritListDate,
+    meritListDateDisplay: form.meritListDateDisplay.trim(),
     selectionDates,
     description: form.description.trim(),
     content: form.description.trim(),
@@ -210,6 +267,7 @@ function buildAdmissionPayload(form: AdmissionForm) {
     commonProspectusPdfLink: form.commonProspectusPdfLink.trim(),
     extraLinks,
     youtubeUrl: form.youtubeUrl.trim(),
+    youtubeUrls: form.youtubeUrls.map((item) => item.trim()).filter(Boolean).slice(0, 2),
     sharingImageUrl: form.sharingImageUrl.trim(),
     status: form.status,
     published: true,
@@ -221,9 +279,11 @@ function buildAdmissionPayload(form: AdmissionForm) {
 
 export default function AdminAdmissionsPage() {
   const [form, setForm] = useState<AdmissionForm>(emptyForm);
+  const [admissionOptions, setAdmissionOptions] = useState(admissionCategoryOptions);
   const [admissions, setAdmissions] = useState<AdmissionPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [listLoading, setListLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   async function fetchAdmissions() {
     setListLoading(true);
@@ -260,6 +320,33 @@ export default function AdminAdmissionsPage() {
     fetchAdmissions();
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadManagedAdmissionCategories() {
+      try {
+        const managed = await getActiveAdminSubCategories("admissions");
+        if (isMounted) {
+          setAdmissionOptions(
+            mergeSubCategoryOptions(
+              ADMISSION_BASE_CATEGORY_OPTIONS,
+              managed,
+              [OTHER_ADMISSION_OPTION]
+            )
+          );
+        }
+      } catch (error) {
+        console.warn("Could not load managed admission categories.", error);
+      }
+    }
+
+    loadManagedAdmissionCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   function handleChange(
     field: keyof AdmissionForm,
     value: AdmissionForm[keyof AdmissionForm]
@@ -271,7 +358,7 @@ export default function AdminAdmissionsPage() {
   }
 
   function handleCategoryChange(value: string) {
-    const selectedCategory = admissionCategoryOptions.find(
+    const selectedCategory = admissionOptions.find(
       (item) => item.value === value
     );
 
@@ -281,6 +368,10 @@ export default function AdminAdmissionsPage() {
       ...previous,
       admissionCategory: selectedCategory.label,
       subCategory: selectedCategory.value,
+      customAdmissionCategory:
+        selectedCategory.value === "other-admissions"
+          ? previous.customAdmissionCategory
+          : "",
     }));
   }
 
@@ -346,8 +437,13 @@ export default function AdminAdmissionsPage() {
       return;
     }
 
-    if (!form.lastDate) {
-      alert("Please enter last date.");
+    if (!form.lastDate && !form.lastDateDisplay.trim()) {
+      alert("Please enter last date or date display text.");
+      return;
+    }
+
+    if (form.subCategory === "other-admissions" && !form.customAdmissionCategory.trim()) {
+      alert("Please enter the new admission category name.");
       return;
     }
 
@@ -367,6 +463,7 @@ export default function AdminAdmissionsPage() {
       await setDoc(docRef, payload);
 
       setForm(emptyForm);
+      setShowCreateForm(false);
       await fetchAdmissions();
 
       alert("Admission post added successfully.");
@@ -398,16 +495,43 @@ export default function AdminAdmissionsPage() {
   return (
     <AdminLayout>
       <div style={{ display: "grid", gap: "24px" }}>
-        <div>
-          <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
-            Admissions Manager
-          </h1>
-          <p style={{ marginTop: "4px", fontSize: "14px", color: "#6b7280" }}>
-            Add and manage all admission updates.
-          </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
+              Admissions Manager
+            </h1>
+            <p style={{ marginTop: "4px", fontSize: "14px", color: "#6b7280" }}>
+              Saved admissions first. Use Create New Admission only when needed.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((oldValue) => !oldValue)}
+            style={{
+              border: "1px solid #2563eb",
+              borderRadius: "10px",
+              background: showCreateForm ? "#f3f4f6" : "#2563eb",
+              color: showCreateForm ? "#111827" : "#ffffff",
+              padding: "10px 14px",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            {showCreateForm ? "Hide Form" : "+ Create New Admission"}
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
+        {showCreateForm ? (
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
           <section style={cardStyle}>
             <h2 style={sectionTitleStyle}>Basic Information</h2>
 
@@ -430,13 +554,28 @@ export default function AdminAdmissionsPage() {
                   onChange={(event) => handleCategoryChange(event.target.value)}
                   style={inputStyle}
                 >
-                  {admissionCategoryOptions.map((item) => (
+                  {admissionOptions.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {form.subCategory === "other-admissions" ? (
+                <div>
+                  <label style={labelStyle}>New Admission Category Name</label>
+                  <input
+                    type="text"
+                    value={form.customAdmissionCategory}
+                    onChange={(event) =>
+                      handleChange("customAdmissionCategory", event.target.value)
+                    }
+                    placeholder="Example: Nursing Admission / OSOU Admission"
+                    style={inputStyle}
+                  />
+                </div>
+              ) : null}
 
               <div>
                 <label style={labelStyle}>Institute / Board / Department</label>
@@ -497,6 +636,15 @@ export default function AdminAdmissionsPage() {
                   }
                   style={inputStyle}
                 />
+                <input
+                  type="text"
+                  value={form.applicationStartDateDisplay}
+                  onChange={(event) =>
+                    handleChange("applicationStartDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: July 2026 / Coming Soon"
+                  style={{ ...inputStyle, marginTop: "8px" }}
+                />
               </div>
 
               <div>
@@ -509,6 +657,15 @@ export default function AdminAdmissionsPage() {
                   }
                   style={inputStyle}
                 />
+                <input
+                  type="text"
+                  value={form.lastDateDisplay}
+                  onChange={(event) =>
+                    handleChange("lastDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: Expected in July 2026"
+                  style={{ ...inputStyle, marginTop: "8px" }}
+                />
               </div>
 
               <div>
@@ -520,6 +677,15 @@ export default function AdminAdmissionsPage() {
                     handleChange("meritListDate", event.target.value)
                   }
                   style={inputStyle}
+                />
+                <input
+                  type="text"
+                  value={form.meritListDateDisplay}
+                  onChange={(event) =>
+                    handleChange("meritListDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: Date to be announced"
+                  style={{ ...inputStyle, marginTop: "8px" }}
                 />
               </div>
             </div>
@@ -778,13 +944,43 @@ export default function AdminAdmissionsPage() {
 
             <div style={gridStyle}>
               <div>
-                <label style={labelStyle}>YouTube Video Link</label>
+                <label style={labelStyle}>YouTube Video 1</label>
                 <input
                   type="url"
                   value={form.youtubeUrl}
                   onChange={(event) =>
                     handleChange("youtubeUrl", event.target.value)
                   }
+                  placeholder="https://youtube.com/..."
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>YouTube Video 2</label>
+                <input
+                  type="url"
+                  value={form.youtubeUrls[0] || ""}
+                  onChange={(event) => {
+                    const nextUrls = [...form.youtubeUrls];
+                    nextUrls[0] = event.target.value;
+                    handleChange("youtubeUrls", nextUrls);
+                  }}
+                  placeholder="https://youtube.com/..."
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>YouTube Video 3</label>
+                <input
+                  type="url"
+                  value={form.youtubeUrls[1] || ""}
+                  onChange={(event) => {
+                    const nextUrls = [...form.youtubeUrls];
+                    nextUrls[1] = event.target.value;
+                    handleChange("youtubeUrls", nextUrls);
+                  }}
                   placeholder="https://youtube.com/..."
                   style={inputStyle}
                 />
@@ -823,9 +1019,10 @@ export default function AdminAdmissionsPage() {
             {loading ? "Saving..." : "Save Admission"}
           </button>
         </form>
+        ) : null}
 
         <section style={cardStyle}>
-          <h2 style={sectionTitleStyle}>Existing Admission Posts</h2>
+          <h2 style={sectionTitleStyle}>Saved Admission Posts</h2>
 
           {listLoading ? (
             <p style={{ fontSize: "14px", color: "#6b7280" }}>
@@ -874,7 +1071,23 @@ export default function AdminAdmissionsPage() {
                     </p>
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px" }}>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                    <Link
+                      href={`/post/${post.slug || post.id}`}
+                      target="_blank"
+                      style={{
+                        borderRadius: "8px",
+                        background: "#ecfdf5",
+                        padding: "8px 14px",
+                        fontSize: "14px",
+                        fontWeight: 700,
+                        color: "#16a34a",
+                        textDecoration: "none",
+                      }}
+                    >
+                      View
+                    </Link>
+
                     <Link
                       href={`/admin/admissions/edit/${post.id}`}
                       style={{
@@ -906,6 +1119,12 @@ export default function AdminAdmissionsPage() {
                     >
                       Delete
                     </button>
+
+                    <AdminPostShareButtons
+                      title={post.title || "Odisha Sathi Admission Update"}
+                      publicPath={`/post/${post.slug || post.id}`}
+                      description={post.department || post.admissionCategory || ""}
+                    />
                   </div>
                 </div>
               ))}

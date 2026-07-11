@@ -44,9 +44,16 @@ export async function addAdmitCard(admitCard: AdmitCard) {
     (link) => link.label.trim() !== "" && link.url.trim() !== ""
   );
 
+  const cleanImportantDates = (admitCard.importantDates || []).filter(
+    (date) => date.label.trim() !== "" && date.value.trim() !== ""
+  );
+
   return addDoc(collection(db, COLLECTION_NAME), {
     ...admitCard,
     links: cleanLinks,
+    importantDates: cleanImportantDates,
+    category: "admit-cards",
+    type: "admit-cards",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -57,11 +64,18 @@ export async function updateAdmitCard(id: string, admitCard: AdmitCard) {
     (link) => link.label.trim() !== "" && link.url.trim() !== ""
   );
 
+  const cleanImportantDates = (admitCard.importantDates || []).filter(
+    (date) => date.label.trim() !== "" && date.value.trim() !== ""
+  );
+
   const ref = doc(db, COLLECTION_NAME, id);
 
   return updateDoc(ref, {
     ...admitCard,
     links: cleanLinks,
+    importantDates: cleanImportantDates,
+    category: "admit-cards",
+    type: "admit-cards",
     updatedAt: serverTimestamp(),
   });
 }

@@ -1,37 +1,547 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+
+const LATEST_TILE_LIMIT = 12;
+const SECTION_LIMIT = 6;
+const SCHEME_LIMIT = 10;
+const IMPORTANT_INFO_TILE_LIMIT = 8;
+const IMPORTANT_INFO_PAGE_SIZE = 10;
 
 type ImportantDate = {
   label?: string;
+  title?: string;
+  name?: string;
+  key?: string;
   value?: string;
+  date?: string;
+  dateValue?: string;
+  dateText?: string;
+  description?: string;
 };
 
 type PostItem = {
   id: string;
-  title: string;
+  title?: string;
   slug?: string;
   category?: string;
-  content?: string;
   schemeName?: string;
+  schemeCategory?: string;
   department?: string;
+  organization?: string;
+  institute?: string;
+  board?: string;
+  examName?: string;
+  description?: string;
+  content?: string;
   startDate?: string;
   applicationStartDate?: string;
+  applyStartDate?: string;
+  applicationOpenDate?: string;
   openingDate?: string;
+  resultDate?: string;
+  examDate?: string;
+  examinationDate?: string;
+  testDate?: string;
+  writtenExamDate?: string;
+  admitCardDate?: string;
+  admitCardReleaseDate?: string;
+  admitCardDownloadDate?: string;
+  hallTicketDate?: string;
+  releaseDate?: string;
   lastDate?: string;
   applicationLastDate?: string;
+  applyLastDate?: string;
+  applyEndDate?: string;
+  onlineApplyLastDate?: string;
+  formLastDate?: string;
+  registrationLastDate?: string;
+  registrationEndDate?: string;
+  lastDateToApply?: string;
+  lastDateOfApplication?: string;
   applicationEndDate?: string;
   closingDate?: string;
   endDate?: string;
+  deadline?: string;
+  deadlineDate?: string;
+  examStartDate?: string;
+  examEndDate?: string;
+  examScheduleDate?: string;
+  examDateTime?: string;
+  downloadDate?: string;
+  downloadStartDate?: string;
+  downloadEndDate?: string;
+  hallTicketReleaseDate?: string;
   importantDates?: ImportantDate[];
   createdAt?: any;
 };
 
+type ImportantInformationItem = {
+  id: string;
+  title?: string;
+  slug?: string;
+  shortDescription?: string;
+  isFeatured?: boolean;
+  featuredOrder?: number;
+  status?: string;
+  imageUrls?: string[];
+  shareImageUrl?: string;
+  createdAt?: any;
+};
+
+type HomeData = {
+  importantFeatured: ImportantInformationItem[];
+  importantAll: ImportantInformationItem[];
+  latestTiles: PostItem[];
+  jobs: PostItem[];
+  admitCards: PostItem[];
+  results: PostItem[];
+  admissions: PostItem[];
+  schemes: PostItem[];
+  reminders: PostItem[];
+};
+
+const emptyHomeData: HomeData = {
+  importantFeatured: [],
+  importantAll: [],
+  latestTiles: [],
+  jobs: [],
+  admitCards: [],
+  results: [],
+  admissions: [],
+  schemes: [],
+  reminders: [],
+};
+
+function normalizeDateOnly(date: Date) {
+  const cleanDate = new Date(date);
+  cleanDate.setHours(0, 0, 0, 0);
+  return cleanDate;
+}
+
+function isValidDatePart(day: number, month: number, year: number) {
+  if (year < 1900 || year > 2100) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function parseDateCandidates(value?: any) {
+  if (!value) return [];
+
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    return [normalizeDateOnly(new Date(value.seconds * 1000))];
+  }
+
+  if (typeof value === "object" && typeof value.toDate === "function") {
+    return [normalizeDateOnly(value.toDate())];
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return [normalizeDateOnly(value)];
+  }
+
+  if (typeof value !== "string") return [];
+
+  const cleanValue = value.trim();
+
+  if (!cleanValue) return [];
+
+  const dates: Date[] = [];
+  const seen = new Set<string>();
+
+  const addDate = (date: Date) => {
+    if (Number.isNaN(date.getTime())) return;
+
+    const cleanDate = normalizeDateOnly(date);
+    const key = cleanDate.toISOString();
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      dates.push(cleanDate);
+    }
+  };
+
+  const ddmmyyyyRegex = /(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/g;
+  let ddmmyyyyMatch: RegExpExecArray | null;
+
+  while ((ddmmyyyyMatch = ddmmyyyyRegex.exec(cleanValue)) !== null) {
+    const day = Number(ddmmyyyyMatch[1]);
+    const month = Number(ddmmyyyyMatch[2]);
+    const year = Number(ddmmyyyyMatch[3]);
+
+    if (isValidDatePart(day, month, year)) {
+      addDate(new Date(year, month - 1, day));
+    }
+  }
+
+  const yyyymmddRegex = /(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/g;
+  let yyyymmddMatch: RegExpExecArray | null;
+
+  while ((yyyymmddMatch = yyyymmddRegex.exec(cleanValue)) !== null) {
+    const year = Number(yyyymmddMatch[1]);
+    const month = Number(yyyymmddMatch[2]);
+    const day = Number(yyyymmddMatch[3]);
+
+    if (isValidDatePart(day, month, year)) {
+      addDate(new Date(year, month - 1, day));
+    }
+  }
+
+  const textDateRegex =
+    /(\d{1,2})\s+(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december),?\s+(\d{4})/gi;
+  const monthMap: Record<string, number> = {
+    jan: 1,
+    january: 1,
+    feb: 2,
+    february: 2,
+    mar: 3,
+    march: 3,
+    apr: 4,
+    april: 4,
+    may: 5,
+    jun: 6,
+    june: 6,
+    jul: 7,
+    july: 7,
+    aug: 8,
+    august: 8,
+    sep: 9,
+    sept: 9,
+    september: 9,
+    oct: 10,
+    october: 10,
+    nov: 11,
+    november: 11,
+    dec: 12,
+    december: 12,
+  };
+
+  let textDateMatch: RegExpExecArray | null;
+
+  while ((textDateMatch = textDateRegex.exec(cleanValue)) !== null) {
+    const day = Number(textDateMatch[1]);
+    const month = monthMap[textDateMatch[2].toLowerCase()];
+    const year = Number(textDateMatch[3]);
+
+    if (isValidDatePart(day, month, year)) {
+      addDate(new Date(year, month - 1, day));
+    }
+  }
+
+  if (dates.length > 0) return dates;
+
+  const parsedDate = new Date(cleanValue);
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return [normalizeDateOnly(parsedDate)];
+  }
+
+  return [];
+}
+
+function parseDateValue(value?: any) {
+  const dates = parseDateCandidates(value);
+  return dates[0] || null;
+}
+
+function parseStartDateValue(value?: any) {
+  const dates = parseDateCandidates(value);
+  return dates[0] || null;
+}
+
+function parseEndDateValue(value?: any) {
+  const dates = parseDateCandidates(value);
+  return dates[dates.length - 1] || null;
+}
+
+function formatDateFromParser(
+  value?: any,
+  parser: (dateValue?: any) => Date | null = parseDateValue
+) {
+  if (!value) return "";
+
+  const date = parser(value);
+
+  if (!date) {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatDateForPurpose(value?: any, purpose: "start" | "end" = "start") {
+  return formatDateFromParser(
+    value,
+    purpose === "end" ? parseEndDateValue : parseStartDateValue
+  );
+}
+
 function getTimeValue(item: PostItem) {
-  return item.createdAt?.seconds || 0;
+  if (item.createdAt?.seconds) {
+    return item.createdAt.seconds;
+  }
+
+  if (typeof item.createdAt?.toMillis === "function") {
+    return Math.floor(item.createdAt.toMillis() / 1000);
+  }
+
+  const parsedDate = parseDateValue(item.createdAt);
+
+  return parsedDate ? Math.floor(parsedDate.getTime() / 1000) : 0;
+}
+
+function formatShortDate(value?: any) {
+  return formatDateFromParser(value);
+}
+
+function formatTileEndDate(value?: any) {
+  if (!value) return "";
+
+  const date = parseEndDateValue(value);
+
+  if (!date) {
+    return typeof value === "string" ? value.trim() : "";
+  }
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+}
+
+function getImportantDateValue(
+  item: PostItem,
+  matcher: (label: string) => boolean
+) {
+  const matchedDate = item.importantDates?.find((dateItem) => {
+    const label = String(
+      dateItem.label ||
+        dateItem.title ||
+        dateItem.name ||
+        dateItem.key ||
+        ""
+    ).toLowerCase();
+
+    return matcher(label);
+  });
+
+  return (
+    matchedDate?.value ||
+    matchedDate?.date ||
+    matchedDate?.dateValue ||
+    matchedDate?.dateText ||
+    matchedDate?.description ||
+    ""
+  );
+}
+
+function getRawStartDate(item: PostItem) {
+  const directDate =
+    item.startDate ||
+    item.applicationStartDate ||
+    item.applyStartDate ||
+    item.applicationOpenDate ||
+    item.openingDate ||
+    item.resultDate ||
+    item.examDate ||
+    item.examinationDate ||
+    item.admitCardDate ||
+    item.admitCardReleaseDate ||
+    item.releaseDate ||
+    "";
+
+  if (directDate) return directDate;
+
+  return getImportantDateValue(item, (label) => {
+    return (
+      label.includes("start") ||
+      label.includes("opening") ||
+      label.includes("begin") ||
+      label.includes("result") ||
+      label.includes("exam") ||
+      label.includes("admit") ||
+      label.includes("release")
+    );
+  });
+}
+
+function getRawEndDate(item: PostItem) {
+  const directDate =
+    item.lastDate ||
+    item.applicationLastDate ||
+    item.applyLastDate ||
+    item.applyEndDate ||
+    item.onlineApplyLastDate ||
+    item.formLastDate ||
+    item.registrationLastDate ||
+    item.registrationEndDate ||
+    item.lastDateToApply ||
+    item.lastDateOfApplication ||
+    item.applicationEndDate ||
+    item.closingDate ||
+    item.endDate ||
+    item.deadline ||
+    item.deadlineDate ||
+    "";
+
+  if (directDate) return directDate;
+
+  return getImportantDateValue(item, (label) => {
+    return (
+      label.includes("last") ||
+      label.includes("closing") ||
+      label.includes("deadline") ||
+      label.includes("due") ||
+      label.includes("end") ||
+      label.includes("apply upto") ||
+      label.includes("apply up to") ||
+      label.includes("registration")
+    );
+  });
+}
+
+function getRawExamDate(item: PostItem) {
+  const directDate =
+    item.examDate ||
+    item.examinationDate ||
+    item.examStartDate ||
+    item.examEndDate ||
+    item.examScheduleDate ||
+    item.examDateTime ||
+    item.testDate ||
+    item.writtenExamDate ||
+    "";
+
+  if (directDate) return directDate;
+
+  return getImportantDateValue(item, (label) => {
+    return (
+      label.includes("exam") ||
+      label.includes("examination") ||
+      label.includes("test") ||
+      label.includes("written")
+    );
+  });
+}
+
+function getRawAdmitCardDate(item: PostItem) {
+  const directDate =
+    item.admitCardDate ||
+    item.admitCardReleaseDate ||
+    item.admitCardDownloadDate ||
+    item.hallTicketDate ||
+    item.hallTicketReleaseDate ||
+    item.downloadDate ||
+    item.downloadStartDate ||
+    item.downloadEndDate ||
+    item.releaseDate ||
+    "";
+
+  if (directDate) return directDate;
+
+  return getImportantDateValue(item, (label) => {
+    return (
+      label.includes("admit") ||
+      label.includes("hall ticket") ||
+      label.includes("download") ||
+      label.includes("release")
+    );
+  });
+}
+
+function getReminderDateInfo(item: PostItem) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dateOptions: { label: string; rawDate: any; date: Date }[] = [];
+
+  const addOption = (label: string, rawDate: any) => {
+    const parsedDate = parseEndDateValue(rawDate);
+
+    if (!parsedDate) return;
+
+    dateOptions.push({
+      label,
+      rawDate,
+      date: parsedDate,
+    });
+  };
+
+  if (item.category === "admit-cards") {
+    addOption("Admit Card Date", getRawAdmitCardDate(item));
+    addOption("Exam Date", getRawExamDate(item));
+    addOption("Last Date", getRawEndDate(item));
+  } else {
+    addOption("Last Date", getRawEndDate(item));
+  }
+
+  if (dateOptions.length === 0) return null;
+
+  const upcomingOptions = dateOptions
+    .filter((option) => option.date.getTime() >= today.getTime())
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  if (upcomingOptions.length > 0) {
+    return upcomingOptions[0];
+  }
+
+  return null;
+}
+
+function getPublishedDate(item: PostItem) {
+  return formatShortDate(item.createdAt);
+}
+
+function getStartDate(item: PostItem) {
+  return formatDateForPurpose(getRawStartDate(item), "start");
+}
+
+function getEndDate(item: PostItem) {
+  return formatDateForPurpose(getRawEndDate(item), "end");
+}
+
+function getReminderDateLabel(item: PostItem) {
+  const reminderInfo = getReminderDateInfo(item);
+
+  if (!reminderInfo) return "";
+
+  return `${reminderInfo.label}: ${formatDateForPurpose(
+    reminderInfo.rawDate,
+    "end"
+  )}`;
+}
+
+function getTileEndDate(item: PostItem) {
+  const reminderInfo = getReminderDateInfo(item);
+  return formatTileEndDate(reminderInfo?.rawDate || getRawEndDate(item));
+}
+
+function getEndDateTime(item: PostItem) {
+  const reminderInfo = getReminderDateInfo(item);
+
+  if (!reminderInfo) return Number.POSITIVE_INFINITY;
+
+  const date = new Date(reminderInfo.date);
+  date.setHours(23, 59, 59, 999);
+
+  return date.getTime();
 }
 
 function getTitle(item: PostItem) {
@@ -42,13 +552,26 @@ function getTitle(item: PostItem) {
   return item.title || "Untitled Update";
 }
 
-function getLabel(item: PostItem) {
-  if (item.category === "jobs") return "Job";
-  if (item.category === "results") return "Result";
-  if (item.category === "admissions") return "Admission";
-  if (item.category === "admit-cards") return "Admit Card";
-  if (item.category === "schemes") return "Scheme";
+function getCategoryLabel(item: PostItem) {
+  if (item.category === "jobs") return "Latest Jobs";
+  if (item.category === "results") return "Results";
+  if (item.category === "admissions") return "Admissions";
+  if (item.category === "admit-cards") return "Admit Cards & Exams";
+  if (item.category === "schemes") return "Schemes";
   return "Update";
+}
+
+function getTileDepartment(item: PostItem) {
+  const text =
+    item.department ||
+    item.organization ||
+    item.institute ||
+    item.board ||
+    item.examName ||
+    item.schemeCategory ||
+    getCategoryLabel(item);
+
+  return text || "Odisha Sathi";
 }
 
 function getLink(item: PostItem) {
@@ -65,151 +588,405 @@ function getLink(item: PostItem) {
   }
 
   if (item.category === "schemes") {
-    return `/schemes/${item.id}`;
+    return `/schemes/${item.slug || item.id}`;
   }
 
   return `/post/${item.slug || item.id}`;
 }
 
-function getMeta(item: PostItem) {
-  const text =
-    item.department ||
-    item.content ||
-    "Click to read full update, important dates and useful links.";
+function isAllowedLatestPost(item: PostItem) {
+  if (!item.category) return false;
+  if (item.category === "tools") return false;
+  if (item.category === "scheme-category") return false;
 
-  return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+  return [
+    "jobs",
+    "results",
+    "admissions",
+    "admit-cards",
+    "schemes",
+  ].includes(item.category);
 }
 
-function formatDate(value?: any) {
-  if (!value) return "";
+function isLastDateReminderPost(item: PostItem) {
+  if (!isAllowedLatestPost(item)) return false;
 
-  if (typeof value === "object" && typeof value.seconds === "number") {
-    return new Date(value.seconds * 1000).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
+  const reminderInfo = getReminderDateInfo(item);
 
-  if (typeof value === "string") {
-    const cleanValue = value.trim();
+  if (!reminderInfo) return false;
 
-    if (!cleanValue) return "";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    const date = new Date(cleanValue);
+  const sevenDaysLater = new Date(today);
+  sevenDaysLater.setDate(today.getDate() + 7);
+  sevenDaysLater.setHours(23, 59, 59, 999);
 
-    if (Number.isNaN(date.getTime())) {
-      return cleanValue;
-    }
-
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  return "";
-}
-
-function getPublishedDate(item: PostItem) {
-  return formatDate(item.createdAt);
-}
-
-function getStartDate(item: PostItem) {
-  const directDate =
-    item.startDate || item.applicationStartDate || item.openingDate || "";
-
-  if (directDate) {
-    return formatDate(directDate);
-  }
-
-  const matchedDate = item.importantDates?.find((dateItem) => {
-    const label = (dateItem.label || "").toLowerCase();
-
-    return (
-      label.includes("start") ||
-      label.includes("opening") ||
-      label.includes("begin")
-    );
-  });
-
-  return formatDate(matchedDate?.value);
-}
-
-function getLastDate(item: PostItem) {
-  const directDate =
-    item.lastDate ||
-    item.applicationLastDate ||
-    item.applicationEndDate ||
-    item.closingDate ||
-    item.endDate ||
-    "";
-
-  if (directDate) {
-    return formatDate(directDate);
-  }
-
-  const matchedDate = item.importantDates?.find((dateItem) => {
-    const label = (dateItem.label || "").toLowerCase();
-
-    return (
-      label.includes("last") ||
-      label.includes("closing") ||
-      label.includes("end")
-    );
-  });
-
-  return formatDate(matchedDate?.value);
-}
-
-function UpdateRow({
-  item,
-  showBadge = false,
-}: {
-  item: PostItem;
-  showBadge?: boolean;
-}) {
-  const publishedDate = getPublishedDate(item);
-  const startDate = getStartDate(item);
-  const lastDate = getLastDate(item);
+  const reminderDate = new Date(reminderInfo.date);
+  reminderDate.setHours(23, 59, 59, 999);
 
   return (
-    <Link href={getLink(item)} className="os-board-row">
-      <div className="os-board-row-content">
-        {showBadge ? (
-          <span className="os-board-badge">{getLabel(item)}</span>
-        ) : null}
+    reminderDate.getTime() >= today.getTime() &&
+    reminderDate.getTime() <= sevenDaysLater.getTime()
+  );
+}
 
-        <div className="os-board-title-line">
-          <h3>{getTitle(item)}</h3>
+function normalizeText(value?: string) {
+  return String(value || "").trim().toLowerCase();
+}
 
-          <div className="os-board-date-line">
-            {publishedDate ? (
-              <span className="os-date-published">
-                Published: {publishedDate}
-              </span>
-            ) : null}
+function normalizePostCategory(category?: string) {
+  const cleanCategory = normalizeText(category);
+  const compactCategory = cleanCategory.replace(/[^a-z0-9]/g, "");
 
-            {startDate ? (
-              <span className="os-date-start">Start: {startDate}</span>
-            ) : null}
+  if (
+    cleanCategory === "job" ||
+    cleanCategory === "jobs" ||
+    cleanCategory === "latest jobs" ||
+    compactCategory === "job" ||
+    compactCategory === "jobs"
+  ) {
+    return "jobs";
+  }
 
-            {lastDate ? (
-              <span className="os-date-end">Last: {lastDate}</span>
-            ) : null}
-          </div>
-        </div>
+  if (
+    cleanCategory === "result" ||
+    cleanCategory === "results" ||
+    cleanCategory === "latest results" ||
+    compactCategory === "result" ||
+    compactCategory === "results"
+  ) {
+    return "results";
+  }
 
-        <p>{getMeta(item)}</p>
+  if (
+    cleanCategory === "admission" ||
+    cleanCategory === "admissions" ||
+    cleanCategory === "latest admissions" ||
+    compactCategory === "admission" ||
+    compactCategory === "admissions"
+  ) {
+    return "admissions";
+  }
+
+  if (
+    cleanCategory === "admit-cards" ||
+    cleanCategory === "admit-card" ||
+    cleanCategory === "admitcards" ||
+    cleanCategory === "admitcard" ||
+    cleanCategory === "admit card" ||
+    cleanCategory === "admit cards" ||
+    cleanCategory === "exam" ||
+    cleanCategory === "exams" ||
+    cleanCategory === "admit cards & exams" ||
+    cleanCategory === "admit-cards-exams" ||
+    compactCategory === "admitcards" ||
+    compactCategory === "admitcard" ||
+    compactCategory === "admitcardsandexams" ||
+    compactCategory === "exam" ||
+    compactCategory === "exams"
+  ) {
+    return "admit-cards";
+  }
+
+  if (
+    cleanCategory === "scheme" ||
+    cleanCategory === "schemes" ||
+    cleanCategory === "government schemes" ||
+    cleanCategory === "government-schemes" ||
+    cleanCategory === "govt schemes" ||
+    cleanCategory === "govt-schemes" ||
+    compactCategory === "scheme" ||
+    compactCategory === "schemes" ||
+    compactCategory === "governmentschemes" ||
+    compactCategory === "govtschemes"
+  ) {
+    return "schemes";
+  }
+
+  return category || "";
+}
+
+function createPostItem(
+  id: string,
+  data: any,
+  categoryOverride?: string
+): PostItem {
+  const category = normalizePostCategory(categoryOverride || data.category || "");
+
+  return {
+    id,
+    title: data.title || data.schemeName || "",
+    slug: data.slug || "",
+    category,
+    schemeName: data.schemeName || data.title || "",
+    schemeCategory:
+      data.schemeCategory ||
+      data.schemeSubCategory ||
+      data.selectedSchemeCategory ||
+      "",
+    department: data.department || "",
+    organization: data.organization || "",
+    institute: data.institute || data.instituteName || "",
+    board: data.board || data.boardName || "",
+    examName: data.examName || data.exam || "",
+    description: data.description || data.shortDescription || "",
+    content: data.content || "",
+    startDate:
+      data.startDate ||
+      data.applicationStartDate ||
+      data.applyStartDate ||
+      data.applicationOpenDate ||
+      data.openingDate ||
+      data.resultDate ||
+      data.examDate ||
+      data.examinationDate ||
+      data.admitCardDate ||
+      data.admitCardReleaseDate ||
+      data.releaseDate ||
+      "",
+    applicationStartDate: data.applicationStartDate || "",
+    applyStartDate: data.applyStartDate || "",
+    applicationOpenDate: data.applicationOpenDate || "",
+    openingDate: data.openingDate || "",
+    resultDate: data.resultDate || "",
+    examDate: data.examDate || "",
+    examinationDate: data.examinationDate || "",
+    testDate: data.testDate || "",
+    writtenExamDate: data.writtenExamDate || "",
+    examStartDate: data.examStartDate || "",
+    examEndDate: data.examEndDate || "",
+    examScheduleDate: data.examScheduleDate || "",
+    examDateTime: data.examDateTime || "",
+    admitCardDate: data.admitCardDate || "",
+    admitCardReleaseDate: data.admitCardReleaseDate || "",
+    admitCardDownloadDate: data.admitCardDownloadDate || "",
+    hallTicketDate: data.hallTicketDate || "",
+    hallTicketReleaseDate: data.hallTicketReleaseDate || "",
+    downloadDate: data.downloadDate || "",
+    downloadStartDate: data.downloadStartDate || "",
+    downloadEndDate: data.downloadEndDate || "",
+    releaseDate: data.releaseDate || "",
+    lastDate:
+      data.lastDate ||
+      data.applicationLastDate ||
+      data.applyLastDate ||
+      data.applyEndDate ||
+      data.onlineApplyLastDate ||
+      data.formLastDate ||
+      data.registrationLastDate ||
+      data.registrationEndDate ||
+      data.lastDateToApply ||
+      data.lastDateOfApplication ||
+      data.applicationEndDate ||
+      data.closingDate ||
+      data.endDate ||
+      data.deadline ||
+      data.deadlineDate ||
+      "",
+    applicationLastDate: data.applicationLastDate || "",
+    applyLastDate: data.applyLastDate || "",
+    applyEndDate: data.applyEndDate || "",
+    onlineApplyLastDate: data.onlineApplyLastDate || "",
+    formLastDate: data.formLastDate || "",
+    registrationLastDate: data.registrationLastDate || "",
+    registrationEndDate: data.registrationEndDate || "",
+    lastDateToApply: data.lastDateToApply || "",
+    lastDateOfApplication: data.lastDateOfApplication || "",
+    applicationEndDate: data.applicationEndDate || "",
+    closingDate: data.closingDate || "",
+    endDate: data.endDate || "",
+    deadline: data.deadline || "",
+    deadlineDate: data.deadlineDate || "",
+    importantDates: Array.isArray(data.importantDates)
+      ? data.importantDates
+      : [],
+    createdAt: data.createdAt || null,
+  };
+}
+
+function getDedupedPosts(items: PostItem[]) {
+  return Array.from(
+    new Map(
+      items.map((item) => [`${item.category}-${item.slug || item.id}`, item])
+    ).values()
+  );
+}
+
+function createImportantInformationItem(id: string, data: any): ImportantInformationItem {
+  return {
+    id,
+    title: data.title || "",
+    slug: data.slug || "",
+    shortDescription: data.shortDescription || data.shareDescription || "",
+    isFeatured: Boolean(data.isFeatured),
+    featuredOrder: Number(data.featuredOrder || 0),
+    status: data.status || "published",
+    imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
+    shareImageUrl: data.shareImageUrl || "",
+    createdAt: data.createdAt || null,
+  };
+}
+
+function getImportantInfoTimeValue(item: ImportantInformationItem) {
+  if (item.createdAt?.seconds) return item.createdAt.seconds;
+  if (typeof item.createdAt?.toMillis === "function") {
+    return Math.floor(item.createdAt.toMillis() / 1000);
+  }
+  return 0;
+}
+
+function getImportantInfoLink(item: ImportantInformationItem) {
+  return `/important-information/${item.slug || item.id}`;
+}
+
+function buildHomeReminderShareText(reminders: PostItem[], origin: string) {
+  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
+
+  reminders.forEach((item, index) => {
+    const reminderInfo = getReminderDateInfo(item);
+    const dateLabel = reminderInfo?.label || "Last Date";
+    const dateValue = reminderInfo
+      ? formatDateForPurpose(reminderInfo.rawDate, "end")
+      : "Date not available";
+    const postLink = `${origin}${getLink(item)}`;
+
+    lines.push(getTitle(item));
+    lines.push(`Category: ${getCategoryLabel(item)}`);
+    lines.push(`${dateLabel}: ${dateValue}`);
+    lines.push(postLink);
+
+    if (index < reminders.length - 1) {
+      lines.push("");
+    }
+  });
+
+  return lines.join("\n");
+}
+
+function LatestPostTile({ item }: { item: PostItem; index: number }) {
+  const endDate = getTileEndDate(item);
+
+  return (
+    <Link href={getLink(item)} className="os-latest-tile">
+      <div className="os-latest-tile-content">
+        <h3>{getTitle(item)}</h3>
+        <p>{getTileDepartment(item)}</p>
       </div>
 
-      <span className="os-board-arrow">›</span>
+      {endDate ? (
+        <strong className="os-latest-end-date">End Date - {endDate}</strong>
+      ) : null}
     </Link>
   );
 }
 
-function UpdateSection({
+function ImportantInfoTile({ item }: { item: ImportantInformationItem; index: number }) {
+  return (
+    <Link href={getImportantInfoLink(item)} className="os-important-info-tile">
+      <h3>{item.title || "Important Information"}</h3>
+      {item.shortDescription ? <p>{item.shortDescription}</p> : null}
+    </Link>
+  );
+}
+
+function ImportantInfoRow({ item }: { item: ImportantInformationItem }) {
+  return (
+    <Link href={getImportantInfoLink(item)} className="os-important-info-row">
+      <div>
+        <span>Important Information</span>
+        <h3>{item.title || "Important Information"}</h3>
+      </div>
+      {item.shortDescription ? <p>{item.shortDescription}</p> : null}
+    </Link>
+  );
+}
+
+function ImportantInformationHighlights({ items }: { items: ImportantInformationItem[] }) {
+  return (
+    <section className="os-important-info-section">
+      <div className="os-board-section-head os-important-info-head">
+        <h2>Important Information</h2>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="os-board-empty">Important information will be updated soon.</p>
+      ) : (
+        <div className="os-important-info-grid">
+          {items.slice(0, IMPORTANT_INFO_TILE_LIMIT).map((item, index) => (
+            <ImportantInfoTile key={`important-tile-${item.id}`} item={item} index={index} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AllImportantInformationStack({
+  items,
+  visibleCount,
+  onViewMore,
+}: {
+  items: ImportantInformationItem[];
+  visibleCount: number;
+  onViewMore: () => void;
+}) {
+  const visibleItems = items.slice(0, visibleCount);
+
+  return (
+    <section className="os-all-important-info-section">
+      <div className="os-home-panel-head">
+        <h2>All Important Information</h2>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="os-home-empty">No important information available.</p>
+      ) : (
+        <>
+          <div className="os-all-important-info-list">
+            {visibleItems.map((item) => (
+              <ImportantInfoRow key={`important-row-${item.id}`} item={item} />
+            ))}
+          </div>
+
+          {visibleCount < items.length ? (
+            <div className="os-important-view-more-wrap">
+              <button type="button" onClick={onViewMore}>
+                View More
+              </button>
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
+function HomeUpdateRow({ item }: { item: PostItem }) {
+  const publishedDate = getPublishedDate(item);
+  const startDate = getStartDate(item);
+  const endDate = getEndDate(item);
+
+  return (
+    <Link href={getLink(item)} className="os-home-update-row">
+      <h3>{getTitle(item)}</h3>
+
+      <div className="os-home-date-row">
+        {publishedDate ? (
+          <span className="os-date-published">Published: {publishedDate}</span>
+        ) : null}
+
+        {startDate ? (
+          <span className="os-date-start">Start: {startDate}</span>
+        ) : null}
+
+        {endDate ? <span className="os-date-end">End: {endDate}</span> : null}
+      </div>
+    </Link>
+  );
+}
+
+function HomeSectionPanel({
   title,
   href,
   items,
@@ -221,18 +998,18 @@ function UpdateSection({
   emptyText: string;
 }) {
   return (
-    <section className="os-board-section">
-      <div className="os-board-section-head">
+    <section className="os-home-panel">
+      <div className="os-home-panel-head">
         <h2>{title}</h2>
         <Link href={href}>View All</Link>
       </div>
 
       {items.length === 0 ? (
-        <p className="os-board-empty">{emptyText}</p>
+        <p className="os-home-empty">{emptyText}</p>
       ) : (
-        <div className="os-board-list">
-          {items.map((item) => (
-            <UpdateRow key={`${item.category}-${item.id}`} item={item} />
+        <div className="os-home-update-list">
+          {items.slice(0, SECTION_LIMIT).map((item) => (
+            <HomeUpdateRow key={`${item.category}-${item.id}`} item={item} />
           ))}
         </div>
       )}
@@ -240,160 +1017,233 @@ function UpdateSection({
   );
 }
 
+function SchemeRow({ item }: { item: PostItem }) {
+  const startDate = getStartDate(item);
+  const endDate = getEndDate(item);
+
+  return (
+    <Link href={getLink(item)} className="os-home-scheme-row">
+      <h3>{getTitle(item)}</h3>
+
+      <div className="os-home-date-row">
+        {startDate ? (
+          <span className="os-date-start">Start: {startDate}</span>
+        ) : null}
+
+        {endDate ? <span className="os-date-end">End: {endDate}</span> : null}
+      </div>
+    </Link>
+  );
+}
+
+function ReminderRow({ item }: { item: PostItem }) {
+  const reminderDateLabel = getReminderDateLabel(item);
+
+  return (
+    <Link href={getLink(item)} className="os-home-reminder-row">
+      <div>
+        <span>{getCategoryLabel(item)}</span>
+        <h3>{getTitle(item)}</h3>
+      </div>
+
+      {reminderDateLabel ? <strong>{reminderDateLabel}</strong> : null}
+    </Link>
+  );
+}
+
+const quickAccessLinks = [
+  { label: "Latest Jobs", href: "/jobs" },
+  { label: "Admit Cards & Exams", href: "/admit-cards" },
+  { label: "Results", href: "/results" },
+  { label: "Admissions", href: "/admissions" },
+  { label: "Schemes", href: "/schemes" },
+  { label: "Tools", href: "/tools" },
+];
+
 export default function HomePage() {
-  const [jobs, setJobs] = useState<PostItem[]>([]);
-  const [results, setResults] = useState<PostItem[]>([]);
-  const [admissions, setAdmissions] = useState<PostItem[]>([]);
-  const [admitCards, setAdmitCards] = useState<PostItem[]>([]);
-  const [schemes, setSchemes] = useState<PostItem[]>([]);
+  const [homeData, setHomeData] = useState<HomeData>(emptyHomeData);
   const [loading, setLoading] = useState(true);
+  const [visibleImportantCount, setVisibleImportantCount] = useState(IMPORTANT_INFO_PAGE_SIZE);
 
   useEffect(() => {
-    const loadHomePosts = async () => {
+    const loadHomeData = async () => {
       try {
         setLoading(true);
 
-        const [postsSnapshot, admitCardsSnapshot, resultsSnapshot] =
-          await Promise.all([
-            getDocs(collection(db, "posts")),
-            getDocs(collection(db, "admitCards")),
-            getDocs(collection(db, "results")),
-          ]);
+        const [
+          postsSnapshot,
+          jobsSnapshot,
+          admissionsSnapshot,
+          admitCardsSnapshot,
+          admitCardsHyphenSnapshot,
+          admitCardsLowerSnapshot,
+          resultsSnapshot,
+          resultSnapshot,
+          schemesSnapshot,
+          schemeSnapshot,
+          governmentSchemesSnapshot,
+          governmentSchemesHyphenSnapshot,
+          importantInformationSnapshot,
+        ] = await Promise.all([
+          getDocs(collection(db, "posts")),
+          getDocs(collection(db, "jobs")),
+          getDocs(collection(db, "admissions")),
+          getDocs(collection(db, "admitCards")),
+          getDocs(collection(db, "admit-cards")),
+          getDocs(collection(db, "admitcards")),
+          getDocs(collection(db, "results")),
+          getDocs(collection(db, "result")),
+          getDocs(collection(db, "schemes")),
+          getDocs(collection(db, "scheme")),
+          getDocs(collection(db, "governmentSchemes")),
+          getDocs(collection(db, "government-schemes")),
+          getDocs(collection(db, "importantInformation")),
+        ]);
 
-        const allPosts: PostItem[] = postsSnapshot.docs
-          .map((docItem) => {
-            const data = docItem.data();
-
-            return {
-              id: docItem.id,
-              title: data.title || "",
-              slug: data.slug || "",
-              category: data.category || "",
-              content: data.content || data.description || "",
-              schemeName: data.schemeName || data.title || "",
-              department: data.department || data.organization || "",
-              startDate:
-                data.startDate ||
-                data.applicationStartDate ||
-                data.applicationOpenDate ||
-                data.openingDate ||
-                "",
-              applicationStartDate: data.applicationStartDate || "",
-              openingDate: data.openingDate || "",
-              lastDate:
-                data.lastDate ||
-                data.applicationLastDate ||
-                data.applicationEndDate ||
-                data.closingDate ||
-                data.endDate ||
-                "",
-              applicationLastDate: data.applicationLastDate || "",
-              applicationEndDate: data.applicationEndDate || "",
-              closingDate: data.closingDate || "",
-              endDate: data.endDate || "",
-              importantDates: data.importantDates || [],
-              createdAt: data.createdAt || null,
-            };
-          })
-          .filter(
-            (item) =>
-              item.category !== "scheme-category" &&
-              item.category !== "tools" &&
-              item.category !== ""
-          )
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
-
-        const allAdmitCards: PostItem[] = admitCardsSnapshot.docs
-          .map((docItem) => {
-            const data = docItem.data();
-
-            return {
-              id: docItem.id,
-              title: data.title || "",
-              slug: data.slug || "",
-              category: "admit-cards",
-              content: data.description || "",
-              startDate:
-                data.startDate ||
-                data.examDate ||
-                data.applicationStartDate ||
-                data.openingDate ||
-                "",
-              applicationStartDate: data.applicationStartDate || "",
-              openingDate: data.openingDate || "",
-              lastDate:
-                data.lastDate ||
-                data.applicationLastDate ||
-                data.applicationEndDate ||
-                data.closingDate ||
-                data.endDate ||
-                "",
-              importantDates: data.importantDates || [],
-              createdAt: data.createdAt || null,
-            };
-          })
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
-
-        const allResults: PostItem[] = resultsSnapshot.docs
-          .map((docItem) => {
-            const data = docItem.data();
-
-            return {
-              id: docItem.id,
-              title: data.title || "",
-              slug: data.slug || "",
-              category: "results",
-              content: data.description || "",
-              startDate:
-                data.startDate ||
-                data.resultDate ||
-                data.applicationStartDate ||
-                data.openingDate ||
-                "",
-              applicationStartDate: data.applicationStartDate || "",
-              openingDate: data.openingDate || "",
-              lastDate:
-                data.lastDate ||
-                data.applicationLastDate ||
-                data.applicationEndDate ||
-                data.closingDate ||
-                data.endDate ||
-                "",
-              importantDates: data.importantDates || [],
-              createdAt: data.createdAt || null,
-            };
-          })
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
-
-        setJobs(allPosts.filter((item) => item.category === "jobs").slice(0, 6));
-
-        setResults(allResults.slice(0, 6));
-
-        setAdmissions(
-          allPosts.filter((item) => item.category === "admissions").slice(0, 6)
+        const postItems: PostItem[] = postsSnapshot.docs.map((docItem) =>
+          createPostItem(docItem.id, docItem.data())
         );
 
-        setAdmitCards(allAdmitCards.slice(0, 6));
-
-        setSchemes(
-          allPosts.filter((item) => item.category === "schemes").slice(0, 6)
+        const jobCollectionItems: PostItem[] = jobsSnapshot.docs.map((docItem) =>
+          createPostItem(docItem.id, docItem.data(), "jobs")
         );
+
+        const admissionCollectionItems: PostItem[] =
+          admissionsSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "admissions")
+          );
+
+        const admitCardItems: PostItem[] = [
+          ...admitCardsSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "admit-cards")
+          ),
+          ...admitCardsHyphenSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "admit-cards")
+          ),
+          ...admitCardsLowerSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "admit-cards")
+          ),
+        ];
+
+        const resultItems: PostItem[] = [
+          ...resultsSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "results")
+          ),
+          ...resultSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "results")
+          ),
+        ];
+
+        const schemeCollectionItems: PostItem[] = [
+          ...schemesSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "schemes")
+          ),
+          ...schemeSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "schemes")
+          ),
+          ...governmentSchemesSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "schemes")
+          ),
+          ...governmentSchemesHyphenSnapshot.docs.map((docItem) =>
+            createPostItem(docItem.id, docItem.data(), "schemes")
+          ),
+        ];
+
+        const importantInformationItems: ImportantInformationItem[] =
+          importantInformationSnapshot.docs
+            .map((docItem) => createImportantInformationItem(docItem.id, docItem.data()))
+            .filter((item) => item.status !== "hidden")
+            .sort((a, b) => getImportantInfoTimeValue(b) - getImportantInfoTimeValue(a));
+
+        const importantFeatured = [...importantInformationItems]
+          .filter((item) => item.isFeatured)
+          .sort((a, b) => {
+            const orderDiff = (a.featuredOrder || 0) - (b.featuredOrder || 0);
+            if (orderDiff !== 0) return orderDiff;
+            return getImportantInfoTimeValue(b) - getImportantInfoTimeValue(a);
+          })
+          .slice(0, IMPORTANT_INFO_TILE_LIMIT);
+
+        const allItems = getDedupedPosts([
+          ...postItems,
+          ...jobCollectionItems,
+          ...admissionCollectionItems,
+          ...admitCardItems,
+          ...resultItems,
+          ...schemeCollectionItems,
+        ]);
+
+        const jobs = allItems
+          .filter((item) => item.category === "jobs")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        const admissions = allItems
+          .filter((item) => item.category === "admissions")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        const schemes = allItems
+          .filter((item) => item.category === "schemes")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        const admitCards = allItems
+          .filter((item) => item.category === "admit-cards")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        const results = allItems
+          .filter((item) => item.category === "results")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        const allAllowedPosts = [
+          ...jobs,
+          ...admitCards,
+          ...results,
+          ...admissions,
+          ...schemes,
+        ].filter(isAllowedLatestPost);
+
+        const latestTiles = [...allAllowedPosts]
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a))
+          .slice(0, LATEST_TILE_LIMIT);
+
+        const reminders = [...allAllowedPosts]
+          .filter(isLastDateReminderPost)
+          .sort((a, b) => getEndDateTime(a) - getEndDateTime(b));
+
+        setHomeData({
+          importantFeatured,
+          importantAll: importantInformationItems,
+          latestTiles,
+          jobs,
+          admitCards,
+          results,
+          admissions,
+          schemes,
+          reminders,
+        });
+
+        setVisibleImportantCount(IMPORTANT_INFO_PAGE_SIZE);
       } catch (error) {
         console.error(error);
-        alert("Failed to load homepage updates");
       } finally {
         setLoading(false);
       }
     };
 
-    loadHomePosts();
+    loadHomeData();
   }, []);
 
-  const latestPosts = useMemo(() => {
-    return [...jobs, ...results, ...admissions, ...admitCards, ...schemes]
-      .sort((a, b) => getTimeValue(b) - getTimeValue(a))
-      .slice(0, 3);
-  }, [jobs, results, admissions, admitCards, schemes]);
+  const handleShareHomeReminders = () => {
+    if (homeData.reminders.length === 0) return;
+
+    const shareText = buildHomeReminderShareText(
+      homeData.reminders,
+      window.location.origin
+    );
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <main className="os-board-home">
@@ -401,7 +1251,7 @@ export default function HomePage() {
         <section className="os-board-top">
           <div>
             <p className="os-board-kicker">Odisha Sathi Updates</p>
-            <h1>jobs, results, admissions, admit cards and schemes</h1>
+            <h1>jobs, results, admissions, admit cards & exams and schemes</h1>
           </div>
         </section>
 
@@ -409,85 +1259,133 @@ export default function HomePage() {
           <div className="os-board-loading">Loading latest updates...</div>
         ) : (
           <>
+            <ImportantInformationHighlights items={homeData.importantFeatured} />
+
             <section className="os-board-latest">
               <div className="os-board-section-head os-board-latest-head">
                 <h2>Latest Posts</h2>
               </div>
 
-              <div className="os-board-list">
-                {latestPosts.length === 0 ? (
-                  <p className="os-board-empty">No latest posts available.</p>
-                ) : (
-                  latestPosts.map((item) => (
-                    <UpdateRow
+              {homeData.latestTiles.length === 0 ? (
+                <p className="os-board-empty">No latest posts available.</p>
+              ) : (
+                <div className="os-latest-tile-grid">
+                  {homeData.latestTiles.map((item, index) => (
+                    <LatestPostTile
                       key={`latest-${item.category}-${item.id}`}
                       item={item}
-                      showBadge
+                      index={index}
                     />
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
 
-            <section className="os-board-layout">
-              <div className="os-board-main">
-                <UpdateSection
-                  title="Latest Jobs"
-                  href="/jobs"
-                  items={jobs}
-                  emptyText="No jobs added yet."
-                />
+            <section className="os-home-main-layout">
+              <div className="os-home-left-column">
+                <div className="os-home-left-grid">
+                  <HomeSectionPanel
+                    title="Latest Jobs"
+                    href="/jobs"
+                    items={homeData.jobs}
+                    emptyText="No latest jobs available."
+                  />
 
-                <UpdateSection
-                  title="Latest Results"
-                  href="/results"
-                  items={results}
-                  emptyText="No results added yet."
-                />
+                  <HomeSectionPanel
+                    title="Latest Admit Cards & Exams"
+                    href="/admit-cards"
+                    items={homeData.admitCards}
+                    emptyText="No latest admit cards and exams available."
+                  />
 
-                <UpdateSection
-                  title="Latest Admissions"
-                  href="/admissions"
-                  items={admissions}
-                  emptyText="No admissions added yet."
-                />
+                  <HomeSectionPanel
+                    title="Latest Results"
+                    href="/results"
+                    items={homeData.results}
+                    emptyText="No latest results available."
+                  />
 
-                <UpdateSection
-                  title="Latest Admit Cards"
-                  href="/admit-cards"
-                  items={admitCards}
-                  emptyText="No admit cards added yet."
-                />
-
-                <UpdateSection
-                  title="Government Schemes"
-                  href="/schemes"
-                  items={schemes}
-                  emptyText="No schemes added yet."
-                />
+                  <HomeSectionPanel
+                    title="Latest Admissions"
+                    href="/admissions"
+                    items={homeData.admissions}
+                    emptyText="No latest admissions available."
+                  />
+                </div>
               </div>
 
-              <aside className="os-board-sidebar">
-                <div className="os-side-card">
-                  <h2>Quick Access</h2>
+              <aside className="os-home-right-column">
+                <section className="os-home-quick-panel">
+                  <div className="os-home-panel-head">
+                    <h2>Quick Access</h2>
+                  </div>
 
-                  <Link href="/jobs">Latest Jobs</Link>
-                  <Link href="/results">Results</Link>
-                  <Link href="/admissions">Admissions</Link>
-                  <Link href="/admit-cards">Admit Cards</Link>
-                  <Link href="/schemes">Schemes</Link>
-                  <Link href="/tools">Tools</Link>
-                </div>
+                  <div className="os-home-quick-grid">
+                    {quickAccessLinks.map((item) => (
+                      <Link key={item.href} href={item.href}>
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
 
-                <div className="os-side-card os-side-note">
-                  <h2>Stay Updated</h2>
-                  <p>
-                    Bookmark Odisha Sathi for regular updates on Odisha jobs,
-                    exams, admissions and schemes.
-                  </p>
-                </div>
+                <section className="os-home-reminder-panel">
+                  <div className="os-home-panel-head">
+                    <h2>Last Date Reminder</h2>
+
+                    <ReminderShareButtons
+                      getShareText={() =>
+                        buildHomeReminderShareText(homeData.reminders, window.location.origin)
+                      }
+                      disabled={homeData.reminders.length === 0}
+                      label="Last Date Reminder"
+                    />
+                  </div>
+
+                  {homeData.reminders.length === 0 ? (
+                    <p className="os-home-empty">
+                      No deadlines within the next 7 days.
+                    </p>
+                  ) : (
+                    <div className="os-home-reminder-list">
+                      {homeData.reminders.map((item) => (
+                        <ReminderRow
+                          key={`reminder-${item.category}-${item.id}`}
+                          item={item}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                <section className="os-home-scheme-panel">
+                  <div className="os-home-panel-head">
+                    <h2>Latest Schemes</h2>
+                    <Link href="/schemes">View All</Link>
+                  </div>
+
+                  {homeData.schemes.length === 0 ? (
+                    <p className="os-home-empty">No latest schemes available.</p>
+                  ) : (
+                    <div className="os-home-scheme-list">
+                      {homeData.schemes.slice(0, SCHEME_LIMIT).map((item) => (
+                        <SchemeRow key={`scheme-${item.id}`} item={item} />
+                      ))}
+                    </div>
+                  )}
+                </section>
               </aside>
             </section>
+
+            <AllImportantInformationStack
+              items={homeData.importantAll}
+              visibleCount={visibleImportantCount}
+              onViewMore={() =>
+                setVisibleImportantCount((oldValue) =>
+                  oldValue + IMPORTANT_INFO_PAGE_SIZE
+                )
+              }
+            />
           </>
         )}
       </div>
@@ -507,21 +1405,16 @@ export default function HomePage() {
 
         .os-board-top {
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           justify-content: space-between;
-          gap: 18px;
+          gap: 16px;
           margin-bottom: 16px;
-          padding-bottom: 12px;
+          padding-bottom: 14px;
           border-bottom: 1px solid #e5e7eb;
         }
 
-.os-board-top > div {
-  min-width: 0;
-  width: 100%;
-}
-
         .os-board-kicker {
-          margin: 0 0 5px;
+          margin: 0 0 6px;
           color: #ea580c;
           font-size: 13px;
           line-height: 1.2;
@@ -532,55 +1425,206 @@ export default function HomePage() {
 
         .os-board-top h1 {
           margin: 0;
-          max-width: 100%;
-          color: #475569;
+          color: #0f172a;
+          font-size: 32px;
+          line-height: 1.12;
+          font-weight: 950;
+          letter-spacing: -0.04em;
+          text-transform: capitalize;
+        }
+
+        .os-board-loading,
+        .os-board-empty,
+        .os-home-empty {
+          margin: 0;
+          padding: 14px 16px;
+          color: #64748b;
           font-size: 14px;
-          line-height: 1.35;
-          font-weight: 700;
-          letter-spacing: 0;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          line-height: 1.5;
+          font-weight: 600;
         }
 
         .os-board-loading {
-          padding: 18px;
           border: 1px solid #e5e7eb;
           border-radius: 16px;
-          color: #64748b;
-          font-size: 15px;
           background: #ffffff;
         }
 
         .os-board-latest {
-          margin-bottom: 18px;
-          border: 1px solid #dbeafe;
-          border-radius: 16px;
-          overflow: hidden;
-          background: #ffffff;
-        }
-
-        .os-board-layout {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) 300px;
-          gap: 18px;
-          align-items: start;
-        }
-
-        .os-board-main {
-          display: grid;
-          gap: 16px;
-        }
-
-        .os-board-section,
-        .os-side-card {
           border: 1px solid #e5e7eb;
           border-radius: 16px;
           overflow: hidden;
           background: #ffffff;
+          margin-bottom: 18px;
         }
 
-        .os-board-section-head {
+        .os-important-info-section,
+        .os-all-important-info-section {
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          overflow: hidden;
+          background: #ffffff;
+          margin-bottom: 18px;
+        }
+
+        .os-all-important-info-section {
+          margin-top: 18px;
+          width: calc(100% - 338px);
+          max-width: calc(100% - 338px);
+        }
+
+        .os-important-info-head h2 {
+          color: #dc2626;
+        }
+
+        .os-important-info-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+          padding: 14px;
+        }
+
+        .os-important-info-tile {
+          display: grid;
+          align-content: start;
+          min-height: 92px;
+          padding: 13px 14px;
+          border: 1px solid #fee2e2;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #fff7ed, #fee2e2);
+          color: inherit;
+          text-decoration: none;
+          box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+          transition:
+            transform 0.16s ease,
+            box-shadow 0.16s ease,
+            border-color 0.16s ease;
+        }
+
+        .os-important-info-tile:hover {
+          transform: translateY(-3px) scale(1.015);
+          border-color: rgba(220, 38, 38, 0.28);
+          box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+        }
+
+        .os-important-info-tile span {
+          margin-bottom: 7px;
+          color: #dc2626;
+          font-size: 10.5px;
+          line-height: 1;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .os-important-info-tile h3 {
+          margin: 0;
+          color: #111827;
+          font-size: 14.5px;
+          line-height: 1.18;
+          font-weight: 950;
+          letter-spacing: -0.025em;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-important-info-tile p {
+          margin: 7px 0 0;
+          color: #475569;
+          font-size: 12.5px;
+          line-height: 1.3;
+          font-weight: 750;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-all-important-info-list {
+          display: grid;
+        }
+
+        .os-important-info-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr);
+          gap: 12px;
+          align-items: center;
+          padding: 12px 14px;
+          border-bottom: 1px solid #f1f5f9;
+          color: inherit;
+          text-decoration: none;
+          transition: background 0.15s ease;
+        }
+
+        .os-important-info-row:last-child {
+          border-bottom: 0;
+        }
+
+        .os-important-info-row:hover {
+          background: #fff7ed;
+        }
+
+        .os-important-info-row span {
+          display: inline-flex;
+          margin-bottom: 5px;
+          color: #dc2626;
+          font-size: 10.5px;
+          line-height: 1;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .os-important-info-row h3 {
+          margin: 0;
+          color: #1d4ed8;
+          font-size: 14.5px;
+          line-height: 1.35;
+          font-weight: 850;
+          letter-spacing: -0.01em;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-important-info-row:hover h3 {
+          color: #ea580c;
+        }
+
+        .os-important-info-row p {
+          margin: 0;
+          color: #64748b;
+          font-size: 13px;
+          line-height: 1.45;
+          font-weight: 650;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-important-view-more-wrap {
+          padding: 14px;
+          border-top: 1px solid #f1f5f9;
+          text-align: center;
+        }
+
+        .os-important-view-more-wrap button {
+          min-height: 40px;
+          padding: 9px 18px;
+          border: 1px solid #2563eb;
+          border-radius: 999px;
+          background: #2563eb;
+          color: #ffffff;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
+        .os-board-section-head,
+        .os-home-panel-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -590,12 +1634,8 @@ export default function HomePage() {
           background: #ffffff;
         }
 
-        .os-board-latest-head {
-          background: #f8fbff;
-        }
-
         .os-board-section-head h2,
-        .os-side-card h2 {
+        .os-home-panel-head h2 {
           margin: 0;
           color: #0f172a;
           font-size: 18px;
@@ -604,7 +1644,50 @@ export default function HomePage() {
           letter-spacing: -0.025em;
         }
 
-        .os-board-section-head a {
+        .os-home-reminder-panel .os-home-panel-head h2 {
+          color: #dc2626;
+        }
+
+        .os-home-whatsapp-share-btn {
+          width: 32px;
+          height: 32px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 999px;
+          background: #25d366;
+          color: #ffffff;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 211, 102, 0.22);
+          transition:
+            transform 0.15s ease,
+            opacity 0.15s ease,
+            box-shadow 0.15s ease;
+        }
+
+        .os-home-whatsapp-share-btn svg {
+          width: 20px;
+          height: 20px;
+          fill: currentColor;
+        }
+
+        .os-home-whatsapp-share-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 22px rgba(37, 211, 102, 0.3);
+        }
+
+        .os-home-whatsapp-share-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+          box-shadow: none;
+        }
+
+        .os-home-whatsapp-share-btn:disabled:hover {
+          transform: none;
+        }
+
+        .os-home-panel-head a {
           color: #2563eb;
           text-decoration: none;
           font-size: 13px;
@@ -613,230 +1696,362 @@ export default function HomePage() {
           transition: color 0.15s ease;
         }
 
-        .os-board-section-head a:hover {
+        .os-home-panel-head a:hover {
           color: #ea580c;
           text-decoration: underline;
         }
 
-        .os-board-list {
+        .os-latest-tile-grid {
           display: grid;
-        }
-
-        .os-board-row {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 12px;
-          padding: 13px 16px;
+          padding: 14px;
+        }
+
+        .os-latest-tile {
+          position: relative;
+          min-height: 96px;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
+          padding: 14px 14px 30px;
+          border: 1px solid rgba(148, 163, 184, 0.22);
+          border-radius: 12px;
+          color: #111827;
           text-decoration: none;
-          color: inherit;
-          background: #ffffff;
-          border-bottom: 1px solid #f1f5f9;
+          overflow: hidden;
+          box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+          transition:
+            transform 0.16s ease,
+            box-shadow 0.16s ease,
+            border-color 0.16s ease;
         }
 
-        .os-board-row:last-child {
-          border-bottom: none;
+        .os-latest-tile:nth-child(6n + 1) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(251, 191, 36, 0.34), transparent 38%),
+            linear-gradient(135deg, #fff7ed, #fed7aa);
         }
 
-        .os-board-row:hover {
-          background: #fff7ed;
+        .os-latest-tile:nth-child(6n + 2) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(37, 99, 235, 0.2), transparent 38%),
+            linear-gradient(135deg, #eff6ff, #dbeafe);
         }
 
-        .os-board-row:hover h3,
-        .os-board-row:hover .os-board-arrow {
-          color: #ea580c;
+        .os-latest-tile:nth-child(6n + 3) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(34, 197, 94, 0.24), transparent 38%),
+            linear-gradient(135deg, #ecfdf5, #bbf7d0);
         }
 
-        .os-board-row-content {
+        .os-latest-tile:nth-child(6n + 4) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(239, 68, 68, 0.22), transparent 38%),
+            linear-gradient(135deg, #fff1f2, #fecdd3);
+        }
+
+        .os-latest-tile:nth-child(6n + 5) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(124, 58, 237, 0.2), transparent 38%),
+            linear-gradient(135deg, #f5f3ff, #ddd6fe);
+        }
+
+        .os-latest-tile:nth-child(6n + 6) {
+          background:
+            radial-gradient(circle at 92% 10%, rgba(234, 179, 8, 0.25), transparent 38%),
+            linear-gradient(135deg, #fefce8, #fde68a);
+        }
+
+        .os-latest-tile:hover {
+          transform: translateY(-3px) scale(1.015);
+          border-color: rgba(234, 88, 12, 0.28);
+          box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+        }
+
+        .os-latest-tile h3 {
+          margin: 0;
+          color: #111827;
+          font-size: 14.5px;
+          line-height: 1.18;
+          font-weight: 950;
+          letter-spacing: -0.025em;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-latest-tile p {
+          margin: 7px 0 0;
+          color: #1f2937;
+          font-size: 12.5px;
+          line-height: 1.25;
+          font-weight: 850;
+          display: -webkit-box;
+          -webkit-line-clamp: 1;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .os-latest-end-date {
+          position: absolute;
+          right: 12px;
+          bottom: 10px;
+          color: #dc2626;
+          font-size: 12px;
+          line-height: 1;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+
+        .os-home-main-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 320px;
+          gap: 18px;
+          align-items: start;
+        }
+
+        .os-home-left-column {
           min-width: 0;
         }
 
-        .os-board-badge {
-          display: inline-flex;
-          width: fit-content;
-          margin-bottom: 7px;
-          padding: 4px 8px;
-          border-radius: 999px;
-          background: #eff6ff;
-          color: #1d4ed8;
-          font-size: 11px;
-          line-height: 1;
-          font-weight: 900;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-        }
-
-        .os-board-title-line {
+        .os-home-left-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: start;
-          gap: 12px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
         }
 
-        .os-board-row h3 {
-          margin: 0;
-          color: #1d4ed8;
-          font-size: 15.5px;
-          line-height: 1.38;
-          font-weight: 800;
-          letter-spacing: -0.01em;
-          transition: color 0.15s ease;
-        }
-
-        .os-board-date-line {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          gap: 5px;
-          max-width: 390px;
-        }
-
-        .os-board-date-line span {
-          color: #475569;
-          font-size: 12px;
-          line-height: 1.2;
-          font-weight: 800;
-          white-space: nowrap;
-          transition: color 0.15s ease;
-        }
-
-        .os-board-row:hover .os-date-start {
-          color: #16a34a;
-        }
-
-        .os-board-row:hover .os-date-end {
-          color: #dc2626;
-        }
-
-        .os-board-row p {
-          margin: 5px 0 0;
-          color: #64748b;
-          font-size: 13px;
-          line-height: 1.45;
-          font-weight: 500;
-        }
-
-        .os-board-arrow {
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
-          font-size: 22px;
-          line-height: 1;
-          font-weight: 700;
-          transition: color 0.15s ease, background 0.15s ease;
-        }
-
-        .os-board-row:hover .os-board-arrow {
-          background: #ffedd5;
-        }
-
-        .os-board-empty {
-          margin: 0;
-          padding: 14px 16px;
-          color: #64748b;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-
-        .os-board-sidebar {
+        .os-home-right-column {
+          min-width: 0;
           display: grid;
           gap: 16px;
           position: sticky;
           top: 92px;
         }
 
-        .os-side-card {
-          padding: 15px;
+        .os-home-panel,
+        .os-home-scheme-panel,
+        .os-home-quick-panel,
+        .os-home-reminder-panel {
+          border: 1px solid #e5e7eb;
+          border-radius: 16px;
+          overflow: hidden;
+          background: #ffffff;
         }
 
-        .os-side-card h2 {
-          margin-bottom: 12px;
-          font-size: 17px;
+        .os-home-update-list,
+        .os-home-scheme-list,
+        .os-home-reminder-list {
+          display: grid;
         }
 
-        .os-side-card a {
+        .os-home-update-row,
+        .os-home-scheme-row {
           display: block;
-          padding: 10px 0;
+          padding: 12px 14px;
           border-bottom: 1px solid #f1f5f9;
-          color: #1d4ed8;
+          color: inherit;
           text-decoration: none;
-          font-size: 14px;
-          font-weight: 800;
-          transition: color 0.15s ease;
+          transition: background 0.15s ease;
         }
 
-        .os-side-card a:last-child {
+        .os-home-update-row:last-child,
+        .os-home-scheme-row:last-child {
           border-bottom: none;
         }
 
-        .os-side-card a:hover {
-          color: #ea580c;
-          text-decoration: underline;
+        .os-home-update-row:hover,
+        .os-home-scheme-row:hover {
+          background: #fff7ed;
         }
 
-        .os-side-note p {
+        .os-home-update-row h3,
+        .os-home-scheme-row h3 {
           margin: 0;
-          color: #64748b;
-          font-size: 14px;
-          line-height: 1.6;
-          font-weight: 500;
+          color: #1d4ed8;
+          font-size: 14.5px;
+          line-height: 1.35;
+          font-weight: 850;
+          letter-spacing: -0.01em;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          transition: color 0.15s ease;
         }
 
-        @media (max-width: 900px) {
+        .os-home-update-row:hover h3,
+        .os-home-scheme-row:hover h3 {
+          color: #ea580c;
+        }
+
+        .os-home-date-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px 9px;
+          margin-top: 7px;
+        }
+
+        .os-home-date-row span {
+          color: #475569;
+          font-size: 11.5px;
+          line-height: 1.2;
+          font-weight: 850;
+          white-space: nowrap;
+          transition: color 0.15s ease;
+        }
+
+        .os-home-update-row:hover .os-date-start,
+        .os-home-scheme-row:hover .os-date-start {
+          color: #16a34a;
+        }
+
+        .os-home-update-row:hover .os-date-end,
+        .os-home-scheme-row:hover .os-date-end {
+          color: #dc2626;
+        }
+
+        .os-home-quick-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+          padding: 14px;
+        }
+
+        .os-home-quick-grid a {
+          display: flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 10px 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          background: #ffffff;
+          color: #1d4ed8;
+          text-decoration: none;
+          font-size: 13px;
+          line-height: 1.2;
+          font-weight: 900;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease,
+            border-color 0.15s ease;
+        }
+
+        .os-home-quick-grid a:hover {
+          background: #fff7ed;
+          color: #ea580c;
+          border-color: #fed7aa;
+        }
+
+        .os-home-reminder-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: center;
+          padding: 12px 14px;
+          border-bottom: 1px solid #fee2e2;
+          color: inherit;
+          text-decoration: none;
+          background: #fff7f7;
+          transition: background 0.15s ease;
+        }
+
+        .os-home-reminder-row:last-child {
+          border-bottom: none;
+        }
+
+        .os-home-reminder-row:hover {
+          background: #fff1f2;
+        }
+
+        .os-home-reminder-row span {
+          display: inline-flex;
+          margin-bottom: 5px;
+          color: #dc2626;
+          font-size: 10.5px;
+          line-height: 1;
+          font-weight: 950;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .os-home-reminder-row h3 {
+          margin: 0;
+          color: #1d4ed8;
+          font-size: 13.5px;
+          line-height: 1.3;
+          font-weight: 900;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          transition: color 0.15s ease;
+        }
+
+        .os-home-reminder-row:hover h3 {
+          color: #ea580c;
+        }
+
+        .os-home-reminder-row strong {
+          color: #dc2626;
+          font-size: 11.5px;
+          line-height: 1;
+          font-weight: 950;
+          white-space: nowrap;
+        }
+
+        @media (max-width: 980px) {
           .os-board-container {
             width: min(100% - 24px, 1180px);
             padding-top: 18px;
           }
 
-          .os-board-layout {
-            grid-template-columns: 1fr;
-          }
-
-          .os-board-sidebar {
-            position: static;
-          }
-
           .os-board-top h1 {
-  font-size: 12.5px;
-  max-width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-          .os-board-row {
-            padding: 13px 14px;
+            font-size: 25px;
           }
 
-          .os-board-title-line {
-            grid-template-columns: 1fr;
-            gap: 6px;
+          .os-latest-tile-grid,
+          .os-important-info-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            padding: 12px;
           }
 
-          .os-board-date-line {
-            justify-content: flex-start;
+          .os-all-important-info-section {
+            width: 100%;
             max-width: 100%;
           }
 
-          .os-board-row h3 {
-            font-size: 15px;
+          .os-important-info-row {
+            grid-template-columns: 1fr;
           }
 
-          .os-board-date-line span {
-            font-size: 12px;
+          .os-home-main-layout {
+            grid-template-columns: 1fr;
           }
 
-          .os-board-row p {
-            font-size: 12.8px;
+          .os-home-right-column {
+            position: static;
           }
 
-          .os-board-section-head {
-            padding: 13px 14px;
+          .os-home-left-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .os-latest-tile-grid,
+          .os-important-info-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .os-latest-tile {
+            min-height: 90px;
+          }
+
+          .os-board-top h1 {
+            font-size: 22px;
           }
         }
       `}</style>

@@ -15,9 +15,9 @@ const CATEGORY_INFO: Record<string, CategoryInfo> = {
     endColor: "#0f172a",
   },
   "admit-cards": {
-    label: "Admit Cards",
-    heading: "ODISHA SATHI ADMIT CARD UPDATE",
-    subtitle: "Download Admit Card • Exam Date • Official Link",
+    label: "Admit Cards & Exams",
+    heading: "ODISHA SATHI ADMIT CARD / EXAM UPDATE",
+    subtitle: "Admit Card • Exam Date • Exam Notice • Official Link",
     startColor: "#7c3aed",
     endColor: "#111827",
   },
@@ -55,6 +55,13 @@ const CATEGORY_INFO: Record<string, CategoryInfo> = {
     subtitle: "Scholarship • Eligibility • Apply Link",
     startColor: "#ca8a04",
     endColor: "#422006",
+  },
+  "important-information": {
+    label: "Important Information",
+    heading: "ODISHA SATHI IMPORTANT UPDATE",
+    subtitle: "Important Info • Guide • Reference Posts",
+    startColor: "#dc2626",
+    endColor: "#7f1d1d",
   },
 };
 

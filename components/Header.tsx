@@ -60,7 +60,11 @@ export default function Header() {
         }`}
       >
         <div className="container clean-header-inner">
-          <Link href="/" className="clean-brand" onClick={() => setMobileMenuOpen(false)}>
+          <Link
+            href="/"
+            className="clean-brand"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <Image
               src="/odisha-sathi-logo.png"
               alt="Odisha Sathi Logo"
@@ -76,7 +80,11 @@ export default function Header() {
           <div className="clean-header-right">
             <nav className="clean-main-nav" aria-label="Main navigation">
               {siteConfig.headerNav.map((item) => (
-                <Link key={item.label} href={item.href} className="clean-nav-link">
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="clean-nav-link"
+                >
                   {item.label}
                 </Link>
               ))}
@@ -113,6 +121,7 @@ export default function Header() {
               width={46}
               height={46}
             />
+
             <strong>{siteConfig.siteName}</strong>
           </div>
 
@@ -141,9 +150,17 @@ export default function Header() {
 
       <style jsx global>{`
         .clean-site-header {
+          position: sticky;
+          top: 0;
+          z-index: 70;
           background: #ffffff;
           border-bottom: 1px solid #e5e7eb;
           box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+          transition: transform 0.2s ease;
+        }
+
+        .header-hidden-mobile {
+          transform: translateY(-100%);
         }
 
         .clean-header-inner {
@@ -151,31 +168,32 @@ export default function Header() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 18px;
+          gap: 16px;
         }
 
         .clean-brand {
           display: inline-flex;
           align-items: center;
-          gap: 12px;
-          text-decoration: none;
+          gap: 10px;
           color: #0f172a;
+          text-decoration: none;
           min-width: 0;
+          flex: 0 0 auto;
         }
 
         .clean-brand-logo {
-          width: 56px;
-          height: 56px;
+          width: 52px;
+          height: 52px;
           object-fit: contain;
           flex: 0 0 auto;
         }
 
         .clean-brand-title {
-          font-size: 28px;
-          line-height: 1;
-          font-weight: 900;
-          letter-spacing: -0.04em;
           color: #0f172a;
+          font-size: 36px;
+          line-height: 1;
+          font-weight: 950;
+          letter-spacing: -0.045em;
           white-space: nowrap;
         }
 
@@ -183,31 +201,37 @@ export default function Header() {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 14px;
+          gap: 12px;
           min-width: 0;
+          flex: 1 1 auto;
         }
 
         .clean-main-nav {
           display: flex;
           align-items: center;
+          justify-content: flex-end;
           gap: 4px;
+          min-width: 0;
+          flex-wrap: wrap;
         }
 
         .clean-nav-link {
-          color: #334155;
+          color: #1d4ed8;
           text-decoration: none;
           font-size: 14px;
           line-height: 1;
-          font-weight: 700;
-          padding: 10px 11px;
+          font-weight: 850;
+          padding: 10px 9px;
           border-radius: 999px;
-          transition: background 0.15s ease, color 0.15s ease;
+          white-space: nowrap;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease;
         }
 
         .clean-nav-link:hover {
-  background: #fff7ed;
-  color: #ea580c;
-}
+          background: #fff7ed;
+          color: #ea580c;
         }
 
         .os-search-wrap {
@@ -215,6 +239,7 @@ export default function Header() {
           display: flex;
           align-items: center;
           justify-content: center;
+          flex: 0 0 auto;
         }
 
         .os-search-icon-btn,
@@ -229,13 +254,17 @@ export default function Header() {
           align-items: center;
           justify-content: center;
           cursor: pointer;
-          transition: background 0.15s ease, border-color 0.15s ease;
+          transition:
+            background 0.15s ease,
+            border-color 0.15s ease,
+            color 0.15s ease;
         }
 
         .os-search-icon-btn:hover,
         .clean-menu-btn:hover {
           background: #eff6ff;
           border-color: #bfdbfe;
+          color: #ea580c;
         }
 
         .os-search-icon-btn svg,
@@ -308,7 +337,7 @@ export default function Header() {
           width: 17px;
           height: 2px;
           border-radius: 999px;
-          background: #1d4ed8;
+          background: currentColor;
           display: block;
         }
 
@@ -318,6 +347,26 @@ export default function Header() {
 
         .mobile-side-menu {
           display: none;
+        }
+
+        @media (max-width: 1180px) {
+          .clean-brand-title {
+            font-size: 32px;
+          }
+
+          .clean-brand-logo {
+            width: 48px;
+            height: 48px;
+          }
+
+          .clean-nav-link {
+            font-size: 13px;
+            padding: 9px 7px;
+          }
+
+          .clean-header-right {
+            gap: 8px;
+          }
         }
 
         @media (max-width: 1024px) {
@@ -340,8 +389,8 @@ export default function Header() {
           }
 
           .clean-brand-title {
-            font-size: 23px;
-            letter-spacing: -0.035em;
+            font-size: 31px;
+            letter-spacing: 0.01em;
           }
 
           .os-search-form {
@@ -406,6 +455,7 @@ export default function Header() {
 
           .mobile-side-brand strong {
             font-size: 20px;
+            line-height: 1;
             font-weight: 900;
             letter-spacing: -0.03em;
           }
@@ -428,25 +478,28 @@ export default function Header() {
           }
 
           .mobile-side-nav a {
-  text-decoration: none;
-  color: #1d4ed8;
-  font-size: 15px;
-  font-weight: 800;
-  padding: 14px 12px;
-  border-radius: 12px;
-  border-bottom: 1px solid #f1f5f9;
-  transition: color 0.15s ease, background 0.15s ease;
-}
+            text-decoration: none;
+            color: #1d4ed8;
+            font-size: 15px;
+            font-weight: 800;
+            padding: 14px 12px;
+            border-radius: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition:
+              color 0.15s ease,
+              background 0.15s ease;
+          }
 
           .mobile-side-nav a:hover {
-  background: #fff7ed;
-  color: #ea580c;
-}
+            background: #fff7ed;
+            color: #ea580c;
+          }
         }
 
         @media (max-width: 420px) {
           .clean-brand-title {
-            font-size: 21px;
+            font-size: 27px;
+            letter-spacing: 0.01em;
           }
 
           .clean-brand-logo {

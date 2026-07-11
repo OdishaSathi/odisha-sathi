@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import * as AdminLayoutModule from "../../components/admin/AdminLayout";
+import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 
 const AdminLayout: any =
   (AdminLayoutModule as any).default || (AdminLayoutModule as any).AdminLayout;
@@ -297,7 +298,7 @@ export default function AdminDashboardPage() {
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns: "74px 74px",
+                            gridTemplateColumns: "74px 74px auto",
                             gap: "10px",
                             width: "fit-content",
                           }}
@@ -338,6 +339,12 @@ export default function AdminDashboardPage() {
                           >
                             Edit
                           </Link>
+
+                          <AdminPostShareButtons
+                            title={displayTitle}
+                            publicPath={getPublicLink(post)}
+                            description={post.department || getCategoryLabel(post.category)}
+                          />
                         </div>
                       </div>
                     );

@@ -6,6 +6,7 @@ import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import JobForm from "../../../components/forms/JobForm";
 import * as AdminLayoutModule from "../../../components/admin/AdminLayout";
+import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 
 const AdminLayout: any =
   (AdminLayoutModule as any).default || (AdminLayoutModule as any).AdminLayout;
@@ -20,10 +21,27 @@ type JobPost = {
   createdAt?: any;
 };
 
+const cardStyle = {
+  background: "white",
+  padding: "20px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+};
+
+const actionButtonStyle = {
+  padding: "9px 13px",
+  border: "1px solid #ddd",
+  borderRadius: "8px",
+  background: "white",
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
 export default function AdminJobsPage() {
   const [jobs, setJobs] = useState<JobPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const loadJobs = async () => {
     try {
@@ -93,31 +111,49 @@ export default function AdminJobsPage() {
   return (
     <AdminLayout>
       <div style={{ display: "grid", gap: "24px" }}>
-        <div>
-          <h1>Jobs</h1>
-          <p>Create and manage job posts here.</p>
-        </div>
-
         <div
           style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
           }}
         >
-          <h2>Create New Job</h2>
-          <JobForm />
+          <div>
+            <h1 style={{ margin: "0 0 6px" }}>Jobs</h1>
+            <p style={{ margin: 0, color: "#64748b" }}>
+              Saved jobs first. Use Create New Job only when you need to add a post.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((oldValue) => !oldValue)}
+            style={{
+              ...actionButtonStyle,
+              background: showCreateForm ? "#f3f4f6" : "#2563eb",
+              color: showCreateForm ? "#111827" : "white",
+              borderColor: showCreateForm ? "#d1d5db" : "#2563eb",
+            }}
+          >
+            {showCreateForm ? "Hide Form" : "+ Create New Job"}
+          </button>
         </div>
 
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
+        {showCreateForm ? (
+          <div style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>Create New Job</h2>
+            <JobForm
+              onSaved={() => {
+                setShowCreateForm(false);
+                loadJobs();
+              }}
+            />
+          </div>
+        ) : null}
+
+        <div style={cardStyle}>
           <div
             style={{
               display: "flex",
@@ -125,21 +161,17 @@ export default function AdminJobsPage() {
               alignItems: "center",
               gap: "12px",
               marginBottom: "16px",
+              flexWrap: "wrap",
             }}
           >
-            <h2>Saved Jobs</h2>
+            <div>
+              <h2 style={{ margin: 0 }}>Saved Jobs</h2>
+              <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "14px" }}>
+                {jobs.length} posts saved
+              </p>
+            </div>
 
-            <button
-              type="button"
-              onClick={loadJobs}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                background: "white",
-                cursor: "pointer",
-              }}
-            >
+            <button type="button" onClick={loadJobs} style={actionButtonStyle}>
               Refresh
             </button>
           </div>
@@ -174,7 +206,7 @@ export default function AdminJobsPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "74px 74px 74px",
+                        gridTemplateColumns: "74px 74px 74px auto",
                         gap: "10px",
                         alignItems: "center",
                         width: "fit-content",
@@ -237,6 +269,11 @@ export default function AdminJobsPage() {
                       >
                         {deletingId === job.id ? "..." : "Delete"}
                       </button>
+
+                      <AdminPostShareButtons
+                        title={job.title || "Odisha Sathi Job Update"}
+                        publicPath={`/post/${job.slug || job.id}`}
+                      />
                     </div>
 
                     <div>

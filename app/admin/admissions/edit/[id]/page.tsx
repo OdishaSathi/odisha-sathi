@@ -7,14 +7,24 @@ import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { db } from "@/lib/firebase";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryOptions,
+} from "@/lib/adminSubCategories";
 
-const admissionCategoryOptions = [
+const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "+2 Admission", value: "plus-two-admission" },
   { label: "+3 Admission", value: "plus-three-admission" },
   { label: "Diploma Admission", value: "diploma-admission" },
   { label: "ITI Admission", value: "iti-admission" },
   { label: "B.Ed / Teacher Training", value: "bed-teacher-training" },
-  { label: "Other Admissions", value: "other-admissions" },
+];
+
+const OTHER_ADMISSION_OPTION = { label: "Other Admissions", value: "other-admissions" };
+
+const admissionCategoryOptions = [
+  ...ADMISSION_BASE_CATEGORY_OPTIONS,
+  OTHER_ADMISSION_OPTION,
 ];
 
 type DateRow = {
@@ -31,10 +41,14 @@ type AdmissionForm = {
   title: string;
   admissionCategory: string;
   subCategory: string;
+  customAdmissionCategory: string;
   department: string;
   applicationStartDate: string;
+  applicationStartDateDisplay: string;
   lastDate: string;
+  lastDateDisplay: string;
   meritListDate: string;
+  meritListDateDisplay: string;
   selectionDates: DateRow[];
   description: string;
   applicationLink: string;
@@ -43,6 +57,7 @@ type AdmissionForm = {
   commonProspectusPdfLink: string;
   extraLinks: LinkRow[];
   youtubeUrl: string;
+  youtubeUrls: string[];
   sharingImageUrl: string;
   status: "active" | "closed";
 };
@@ -51,10 +66,14 @@ const emptyForm: AdmissionForm = {
   title: "",
   admissionCategory: "+2 Admission",
   subCategory: "plus-two-admission",
+  customAdmissionCategory: "",
   department: "",
   applicationStartDate: "",
+  applicationStartDateDisplay: "",
   lastDate: "",
+  lastDateDisplay: "",
   meritListDate: "",
+  meritListDateDisplay: "",
   selectionDates: [],
   description: "",
   applicationLink: "",
@@ -63,6 +82,7 @@ const emptyForm: AdmissionForm = {
   commonProspectusPdfLink: "",
   extraLinks: [],
   youtubeUrl: "",
+  youtubeUrls: [],
   sharingImageUrl: "",
   status: "active",
 };
@@ -125,6 +145,26 @@ function getLabelFromSubCategory(value: string) {
   return found?.label || "+2 Admission";
 }
 
+function getDateDisplayValue(exactDate: string, displayText: string) {
+  return displayText.trim() || exactDate;
+}
+
+function resolveAdmissionCategory(form: AdmissionForm) {
+  if (form.subCategory === "other-admissions" && form.customAdmissionCategory.trim()) {
+    const label = form.customAdmissionCategory.trim();
+
+    return {
+      label,
+      slug: makeSlug(label),
+    };
+  }
+
+  return {
+    label: form.admissionCategory,
+    slug: form.subCategory,
+  };
+}
+
 function cleanDateRows(rows: DateRow[]) {
   return rows
     .map((row) => ({
@@ -146,19 +186,23 @@ function cleanLinkRows(rows: LinkRow[]) {
 function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
   const selectionDates = cleanDateRows(form.selectionDates);
   const extraLinks = cleanLinkRows(form.extraLinks);
+  const resolvedCategory = resolveAdmissionCategory(form);
 
   const importantDates = [
     {
       label: "Application Start Date",
-      value: form.applicationStartDate,
+      value: getDateDisplayValue(
+        form.applicationStartDate,
+        form.applicationStartDateDisplay
+      ),
     },
     {
       label: "Last Date",
-      value: form.lastDate,
+      value: getDateDisplayValue(form.lastDate, form.lastDateDisplay),
     },
     {
       label: "Selection / Merit List Date",
-      value: form.meritListDate,
+      value: getDateDisplayValue(form.meritListDate, form.meritListDateDisplay),
     },
     ...selectionDates,
   ].filter((item) => item.value);
@@ -188,12 +232,24 @@ function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
     slug: oldSlug || makeSlug(form.title),
     category: "admissions",
     type: "admissions",
-    subCategory: form.subCategory,
-    admissionCategory: form.admissionCategory,
+    subCategory: resolvedCategory.slug,
+    subCategories: [resolvedCategory.label, resolvedCategory.slug],
+    admissionCategory: resolvedCategory.label,
+    admissionCategories: [resolvedCategory.label],
+    categoryName: resolvedCategory.label,
+    categorySlug: resolvedCategory.slug,
+    subCategorySlug: resolvedCategory.slug,
     department: form.department.trim(),
     applicationStartDate: form.applicationStartDate,
+    applicationStartDateDisplay: form.applicationStartDateDisplay.trim(),
+    startDateDisplay: getDateDisplayValue(
+      form.applicationStartDate,
+      form.applicationStartDateDisplay
+    ),
     lastDate: form.lastDate,
+    lastDateDisplay: form.lastDateDisplay.trim(),
     meritListDate: form.meritListDate,
+    meritListDateDisplay: form.meritListDateDisplay.trim(),
     selectionDates,
     description: form.description.trim(),
     content: form.description.trim(),
@@ -203,6 +259,7 @@ function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
     commonProspectusPdfLink: form.commonProspectusPdfLink.trim(),
     extraLinks,
     youtubeUrl: form.youtubeUrl.trim(),
+    youtubeUrls: form.youtubeUrls.map((item) => item.trim()).filter(Boolean).slice(0, 2),
     sharingImageUrl: form.sharingImageUrl.trim(),
     status: form.status,
     published: true,
@@ -220,9 +277,37 @@ export default function EditAdmissionPage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   const [form, setForm] = useState<AdmissionForm>(emptyForm);
+  const [admissionOptions, setAdmissionOptions] = useState(admissionCategoryOptions);
   const [oldSlug, setOldSlug] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadManagedAdmissionCategories() {
+      try {
+        const managed = await getActiveAdminSubCategories("admissions");
+        if (isMounted) {
+          setAdmissionOptions(
+            mergeSubCategoryOptions(
+              ADMISSION_BASE_CATEGORY_OPTIONS,
+              managed,
+              [OTHER_ADMISSION_OPTION]
+            )
+          );
+        }
+      } catch (error) {
+        console.warn("Could not load managed admission categories.", error);
+      }
+    }
+
+    loadManagedAdmissionCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     async function fetchAdmission() {
@@ -243,20 +328,39 @@ export default function EditAdmissionPage() {
 
         const data = snapshot.data();
 
+        const savedAdmissionCategory = data.admissionCategory || "";
         const savedSubCategory =
-          data.subCategory || getSubCategoryFromLabel(data.admissionCategory);
+          data.subCategory || getSubCategoryFromLabel(savedAdmissionCategory);
+        const isKnownCategory = admissionOptions.some(
+          (item) => item.value === savedSubCategory
+        );
+        const finalSubCategory = isKnownCategory
+          ? savedSubCategory
+          : "other-admissions";
+        const customAdmissionCategory =
+          finalSubCategory === "other-admissions" &&
+          savedAdmissionCategory !== "Other Admissions"
+            ? savedAdmissionCategory || data.categoryName || ""
+            : "";
 
         setOldSlug(data.slug || "");
 
         setForm({
           title: data.title || "",
           admissionCategory:
-            data.admissionCategory || getLabelFromSubCategory(savedSubCategory),
-          subCategory: savedSubCategory,
+            finalSubCategory === "other-admissions" && customAdmissionCategory
+              ? customAdmissionCategory
+              : data.admissionCategory || admissionOptions.find((item) => item.value === finalSubCategory)?.label || getLabelFromSubCategory(finalSubCategory),
+          subCategory: finalSubCategory,
+          customAdmissionCategory,
           department: data.department || "",
           applicationStartDate: data.applicationStartDate || "",
+          applicationStartDateDisplay:
+            data.applicationStartDateDisplay || data.startDateDisplay || "",
           lastDate: data.lastDate || "",
+          lastDateDisplay: data.lastDateDisplay || "",
           meritListDate: data.meritListDate || "",
+          meritListDateDisplay: data.meritListDateDisplay || "",
           selectionDates: Array.isArray(data.selectionDates)
             ? data.selectionDates
             : [],
@@ -267,6 +371,9 @@ export default function EditAdmissionPage() {
           commonProspectusPdfLink: data.commonProspectusPdfLink || "",
           extraLinks: Array.isArray(data.extraLinks) ? data.extraLinks : [],
           youtubeUrl: data.youtubeUrl || "",
+          youtubeUrls: Array.isArray(data.youtubeUrls)
+            ? data.youtubeUrls
+            : [],
           sharingImageUrl: data.sharingImageUrl || "",
           status: data.status === "closed" ? "closed" : "active",
         });
@@ -279,7 +386,7 @@ export default function EditAdmissionPage() {
     }
 
     fetchAdmission();
-  }, [id, router]);
+  }, [id, router, admissionOptions]);
 
   function handleChange(
     field: keyof AdmissionForm,
@@ -292,7 +399,7 @@ export default function EditAdmissionPage() {
   }
 
   function handleCategoryChange(value: string) {
-    const selectedCategory = admissionCategoryOptions.find(
+    const selectedCategory = admissionOptions.find(
       (item) => item.value === value
     );
 
@@ -302,6 +409,10 @@ export default function EditAdmissionPage() {
       ...previous,
       admissionCategory: selectedCategory.label,
       subCategory: selectedCategory.value,
+      customAdmissionCategory:
+        selectedCategory.value === "other-admissions"
+          ? previous.customAdmissionCategory
+          : "",
     }));
   }
 
@@ -369,8 +480,13 @@ export default function EditAdmissionPage() {
       return;
     }
 
-    if (!form.lastDate) {
-      alert("Please enter last date.");
+    if (!form.lastDate && !form.lastDateDisplay.trim()) {
+      alert("Please enter last date or date display text.");
+      return;
+    }
+
+    if (form.subCategory === "other-admissions" && !form.customAdmissionCategory.trim()) {
+      alert("Please enter the new admission category name.");
       return;
     }
 
@@ -454,13 +570,28 @@ export default function EditAdmissionPage() {
                   onChange={(event) => handleCategoryChange(event.target.value)}
                   style={inputStyle}
                 >
-                  {admissionCategoryOptions.map((item) => (
+                  {admissionOptions.map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {form.subCategory === "other-admissions" ? (
+                <div>
+                  <label style={labelStyle}>New Admission Category Name</label>
+                  <input
+                    type="text"
+                    value={form.customAdmissionCategory}
+                    onChange={(event) =>
+                      handleChange("customAdmissionCategory", event.target.value)
+                    }
+                    placeholder="Example: Nursing Admission / OSOU Admission"
+                    style={inputStyle}
+                  />
+                </div>
+              ) : null}
 
               <div>
                 <label style={labelStyle}>Institute / Board / Department</label>
@@ -519,6 +650,15 @@ export default function EditAdmissionPage() {
                   }
                   style={inputStyle}
                 />
+                <input
+                  type="text"
+                  value={form.applicationStartDateDisplay}
+                  onChange={(event) =>
+                    handleChange("applicationStartDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: July 2026 / Coming Soon"
+                  style={{ ...inputStyle, marginTop: "8px" }}
+                />
               </div>
 
               <div>
@@ -531,6 +671,15 @@ export default function EditAdmissionPage() {
                   }
                   style={inputStyle}
                 />
+                <input
+                  type="text"
+                  value={form.lastDateDisplay}
+                  onChange={(event) =>
+                    handleChange("lastDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: Expected in July 2026"
+                  style={{ ...inputStyle, marginTop: "8px" }}
+                />
               </div>
 
               <div>
@@ -542,6 +691,15 @@ export default function EditAdmissionPage() {
                     handleChange("meritListDate", event.target.value)
                   }
                   style={inputStyle}
+                />
+                <input
+                  type="text"
+                  value={form.meritListDateDisplay}
+                  onChange={(event) =>
+                    handleChange("meritListDateDisplay", event.target.value)
+                  }
+                  placeholder="Optional display: Date to be announced"
+                  style={{ ...inputStyle, marginTop: "8px" }}
                 />
               </div>
             </div>

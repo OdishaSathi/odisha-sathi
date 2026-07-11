@@ -12,7 +12,9 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import SchemeForm from "../../../components/forms/SchemeForm";
+import { getActiveAdminSubCategories } from "@/lib/adminSubCategories";
 import * as AdminLayoutModule from "../../../components/admin/AdminLayout";
+import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 
 const AdminLayout: any =
   (AdminLayoutModule as any).default || (AdminLayoutModule as any).AdminLayout;
@@ -51,12 +53,17 @@ export default function AdminSchemesPage() {
   const [categorySaving, setCategorySaving] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [deletingCategoryId, setDeletingCategoryId] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
 
   const loadSchemesAndCategories = async () => {
     try {
       setLoading(true);
 
-      const snapshot = await getDocs(collection(db, "posts"));
+      const [snapshot, managedSchemeCategories] = await Promise.all([
+        getDocs(collection(db, "posts")),
+        getActiveAdminSubCategories("schemes"),
+      ]);
 
       const allItems = snapshot.docs.map((docItem) => {
         const data = docItem.data();
@@ -86,7 +93,7 @@ export default function AdminSchemesPage() {
           return bTime - aTime;
         });
 
-      const categoryList: SchemeCategory[] = allItems
+      const postCategoryList: SchemeCategory[] = allItems
         .filter(
           (item) =>
             item.category === "scheme-category" &&
@@ -100,6 +107,25 @@ export default function AdminSchemesPage() {
         }))
         .filter((item) => item.categoryName && item.slug)
         .sort((a, b) => a.categoryName.localeCompare(b.categoryName));
+
+      const managedCategoryList: SchemeCategory[] = managedSchemeCategories.map((item) => ({
+        id: `managed-${item.id}`,
+        categoryName: item.label,
+        slug: item.value,
+        createdAt: null,
+      }));
+
+      const uniqueCategoryMap = new Map<string, SchemeCategory>();
+      [...postCategoryList, ...managedCategoryList].forEach((item) => {
+        const key = item.slug.toLowerCase();
+        if (!uniqueCategoryMap.has(key)) {
+          uniqueCategoryMap.set(key, item);
+        }
+      });
+
+      const categoryList = Array.from(uniqueCategoryMap.values()).sort((a, b) =>
+        a.categoryName.localeCompare(b.categoryName)
+      );
 
       setSchemes(schemeList);
       setCategories(categoryList);
@@ -164,6 +190,11 @@ export default function AdminSchemesPage() {
   };
 
   const handleDeleteCategory = async (categoryItem: SchemeCategory) => {
+    if (categoryItem.id.startsWith("managed-")) {
+      alert("This category is managed from Admin → Sub Categories. Edit or delete it there. Existing public pages remain unchanged.");
+      return;
+    }
+
     const usedInPosts = schemes.some(
       (scheme) => scheme.schemeCategorySlug === categoryItem.slug
     );
@@ -229,14 +260,58 @@ export default function AdminSchemesPage() {
   return (
     <AdminLayout>
       <div style={{ display: "grid", gap: "24px" }}>
-        <div>
-          <h1>Schemes</h1>
-          <p>
-            Create and manage government schemes, scholarships and other scheme
-            categories here.
-          </p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 style={{ margin: "0 0 6px" }}>Schemes</h1>
+            <p style={{ margin: 0, color: "#64748b" }}>
+              Saved schemes first. Use Create New Scheme only when needed.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setShowCategoryManager((oldValue) => !oldValue)}
+              style={{
+                border: "1px solid #d1d5db",
+                borderRadius: "10px",
+                background: "#ffffff",
+                color: "#111827",
+                padding: "10px 14px",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showCategoryManager ? "Hide Categories" : "Scheme Categories"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((oldValue) => !oldValue)}
+              style={{
+                border: "1px solid #2563eb",
+                borderRadius: "10px",
+                background: showCreateForm ? "#f3f4f6" : "#2563eb",
+                color: showCreateForm ? "#111827" : "#ffffff",
+                padding: "10px 14px",
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showCreateForm ? "Hide Form" : "+ Create New Scheme"}
+            </button>
+          </div>
         </div>
 
+        {showCategoryManager ? (
         <div
           style={{
             background: "white",
@@ -314,12 +389,13 @@ export default function AdminSchemesPage() {
                     <strong>{item.categoryName}</strong>
                     <p style={{ margin: "4px 0 0", color: "#6b7280" }}>
                       Slug: {item.slug}
+                      {item.id.startsWith("managed-") ? " • Managed in Sub Categories" : ""}
                     </p>
                   </div>
 
                   <button
                     type="button"
-                    disabled={deletingCategoryId === item.id}
+                    disabled={deletingCategoryId === item.id || item.id.startsWith("managed-")}
                     onClick={() => handleDeleteCategory(item)}
                     style={{
                       padding: "8px 12px",
@@ -328,17 +404,19 @@ export default function AdminSchemesPage() {
                       background: "#fee2e2",
                       color: "#dc2626",
                       fontWeight: "bold",
-                      cursor: "pointer",
+                      cursor: item.id.startsWith("managed-") ? "not-allowed" : "pointer",
                     }}
                   >
-                    {deletingCategoryId === item.id ? "..." : "Delete"}
+                    {item.id.startsWith("managed-") ? "Managed" : deletingCategoryId === item.id ? "..." : "Delete"}
                   </button>
                 </div>
               ))
             )}
           </div>
         </div>
+        ) : null}
 
+        {showCreateForm ? (
         <div
           style={{
             background: "white",
@@ -350,9 +428,13 @@ export default function AdminSchemesPage() {
           <h2>Create New Scheme</h2>
           <SchemeForm
             categories={categories}
-            onSaved={loadSchemesAndCategories}
+            onSaved={() => {
+              setShowCreateForm(false);
+              loadSchemesAndCategories();
+            }}
           />
         </div>
+        ) : null}
 
         <div
           style={{
@@ -423,7 +505,7 @@ export default function AdminSchemesPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "74px 74px 74px",
+                        gridTemplateColumns: "74px 74px 74px auto",
                         gap: "10px",
                         alignItems: "center",
                         width: "fit-content",
@@ -486,6 +568,12 @@ export default function AdminSchemesPage() {
                       >
                         {deletingId === scheme.id ? "..." : "Delete"}
                       </button>
+
+                      <AdminPostShareButtons
+                        title={name || "Odisha Sathi Scheme Update"}
+                        publicPath={`/schemes/${scheme.id}`}
+                        description={scheme.department || scheme.schemeCategory || ""}
+                      />
                     </div>
                   </div>
                 );

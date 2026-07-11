@@ -8,10 +8,11 @@ const menuItems = [
   { label: "Jobs", href: "/admin/jobs" },
   { label: "Results", href: "/admin/results" },
   { label: "Admissions", href: "/admin/admissions" },
-  { label: "Admit Cards", href: "/admin/admit-cards" },
+  { label: "Admit Cards & Exams", href: "/admin/admit-cards" },
   { label: "Schemes", href: "/admin/schemes" },
+  { label: "Important Info", href: "/admin/important-information" },
   { label: "Tools", href: "/admin/tools" },
-  { label: "Categories", href: "/admin/categories" },
+  { label: "Sub Categories", href: "/admin/categories" },
   { label: "Settings", href: "/admin/settings" },
 ];
 

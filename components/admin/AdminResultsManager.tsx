@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import ResultForm from "@/components/admin/ResultForm";
 import {
   addResult,
@@ -9,11 +10,13 @@ import {
   updateResult,
 } from "@/lib/results";
 import { ResultPost } from "@/types/result";
+import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 
 export default function AdminResultsManager() {
   const [results, setResults] = useState<ResultPost[]>([]);
   const [editingResult, setEditingResult] = useState<ResultPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const loadResults = async () => {
     setIsLoading(true);
@@ -36,6 +39,7 @@ export default function AdminResultsManager() {
   const handleCreate = async (data: ResultPost) => {
     await addResult(data);
     await loadResults();
+    setShowCreateForm(false);
     alert("Result saved successfully.");
   };
 
@@ -72,36 +76,47 @@ export default function AdminResultsManager() {
       <div className="admit-admin-header">
         <div>
           <h1>Results</h1>
-          <p>Create and manage result updates for public users.</p>
+          <p>Saved results first. Use Create New Result only when needed.</p>
         </div>
+
+        <button
+          type="button"
+          className="admin-small-btn"
+          onClick={() => setShowCreateForm((oldValue) => !oldValue)}
+        >
+          {showCreateForm ? "Hide Form" : "+ Create New Result"}
+        </button>
       </div>
 
-      <div className="admit-admin-card">
-        <div className="admit-admin-card-title">
-          <h2>{editingResult ? "Edit Result" : "Create Result"}</h2>
+      {showCreateForm || editingResult ? (
+        <div className="admit-admin-card">
+          <div className="admit-admin-card-title">
+            <h2>{editingResult ? "Edit Result" : "Create Result"}</h2>
 
-          {editingResult && (
             <button
               type="button"
               className="admin-cancel-btn"
-              onClick={() => setEditingResult(null)}
+              onClick={() => {
+                setEditingResult(null);
+                setShowCreateForm(false);
+              }}
             >
-              Cancel Edit
+              Close Form
             </button>
-          )}
-        </div>
+          </div>
 
-        <ResultForm
-          initialData={editingResult}
-          onSubmit={editingResult ? handleUpdate : handleCreate}
-          onCancel={editingResult ? () => setEditingResult(null) : undefined}
-          submitLabel={editingResult ? "Update Result" : "Save Result"}
-        />
-      </div>
+          <ResultForm
+            initialData={editingResult}
+            onSubmit={editingResult ? handleUpdate : handleCreate}
+            onCancel={editingResult ? () => setEditingResult(null) : undefined}
+            submitLabel={editingResult ? "Update Result" : "Save Result"}
+          />
+        </div>
+      ) : null}
 
       <div className="admit-admin-card">
         <div className="admit-admin-card-title">
-          <h2>Existing Results</h2>
+          <h2>Saved Results</h2>
           <span>{results.length} posts</span>
         </div>
 
@@ -110,7 +125,7 @@ export default function AdminResultsManager() {
         ) : results.length === 0 ? (
           <div className="admit-admin-empty">
             <h3>No result posts found</h3>
-            <p>Create your first result update using the form above.</p>
+            <p>Create your first result update using the Create New button.</p>
           </div>
         ) : (
           <div className="admin-table-wrap">
@@ -136,16 +151,28 @@ export default function AdminResultsManager() {
                     </td>
                     <td>{item.examName || "-"}</td>
                     <td>{item.organization || "-"}</td>
-                    <td>{item.resultDate || "-"}</td>
+                    <td>{item.resultDateDisplay || item.resultDate || "-"}</td>
                     <td>
                       <span className="admin-status-pill">{item.status}</span>
                     </td>
                     <td>
                       <div className="admin-table-actions">
+                        <Link
+                          href={`/post/${item.slug || item.id}`}
+                          target="_blank"
+                          className="admin-small-btn"
+                          style={{ textDecoration: "none" }}
+                        >
+                          View
+                        </Link>
+
                         <button
                           type="button"
                           className="admin-small-btn"
-                          onClick={() => setEditingResult(item)}
+                          onClick={() => {
+                            setEditingResult(item);
+                            setShowCreateForm(false);
+                          }}
                         >
                           Edit
                         </button>
@@ -157,6 +184,12 @@ export default function AdminResultsManager() {
                         >
                           Delete
                         </button>
+
+                        <AdminPostShareButtons
+                          title={item.title || "Odisha Sathi Result Update"}
+                          publicPath={`/post/${item.slug || item.id}`}
+                          description={item.examName || item.organization || ""}
+                        />
                       </div>
                     </td>
                   </tr>

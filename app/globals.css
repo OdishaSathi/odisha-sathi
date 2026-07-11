@@ -3249,3 +3249,480 @@ textarea { min-height: 180px; resize: vertical; }
     height: 31px;
   }
 }
+/* Phase 6: SEO/AdSense friendly footer and trust pages */
+.footer-grid-four {
+  grid-template-columns: 1.35fr 0.9fr 1.05fr 1.1fr;
+  align-items: start;
+}
+
+.footer-brand-block h3 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.footer-disclaimer-note,
+.footer-small-text {
+  font-size: 0.92rem;
+}
+
+.footer-disclaimer-note {
+  border-left: 3px solid #f97316;
+  padding-left: 12px;
+  margin-top: 12px;
+}
+
+.footer-contact-link {
+  display: inline-flex;
+  margin-top: 14px;
+  color: #ffffff;
+  border: 1px solid #475569;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.footer-contact-link:hover {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.trust-article {
+  font-size: 1rem;
+}
+
+.trust-article h2 {
+  color: #0f172a;
+  margin-top: 28px;
+  margin-bottom: 10px;
+}
+
+.trust-article h2:first-child {
+  margin-top: 0;
+}
+
+.trust-article h3 {
+  margin-top: 0;
+  color: #1d4ed8;
+}
+
+.trust-article p,
+.trust-article li {
+  color: #374151;
+  line-height: 1.75;
+}
+
+.trust-article ul {
+  padding-left: 22px;
+}
+
+.trust-article a:not(.btn) {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.trust-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.trust-info-grid,
+.sitemap-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.trust-info-card,
+.sitemap-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #f8fafc;
+  padding: 18px;
+}
+
+.sitemap-card h2 {
+  margin-top: 0;
+}
+
+.sitemap-links {
+  gap: 12px;
+}
+
+.sitemap-links a {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+@media (max-width: 992px) {
+  .footer-grid-four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-grid-four,
+  .trust-info-grid,
+  .sitemap-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer-contact-link {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Phase 8 prerequisite: Social media follow promo */
+.site-social-follow-wrap {
+  margin-top: 28px;
+  margin-bottom: 4px;
+}
+
+.social-follow-promo {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #dbeafe;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #eff6ff 0%, #fff7ed 52%, #ecfdf5 100%);
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.social-follow-promo-compact {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.social-follow-text {
+  min-width: 0;
+}
+
+.social-follow-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  padding: 6px 11px;
+  margin-bottom: 10px;
+}
+
+.social-follow-text h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(1.08rem, 2vw, 1.45rem);
+  line-height: 1.25;
+}
+
+.social-follow-text p {
+  margin: 8px 0 0;
+  color: #475569;
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.social-follow-links {
+  justify-content: flex-end;
+}
+
+.social-follow-links .social-link {
+  background: #ffffff;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+}
+
+.social-telegram {
+  background: #eff6ff;
+  color: #0369a1;
+}
+
+.social-telegram .social-icon {
+  background: #0ea5e9;
+}
+
+.site-footer .social-link-row {
+  margin-top: 12px;
+}
+
+.site-footer .social-link {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.site-footer .social-link:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+@media (max-width: 900px) {
+  .social-follow-promo {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .social-follow-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .site-social-follow-wrap {
+    margin-top: 20px;
+  }
+
+  .social-follow-promo {
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .social-follow-links {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .social-follow-links .social-link {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Social follow icons and sharing helpers */
+.social-link .social-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  display: block;
+}
+
+.social-link-disabled {
+  opacity: 0.72;
+  cursor: default;
+  filter: grayscale(0.25);
+}
+
+.social-link-disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.site-footer .social-link-row-icons-only {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.site-footer .social-link-row-icons-only .social-link {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0;
+  border-radius: 999px;
+  justify-content: center;
+  gap: 0;
+}
+
+.site-footer .social-link-row-icons-only .social-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.site-footer .social-link-row-icons-only .social-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.os-reminder-share-buttons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.os-reminder-share-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.os-reminder-share-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.18);
+}
+
+.os-reminder-share-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.os-reminder-share-btn svg {
+  width: 19px;
+  height: 19px;
+  fill: currentColor;
+}
+
+.os-reminder-share-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.os-reminder-share-whatsapp {
+  background: #16a34a;
+}
+
+.os-reminder-share-telegram {
+  background: #0284c7;
+}
+
+.os-reminder-share-facebook {
+  background: #1877f2;
+}
+
+.admin-post-share-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-post-share-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border: none;
+  border-radius: 999px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.admin-post-share-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.18);
+}
+
+.admin-post-share-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.admin-post-share-whatsapp {
+  background: #16a34a;
+}
+
+.admin-post-share-telegram {
+  background: #0284c7;
+}
+
+.admin-post-share-facebook {
+  background: #1877f2;
+}
+
+.os-home-panel-head .os-reminder-share-buttons,
+.os-reminder-head .os-reminder-share-buttons {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.os-home-panel-head:has(.os-reminder-share-buttons),
+.os-reminder-head:has(.os-reminder-share-buttons) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.os-home-panel-head:has(.os-reminder-share-buttons) h2,
+.os-reminder-head:has(.os-reminder-share-buttons) h2 {
+  min-width: 0;
+  margin: 0;
+  line-height: 1.2;
+}
+
+@media (min-width: 641px) {
+  .os-home-panel-head .os-reminder-share-btn,
+  .os-reminder-head .os-reminder-share-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .os-home-panel-head .os-reminder-share-btn svg,
+  .os-reminder-head .os-reminder-share-btn svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+@media (max-width: 640px) {
+  .os-reminder-share-buttons {
+    gap: 6px;
+  }
+
+  .os-reminder-share-btn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .os-home-panel-head:has(.os-reminder-share-buttons),
+  .os-reminder-head:has(.os-reminder-share-buttons) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .os-home-panel-head .os-reminder-share-buttons,
+  .os-reminder-head .os-reminder-share-buttons {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

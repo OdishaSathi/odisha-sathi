@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { AdmitCard, AdmitCardLink, AdmitCardStatus } from "@/types/admitCard";
 import { createAdmitCardSlug } from "@/lib/admitCards";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryOptions,
+} from "@/lib/adminSubCategories";
 
 type AdmitCardFormProps = {
   initialData?: AdmitCard | null;
@@ -10,6 +14,20 @@ type AdmitCardFormProps = {
   onCancel?: () => void;
   submitLabel?: string;
 };
+
+
+const ADMIT_CARD_BASE_CATEGORY_OPTIONS = [
+  { label: "Odisha Admit Cards & Exams", value: "odisha-admit-cards" },
+  { label: "Central Admit Cards & Exams", value: "central-admit-cards" },
+  { label: "Board Admit Cards & Exams", value: "board-admit-cards" },
+  { label: "University Admit Cards & Exams", value: "university-admit-cards" },
+  { label: "Entrance Admit Cards & Exams", value: "entrance-admit-cards" },
+  { label: "Recruitment Admit Cards & Exams", value: "recruitment-admit-cards" },
+  { label: "10th Admit Cards & Exams", value: "10th-admit-cards" },
+  { label: "+2 Admit Cards & Exams", value: "plus-two-admit-cards" },
+  { label: "+3 Admit Cards & Exams", value: "plus-three-admit-cards" },
+  { label: "Other Admit Cards & Exams", value: "other-admit-cards" },
+];
 
 const emptyLinks: AdmitCardLink[] = [
   {
@@ -31,10 +49,23 @@ const emptyForm: AdmitCard = {
   slug: "",
   examName: "",
   organization: "",
+  updateType: "admit-card",
+  updateTypeLabel: "Admit Card",
+  subCategory: "odisha-admit-cards",
+  subCategories: ["Odisha Admit Cards & Exams", "odisha-admit-cards"],
+  admitCardCategory: "Odisha Admit Cards & Exams",
+  admitCardCategories: ["Odisha Admit Cards & Exams"],
+  categoryName: "Odisha Admit Cards & Exams",
+  categorySlug: "odisha-admit-cards",
+  subCategorySlug: "odisha-admit-cards",
   admitCardDate: "",
+  admitCardDateDisplay: "",
   examDate: "",
+  examDateDisplay: "",
+  importantDates: [],
   description: "",
   youtubeUrl: "",
+  youtubeUrls: [],
   status: "Released",
   links: emptyLinks,
 };
@@ -46,7 +77,31 @@ export default function AdmitCardForm({
   submitLabel = "Save Admit Card",
 }: AdmitCardFormProps) {
   const [formData, setFormData] = useState<AdmitCard>(emptyForm);
+  const [admitCategoryOptions, setAdmitCategoryOptions] = useState(ADMIT_CARD_BASE_CATEGORY_OPTIONS);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadManagedAdmitCategories() {
+      try {
+        const managed = await getActiveAdminSubCategories("admit-cards");
+        if (isMounted) {
+          setAdmitCategoryOptions(
+            mergeSubCategoryOptions(ADMIT_CARD_BASE_CATEGORY_OPTIONS, managed)
+          );
+        }
+      } catch (error) {
+        console.warn("Could not load managed admit card subcategories.", error);
+      }
+    }
+
+    loadManagedAdmitCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -75,6 +130,46 @@ export default function AdmitCardForm({
       }
 
       return updated;
+    });
+  };
+
+  const updateAdmitCategory = (value: string) => {
+    const selected = admitCategoryOptions.find((item) => item.value === value);
+
+    setFormData((prev) => ({
+      ...prev,
+      subCategory: value,
+      subCategories: selected ? [selected.label, selected.value] : [value],
+      admitCardCategory: selected?.label || value,
+      admitCardCategories: selected ? [selected.label] : [value],
+      examCategory: selected?.label || value,
+      examCategories: selected ? [selected.label] : [value],
+      categoryName: selected?.label || value,
+      categorySlug: value,
+      subCategorySlug: value,
+    }));
+  };
+
+  const updateAdmitUpdateType = (value: "admit-card" | "exam") => {
+    setFormData((prev) => ({
+      ...prev,
+      updateType: value,
+      updateTypeLabel: value === "exam" ? "Exam" : "Admit Card",
+    }));
+  };
+
+  const updateYoutubeUrl = (index: number, value: string) => {
+    setFormData((prev) => {
+      const currentUrls = Array.isArray((prev as any).youtubeUrls)
+        ? [...((prev as any).youtubeUrls as string[])]
+        : [];
+
+      currentUrls[index] = value;
+
+      return {
+        ...prev,
+        youtubeUrls: currentUrls,
+      } as AdmitCard;
     });
   };
 
@@ -138,9 +233,53 @@ export default function AdmitCardForm({
     setIsSaving(true);
 
     try {
+      const cleanedYoutubeUrls = Array.isArray((formData as any).youtubeUrls)
+        ? ((formData as any).youtubeUrls as string[])
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 2)
+        : [];
+
+      const selectedCategory =
+        admitCategoryOptions.find(
+          (item) => item.value === (formData.subCategory || "")
+        ) || ADMIT_CARD_BASE_CATEGORY_OPTIONS[0];
+      const selectedUpdateType = formData.updateType === "exam" ? "exam" : "admit-card";
+
       await onSubmit({
         ...formData,
+        updateType: selectedUpdateType,
+        updateTypeLabel: selectedUpdateType === "exam" ? "Exam" : "Admit Card",
+        subCategory: selectedCategory.value,
+        subCategories: [selectedCategory.label, selectedCategory.value],
+        admitCardCategory: selectedCategory.label,
+        admitCardCategories: [selectedCategory.label],
+        examCategory: selectedCategory.label,
+        examCategories: [selectedCategory.label],
+        categoryName: selectedCategory.label,
+        categorySlug: selectedCategory.value,
+        subCategorySlug: selectedCategory.value,
         slug: createAdmitCardSlug(formData.slug || formData.title),
+        admitCardDate: (formData.admitCardDate || "").trim(),
+        admitCardDateDisplay: (formData.admitCardDateDisplay || "").trim(),
+        examDate: (formData.examDate || "").trim(),
+        examDateDisplay: (formData.examDateDisplay || "").trim(),
+        importantDates: [
+          {
+            label: "Admit Card Date",
+            value: (
+              formData.admitCardDateDisplay ||
+              formData.admitCardDate ||
+              ""
+            ).trim(),
+          },
+          {
+            label: "Exam Date",
+            value: (formData.examDateDisplay || formData.examDate || "").trim(),
+          },
+        ].filter((item) => item.value),
+        youtubeUrl: (formData.youtubeUrl || "").trim(),
+        youtubeUrls: cleanedYoutubeUrls,
       });
 
       if (!initialData) {
@@ -203,6 +342,33 @@ export default function AdmitCardForm({
         </div>
 
         <div className="admin-form-group">
+          <label>Update Type</label>
+          <select
+            value={formData.updateType || "admit-card"}
+            onChange={(event) =>
+              updateAdmitUpdateType(event.target.value as "admit-card" | "exam")
+            }
+          >
+            <option value="admit-card">Admit Card</option>
+            <option value="exam">Exam</option>
+          </select>
+        </div>
+
+        <div className="admin-form-group">
+          <label>Subcategory</label>
+          <select
+            value={formData.subCategory || "odisha-admit-cards"}
+            onChange={(event) => updateAdmitCategory(event.target.value)}
+          >
+            {admitCategoryOptions.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-form-group">
           <label>Admit Card Released Date</label>
           <input
             type="date"
@@ -210,6 +376,14 @@ export default function AdmitCardForm({
             onChange={(event) =>
               updateField("admitCardDate", event.target.value)
             }
+          />
+          <input
+            type="text"
+            value={formData.admitCardDateDisplay || ""}
+            onChange={(event) =>
+              updateField("admitCardDateDisplay", event.target.value)
+            }
+            placeholder="Optional display text: July 2026 / Coming Soon"
           />
         </div>
 
@@ -219,6 +393,12 @@ export default function AdmitCardForm({
             type="date"
             value={formData.examDate}
             onChange={(event) => updateField("examDate", event.target.value)}
+          />
+          <input
+            type="text"
+            value={formData.examDateDisplay || ""}
+            onChange={(event) => updateField("examDateDisplay", event.target.value)}
+            placeholder="Optional display text: Expected in July 2026"
           />
         </div>
 
@@ -237,11 +417,31 @@ export default function AdmitCardForm({
         </div>
 
         <div className="admin-form-group">
-          <label>YouTube Link</label>
+          <label>YouTube Video 1</label>
           <input
             type="url"
             value={formData.youtubeUrl || ""}
             onChange={(event) => updateField("youtubeUrl", event.target.value)}
+            placeholder="https://youtube.com/..."
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>YouTube Video 2</label>
+          <input
+            type="url"
+            value={((formData as any).youtubeUrls || [])[0] || ""}
+            onChange={(event) => updateYoutubeUrl(0, event.target.value)}
+            placeholder="https://youtube.com/..."
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>YouTube Video 3</label>
+          <input
+            type="url"
+            value={((formData as any).youtubeUrls || [])[1] || ""}
+            onChange={(event) => updateYoutubeUrl(1, event.target.value)}
             placeholder="https://youtube.com/..."
           />
         </div>

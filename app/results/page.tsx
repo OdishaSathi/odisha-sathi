@@ -1,182 +1,294 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getAllResults } from "@/lib/results";
-import { ResultPost } from "@/types/result";
+import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../lib/firebase";
+
+const RESULT_SUB_CATEGORIES = [
+  "Odisha Results",
+  "Central Results",
+  "Board Results",
+  "University Results",
+  "Entrance Results",
+  "Recruitment Results",
+  "10th Results",
+  "+2 Results",
+  "+3 Results",
+  "Other Results",
+];
+
+const RESULT_COLLECTIONS = ["posts", "results", "result"];
+
+const POSTS_PER_PAGE = 30;
+const LATEST_STACK_COUNT = 8;
 
 type ImportantDate = {
   label?: string;
   value?: string;
 };
 
-type ResultItem = ResultPost & {
-  createdAt?: any;
-  startDate?: string;
+type ResultPost = {
+  id: string;
+  title: string;
+  slug?: string;
+  content?: string;
+  category?: string;
+  subCategory?: string;
+  subCategories?: string[];
+  examName?: string;
+  postName?: string;
+  department?: string;
+  organization?: string;
   resultDate?: string;
-  lastDate?: string;
-  closingDate?: string;
-  endDate?: string;
+  resultDateDisplay?: string;
+  publishedDate?: string;
   importantDates?: ImportantDate[];
+  createdAt?: any;
+  sourceCollection?: string;
 };
 
-function getTimeValue(item: ResultItem) {
+function getTimeValue(item: ResultPost) {
   return item.createdAt?.seconds || 0;
+}
+
+function parseDateValue(value?: any) {
+  if (!value) return null;
+
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    const date = new Date(value.seconds * 1000);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const cleanValue = value.trim();
+  if (!cleanValue) return null;
+
+  const ddMmYyyy = cleanValue.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+
+  if (ddMmYyyy) {
+    const day = Number(ddMmYyyy[1]);
+    const month = Number(ddMmYyyy[2]);
+    const year = Number(ddMmYyyy[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const yyyyMmDd = cleanValue.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+
+  if (yyyyMmDd) {
+    const year = Number(yyyyMmDd[1]);
+    const month = Number(yyyyMmDd[2]);
+    const day = Number(yyyyMmDd[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const date = new Date(cleanValue);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  date.setHours(0, 0, 0, 0);
+  return date;
 }
 
 function formatDate(value?: any) {
   if (!value) return "";
 
-  if (typeof value === "object" && typeof value.seconds === "number") {
-    return new Date(value.seconds * 1000).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  const parsedDate = parseDateValue(value);
+
+  if (!parsedDate) {
+    return typeof value === "string" ? value.trim() : "";
   }
 
-  if (typeof value === "string") {
-    const cleanValue = value.trim();
-
-    if (!cleanValue) return "";
-
-    const date = new Date(cleanValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return cleanValue;
-    }
-
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  return "";
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function statusClass(status?: string) {
-  return (status || "updated").toLowerCase().replace(/\s+/g, "-");
+function getPublishedDate(item: ResultPost) {
+  return formatDate(item.createdAt || item.publishedDate);
 }
 
-function getPublishedDate(item: ResultItem) {
-  return formatDate(item.createdAt);
-}
-
-function getStartDate(item: ResultItem) {
-  const directDate = item.resultDate || item.startDate || "";
-
-  if (directDate) {
-    return formatDate(directDate);
-  }
+function getRawResultDate(item: ResultPost) {
+  if (item.resultDateDisplay) return item.resultDateDisplay;
+  if (item.resultDate) return item.resultDate;
 
   const matchedDate = item.importantDates?.find((dateItem) => {
     const label = (dateItem.label || "").toLowerCase();
 
     return (
       label.includes("result") ||
-      label.includes("start") ||
-      label.includes("published") ||
-      label.includes("declared")
+      label.includes("declaration") ||
+      label.includes("declared") ||
+      label.includes("publish")
     );
   });
 
-  return formatDate(matchedDate?.value);
+  return matchedDate?.value || "";
 }
 
-function getLastDate(item: ResultItem) {
-  const directDate = item.lastDate || item.closingDate || item.endDate || "";
-
-  if (directDate) {
-    return formatDate(directDate);
-  }
-
-  const matchedDate = item.importantDates?.find((dateItem) => {
-    const label = (dateItem.label || "").toLowerCase();
-
-    return (
-      label.includes("last") ||
-      label.includes("closing") ||
-      label.includes("end")
-    );
-  });
-
-  return formatDate(matchedDate?.value);
+function getResultDate(item: ResultPost) {
+  return formatDate(getRawResultDate(item));
 }
 
-function getMeta(item: ResultItem) {
-  const text =
+function getResultMeta(item: ResultPost) {
+  return (
     item.examName ||
+    item.postName ||
+    item.department ||
     item.organization ||
-    item.description ||
-    "Click to check result details, merit list, score card and official links.";
-
-  return text.length > 110 ? `${text.slice(0, 110)}...` : text;
+    "Result details available"
+  );
 }
 
-function ResultRow({ item }: { item: ResultItem }) {
-  const publishedDate = getPublishedDate(item);
-  const startDate = getStartDate(item);
-  const lastDate = getLastDate(item);
+function isResultPost(item: ResultPost) {
+  const category = (item.category || "").toLowerCase().trim();
+  const sourceCollection = (item.sourceCollection || "").toLowerCase().trim();
 
   return (
-    <Link href={`/results/${item.slug || item.id}`} className="os-list-row">
-      <div className="os-list-row-content">
-        <div className="os-list-title-line">
-          <h3>{item.title || "Untitled Result"}</h3>
+    sourceCollection === "results" ||
+    sourceCollection === "result" ||
+    category === "results" ||
+    category === "result"
+  );
+}
 
-          <div className="os-list-date-line">
-            {publishedDate ? (
-              <span className="os-date-published">
-                Published: {publishedDate}
-              </span>
-            ) : null}
+function getResultKey(item: ResultPost) {
+  return item.slug || item.id;
+}
 
-            {startDate ? (
-              <span className="os-date-start">Result: {startDate}</span>
-            ) : null}
+function LatestResultStack({
+  result,
+  index,
+}: {
+  result: ResultPost;
+  index: number;
+}) {
+  const resultDate = getResultDate(result);
+  const publishedDate = getPublishedDate(result);
+  const metaText = getResultMeta(result);
 
-            {lastDate ? (
-              <span className="os-date-end">Last: {lastDate}</span>
-            ) : null}
-          </div>
-        </div>
+  return (
+    <Link
+      href={`/post/${result.slug || result.id}`}
+      className={`os-result-stack-card os-result-stack-color-${index % 8}`}
+    >
+      <h3>{result.title || "Untitled Result"}</h3>
 
-        <div className="os-list-tag-row">
-          <span className={`os-status-pill os-status-${statusClass(item.status)}`}>
-            {item.status || "Updated"}
+      <p>{metaText}</p>
+
+      <div className="os-result-stack-date-row">
+        {resultDate ? (
+          <span className="os-result-date">Result Date - {resultDate}</span>
+        ) : null}
+
+        {publishedDate ? (
+          <span className="os-result-published">
+            Published - {publishedDate}
           </span>
-
-          {item.organization ? <span>{item.organization}</span> : null}
-        </div>
-
-        <p>{getMeta(item)}</p>
+        ) : null}
       </div>
+    </Link>
+  );
+}
 
-      <span className="os-list-arrow">›</span>
+function AllResultItem({ result }: { result: ResultPost }) {
+  const publishedDate = getPublishedDate(result);
+
+  return (
+    <Link
+      href={`/post/${result.slug || result.id}`}
+      className="os-all-result-item"
+    >
+      <h3>{result.title || "Untitled Result"}</h3>
+
+      {publishedDate ? (
+        <span>Published: {publishedDate}</span>
+      ) : (
+        <span>Published date not available</span>
+      )}
     </Link>
   );
 }
 
 export default function ResultsPage() {
-  const [results, setResults] = useState<ResultItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [results, setResults] = useState<ResultPost[]>([]);
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
+  const [loading, setLoading] = useState(true);
+
+  const latestResults = results.slice(0, LATEST_STACK_COUNT);
+  const visibleResults = results.slice(0, visibleCount);
+  const canViewMore = visibleCount < results.length;
 
   useEffect(() => {
     const loadResults = async () => {
       try {
-        const data = await getAllResults();
+        setLoading(true);
 
-        const sortedData = (data as ResultItem[])
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a))
-          .slice(0, 10);
+        const allResults: ResultPost[] = [];
 
-        setResults(sortedData);
+        for (const collectionName of RESULT_COLLECTIONS) {
+          const snapshot = await getDocs(collection(db, collectionName));
+
+          snapshot.docs.forEach((docItem) => {
+            const data = docItem.data();
+
+            allResults.push({
+              id: docItem.id,
+              title: data.title || "",
+              slug: data.slug || "",
+              content: data.content || data.description || "",
+              category: data.category || "",
+              subCategory: data.subCategory || "",
+              subCategories: Array.isArray(data.subCategories)
+                ? data.subCategories
+                : data.subCategory
+                ? [data.subCategory]
+                : [],
+              examName: data.examName || data.exam || "",
+              postName: data.postName || data.resultPostName || data.post || "",
+              department: data.department || "",
+              organization: data.organization || "",
+              resultDate:
+                data.resultDate ||
+                data.resultDeclarationDate ||
+                data.resultDeclaredDate ||
+                "",
+              resultDateDisplay:
+                data.resultDateDisplay ||
+                data.resultDisplayDate ||
+                data.displayResultDate ||
+                "",
+              publishedDate: data.publishedDate || "",
+              importantDates: data.importantDates || [],
+              createdAt: data.createdAt || null,
+              sourceCollection: collectionName,
+            });
+          });
+        }
+
+        const uniqueResults = Array.from(
+          new Map(
+            allResults
+              .filter((item) => isResultPost(item))
+              .map((item) => [getResultKey(item), item])
+          ).values()
+        ).sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
+        setResults(uniqueResults);
+        setVisibleCount(POSTS_PER_PAGE);
       } catch (error) {
         console.error(error);
+        alert("Failed to load results");
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -187,55 +299,90 @@ export default function ResultsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>Odisha Sathi Results</p>
-          <h1>Latest Results</h1>
-          <span>
-            Exam results, merit lists, score cards and official result updates.
-          </span>
+          <p>ODISHA SATHI RESULTS  (Find all the result updates in this page)</p>
         </section>
 
         <section className="os-results-layout">
           <div className="os-results-main">
             <section className="os-list-section">
               <div className="os-list-section-head">
-                <h2>Recently Added Results</h2>
-                <span>{results.length} Updates</span>
+                <h2>Latest Results</h2>
               </div>
 
-              {isLoading ? (
+              {loading ? (
                 <p className="os-list-status">Loading results...</p>
-              ) : results.length === 0 ? (
-                <p className="os-list-status">
-                  No result updates found. Please check again later.
-                </p>
+              ) : latestResults.length === 0 ? (
+                <p className="os-list-status">No results found.</p>
               ) : (
-                <div className="os-list-board">
-                  {results.map((item) => (
-                    <ResultRow key={item.id} item={item} />
+                <div className="os-result-stack-grid">
+                  {latestResults.map((result, index) => (
+                    <LatestResultStack
+                      key={result.id}
+                      result={result}
+                      index={index}
+                    />
                   ))}
                 </div>
+              )}
+            </section>
+
+            <section className="os-list-section">
+              <div className="os-list-section-head">
+                <h2>All Results</h2>
+              </div>
+
+              {loading ? (
+                <p className="os-list-status">Loading results...</p>
+              ) : results.length === 0 ? (
+                <p className="os-list-status">No results found.</p>
+              ) : (
+                <>
+                  <div className="os-all-result-grid">
+                    {visibleResults.map((result) => (
+                      <AllResultItem key={result.id} result={result} />
+                    ))}
+                  </div>
+
+                  {canViewMore ? (
+                    <div className="os-view-more-wrap">
+                      <button
+                        type="button"
+                        className="os-view-more-btn"
+                        onClick={() =>
+                          setVisibleCount((current) => current + POSTS_PER_PAGE)
+                        }
+                      >
+                        View More
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               )}
             </section>
           </div>
 
           <aside className="os-results-sidebar">
             <section className="os-side-card">
+              <h2>Result Categories</h2>
+
+              <div className="os-side-category-list">
+                {RESULT_SUB_CATEGORIES.map((item) => (
+                  <Link key={item} href={`/results/${encodeURIComponent(item)}`}>
+                    {item}
+                  </Link>
+                ))}
+              </div>
+            </section>
+
+            <section className="os-side-card">
               <h2>Quick Access</h2>
 
               <Link href="/jobs">Latest Jobs</Link>
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
-              <Link href="/admit-cards">Admit Cards</Link>
+              <Link href="/admit-cards">Admit Cards & Exams</Link>
               <Link href="/schemes">Schemes</Link>
               <Link href="/tools">Tools</Link>
-            </section>
-
-            <section className="os-side-card os-side-note">
-              <h2>Result Updates</h2>
-              <p>
-                Check this page regularly for exam results, merit lists, score
-                cards and official result links.
-              </p>
             </section>
           </aside>
         </section>
@@ -261,31 +408,13 @@ export default function ResultsPage() {
         }
 
         .os-list-top p {
-          margin: 0 0 5px;
-          color: #ea580c;
-          font-size: 13px;
-          line-height: 1.2;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .os-list-top h1 {
           margin: 0;
-          color: #0f172a;
-          font-size: 32px;
-          line-height: 1.12;
+          color: #c2410c;
+          font-size: 13px;
+          line-height: 1.35;
           font-weight: 900;
-          letter-spacing: -0.04em;
-        }
-
-        .os-list-top span {
-          display: block;
-          margin-top: 6px;
-          color: #475569;
-          font-size: 14px;
-          line-height: 1.45;
-          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
         }
 
         .os-results-layout {
@@ -296,6 +425,8 @@ export default function ResultsPage() {
         }
 
         .os-results-main {
+          display: grid;
+          gap: 16px;
           min-width: 0;
         }
 
@@ -327,139 +458,154 @@ export default function ResultsPage() {
           letter-spacing: -0.025em;
         }
 
-        .os-list-section-head span {
-          color: #64748b;
-          font-size: 13px;
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .os-list-board {
+        .os-result-stack-grid {
           display: grid;
-        }
-
-        .os-list-row {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 12px;
-          padding: 13px 16px;
+          padding: 14px;
+        }
+
+        .os-result-stack-card {
+          min-height: 112px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          border-radius: 10px;
+          text-decoration: none;
+          color: #0f172a;
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+          transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-result-stack-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09);
+        }
+
+        .os-result-stack-card h3 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 14.5px;
+          line-height: 1.3;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+        }
+
+        .os-result-stack-card p {
+          margin: 0;
+          color: #1f2937;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 800;
+        }
+
+        .os-result-stack-date-row {
+          display: grid;
+          gap: 4px;
+          margin-top: auto;
+        }
+
+        .os-result-stack-date-row span {
+          font-size: 12px;
+          line-height: 1.2;
+          font-weight: 900;
+        }
+
+        .os-result-date {
+          color: #166534;
+        }
+
+        .os-result-published {
+          color: #334155;
+        }
+
+        .os-result-stack-color-0 {
+          background: linear-gradient(135deg, #fff7ed, #fed7aa);
+        }
+
+        .os-result-stack-color-1 {
+          background: linear-gradient(135deg, #eff6ff, #bfdbfe);
+        }
+
+        .os-result-stack-color-2 {
+          background: linear-gradient(135deg, #ecfdf5, #86efac);
+        }
+
+        .os-result-stack-color-3 {
+          background: linear-gradient(135deg, #fff1f2, #fecdd3);
+        }
+
+        .os-result-stack-color-4 {
+          background: linear-gradient(135deg, #f5f3ff, #ddd6fe);
+        }
+
+        .os-result-stack-color-5 {
+          background: linear-gradient(135deg, #fefce8, #fde68a);
+        }
+
+        .os-result-stack-color-6 {
+          background: linear-gradient(135deg, #ecfeff, #a5f3fc);
+        }
+
+        .os-result-stack-color-7 {
+          background: linear-gradient(135deg, #fdf2f8, #fbcfe8);
+        }
+
+        .os-all-result-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .os-all-result-item {
+          min-height: 62px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: center;
+          flex-direction: column;
+          gap: 5px;
+          padding: 12px 14px;
           text-decoration: none;
           color: inherit;
           background: #ffffff;
+          border-right: 1px solid #f1f5f9;
           border-bottom: 1px solid #f1f5f9;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease;
         }
 
-        .os-list-row:last-child {
-          border-bottom: none;
+        .os-all-result-item:nth-child(2n) {
+          border-right: none;
         }
 
-        .os-list-row:hover {
+        .os-all-result-item:hover {
           background: #fff7ed;
         }
 
-        .os-list-row-content {
-          min-width: 0;
-        }
-
-        .os-list-title-line {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: start;
-          gap: 12px;
-        }
-
-        .os-list-row h3 {
+        .os-all-result-item h3 {
           margin: 0;
           color: #1d4ed8;
-          font-size: 15.5px;
-          line-height: 1.38;
-          font-weight: 800;
+          font-size: 14px;
+          line-height: 1.35;
+          font-weight: 900;
           letter-spacing: -0.01em;
-          transition: color 0.15s ease;
         }
 
-        .os-list-row:hover h3,
-        .os-list-row:hover .os-list-arrow {
+        .os-all-result-item:hover h3 {
           color: #ea580c;
         }
 
-        .os-list-date-line {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          gap: 5px;
-          max-width: 390px;
-        }
-
-        .os-list-date-line span {
-          color: #475569;
+        .os-all-result-item span {
+          color: #64748b;
           font-size: 12px;
           line-height: 1.2;
           font-weight: 800;
-          white-space: nowrap;
-          transition: color 0.15s ease;
-        }
-
-        .os-list-row:hover .os-date-start {
-          color: #16a34a;
-        }
-
-        .os-list-row:hover .os-date-end {
-          color: #dc2626;
-        }
-
-        .os-list-tag-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin-top: 8px;
-        }
-
-        .os-list-tag-row span {
-          display: inline-flex;
-          width: fit-content;
-          padding: 4px 8px;
-          border-radius: 999px;
-          background: #f8fafc;
-          color: #475569;
-          border: 1px solid #e2e8f0;
-          font-size: 11px;
-          line-height: 1;
-          font-weight: 800;
-        }
-
-        .os-list-tag-row .os-status-pill {
-          background: #eff6ff;
-          color: #1d4ed8;
-          border-color: #bfdbfe;
-        }
-
-        .os-list-row p {
-          margin: 6px 0 0;
-          color: #64748b;
-          font-size: 13px;
-          line-height: 1.45;
-          font-weight: 500;
-        }
-
-        .os-list-arrow {
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
-          font-size: 22px;
-          line-height: 1;
-          font-weight: 700;
-          transition: color 0.15s ease, background 0.15s ease;
-        }
-
-        .os-list-row:hover .os-list-arrow {
-          background: #ffedd5;
         }
 
         .os-list-status {
@@ -468,6 +614,39 @@ export default function ResultsPage() {
           color: #64748b;
           font-size: 14px;
           line-height: 1.5;
+          font-weight: 600;
+        }
+
+        .os-view-more-wrap {
+          display: flex;
+          justify-content: center;
+          padding: 16px;
+          border-top: 1px solid #f1f5f9;
+          background: #ffffff;
+        }
+
+        .os-view-more-btn {
+          min-width: 150px;
+          min-height: 42px;
+          padding: 10px 22px;
+          border: none;
+          border-radius: 999px;
+          background: #0b63ce;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-view-more-btn:hover {
+          background: #e85d04;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(232, 93, 4, 0.2);
         }
 
         .os-results-sidebar {
@@ -494,7 +673,9 @@ export default function ResultsPage() {
           text-decoration: none;
           font-size: 14px;
           font-weight: 800;
-          transition: color 0.15s ease, background 0.15s ease;
+          transition:
+            color 0.15s ease,
+            background 0.15s ease;
         }
 
         .os-side-card a:last-child {
@@ -506,12 +687,24 @@ export default function ResultsPage() {
           text-decoration: underline;
         }
 
-        .os-side-note p {
-          margin: 0;
-          color: #64748b;
-          font-size: 14px;
-          line-height: 1.6;
-          font-weight: 500;
+        .os-side-category-list {
+          display: grid;
+        }
+
+        .os-side-category-list a {
+          border-radius: 10px;
+          padding: 10px 8px;
+        }
+
+        .os-side-category-list a:hover {
+          background: #fff7ed;
+          text-decoration: none;
+        }
+
+        @media (max-width: 1000px) {
+          .os-result-stack-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 900px) {
@@ -520,12 +713,8 @@ export default function ResultsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top h1 {
-            font-size: 26px;
-          }
-
-          .os-list-top span {
-            font-size: 13px;
+          .os-list-top p {
+            font-size: 12px;
           }
 
           .os-results-layout {
@@ -536,34 +725,35 @@ export default function ResultsPage() {
             position: static;
           }
 
-          .os-list-row {
-            padding: 13px 14px;
-          }
-
-          .os-list-title-line {
-            grid-template-columns: 1fr;
-            gap: 6px;
-          }
-
-          .os-list-date-line {
-            justify-content: flex-start;
-            max-width: 100%;
-          }
-
-          .os-list-row h3 {
-            font-size: 15px;
-          }
-
-          .os-list-date-line span {
-            font-size: 12px;
-          }
-
-          .os-list-row p {
-            font-size: 12.8px;
-          }
-
           .os-list-section-head {
             padding: 13px 14px;
+          }
+
+          .os-view-more-wrap {
+            padding: 14px;
+          }
+
+          .os-view-more-btn {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .os-result-stack-grid {
+            grid-template-columns: 1fr;
+            padding: 12px;
+          }
+
+          .os-all-result-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .os-all-result-item {
+            border-right: none;
+          }
+
+          .os-result-stack-card {
+            min-height: 104px;
           }
         }
       `}</style>

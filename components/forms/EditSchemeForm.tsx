@@ -51,13 +51,17 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
   const [eligibility, setEligibility] = useState("");
   const [benefit, setBenefit] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [startDateDisplay, setStartDateDisplay] = useState("");
   const [lastDate, setLastDate] = useState("");
+  const [lastDateDisplay, setLastDateDisplay] = useState("");
   const [description, setDescription] = useState("");
   const [officialSite, setOfficialSite] = useState("");
   const [officialPdf, setOfficialPdf] = useState("");
   const [applyLink, setApplyLink] = useState("");
   const [notificationLink, setNotificationLink] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeUrl2, setYoutubeUrl2] = useState("");
+  const [youtubeUrl3, setYoutubeUrl3] = useState("");
   const [schemeStatus, setSchemeStatus] = useState("active");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -131,13 +135,21 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
         setEligibility(data.eligibility || "");
         setBenefit(data.benefit || data.amountBenefit || "");
         setStartDate(data.startDate || data.applicationStartDate || "");
+        setStartDateDisplay(data.startDateDisplay || "");
         setLastDate(data.lastDate || "");
+        setLastDateDisplay(data.lastDateDisplay || "");
         setDescription(data.description || data.content || "");
         setOfficialSite(data.officialSite || "");
         setOfficialPdf(data.officialPdf || data.guidelinePdfLink || "");
         setApplyLink(data.applyLink || data.applicationLink || "");
         setNotificationLink(data.notificationLink || "");
+        const savedYoutubeUrls = Array.isArray(data.youtubeUrls)
+          ? data.youtubeUrls
+          : [];
+
         setYoutubeUrl(data.youtubeUrl || "");
+        setYoutubeUrl2(savedYoutubeUrls[0] || data.youtubeUrl2 || data.videoUrl2 || "");
+        setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
         setSchemeStatus(data.status === "closed" ? "closed" : "active");
       } catch (error) {
         console.error(error);
@@ -188,9 +200,13 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
       const slug = makeSlug(schemeName);
 
       const importantDates = [
-        { label: "Application Start Date", value: startDate },
-        { label: "Last Date", value: lastDate },
+        { label: "Application Start Date", value: startDateDisplay.trim() || startDate },
+        { label: "Last Date", value: lastDateDisplay.trim() || lastDate },
       ].filter((item) => item.value);
+
+      const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
+        .map((item) => item.trim())
+        .filter(Boolean);
 
       const importantLinks = [
         { label: "Official Site", url: officialSite.trim() },
@@ -211,7 +227,9 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
         eligibility: eligibility.trim(),
         benefit: benefit.trim(),
         startDate,
+        startDateDisplay: startDateDisplay.trim(),
         lastDate,
+        lastDateDisplay: lastDateDisplay.trim(),
         description: description.trim(),
         content: description.trim(),
         officialSite: officialSite.trim(),
@@ -219,6 +237,7 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
         applyLink: applyLink.trim(),
         notificationLink: notificationLink.trim(),
         youtubeUrl: youtubeUrl.trim(),
+        youtubeUrls: cleanedYoutubeUrls,
         status: schemeStatus,
         published: true,
         importantDates,
@@ -322,6 +341,13 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
             onChange={(e) => setStartDate(e.target.value)}
             style={fieldStyle()}
           />
+          <input
+            type="text"
+            value={startDateDisplay}
+            onChange={(e) => setStartDateDisplay(e.target.value)}
+            placeholder="Optional display: July 2026 / Coming Soon"
+            style={fieldStyle()}
+          />
         </div>
 
         <div>
@@ -330,6 +356,13 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
             type="date"
             value={lastDate}
             onChange={(e) => setLastDate(e.target.value)}
+            style={fieldStyle()}
+          />
+          <input
+            type="text"
+            value={lastDateDisplay}
+            onChange={(e) => setLastDateDisplay(e.target.value)}
+            placeholder="Optional display: Expected in July 2026"
             style={fieldStyle()}
           />
         </div>
@@ -393,15 +426,45 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
         />
       </div>
 
-      <div>
-        <label>YouTube Video Link</label>
-        <input
-          type="url"
-          placeholder="https://www.youtube.com/watch?v=..."
-          value={youtubeUrl}
-          onChange={(e) => setYoutubeUrl(e.target.value)}
-          style={fieldStyle()}
-        />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "14px",
+        }}
+      >
+        <div>
+          <label>YouTube Video 1</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl}
+            onChange={(e) => setYoutubeUrl(e.target.value)}
+            style={fieldStyle()}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 2</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl2}
+            onChange={(e) => setYoutubeUrl2(e.target.value)}
+            style={fieldStyle()}
+          />
+        </div>
+
+        <div>
+          <label>YouTube Video 3</label>
+          <input
+            type="url"
+            placeholder="https://www.youtube.com/watch?v=..."
+            value={youtubeUrl3}
+            onChange={(e) => setYoutubeUrl3(e.target.value)}
+            style={fieldStyle()}
+          />
+        </div>
       </div>
 
       <div>

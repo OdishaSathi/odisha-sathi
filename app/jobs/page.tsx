@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -18,9 +19,22 @@ const JOB_SUB_CATEGORIES = [
   "Post Graduate Jobs",
 ];
 
+const POSTS_PER_PAGE = 30;
+const LATEST_STACK_COUNT = 8;
+
 type ImportantDate = {
   label?: string;
   value?: string;
+};
+
+type QuickInfoPanel = {
+  organization?: string;
+  department?: string;
+  postName?: string;
+  totalVacancy?: string;
+  qualification?: string;
+  ageLimit?: string;
+  salary?: string;
 };
 
 type JobPost = {
@@ -33,8 +47,11 @@ type JobPost = {
   subCategories?: string[];
   department?: string;
   organization?: string;
+  postName?: string;
+  postNames?: string[];
   startDate?: string;
   applicationStartDate?: string;
+  applicationOpenDate?: string;
   openingDate?: string;
   lastDate?: string;
   applicationLastDate?: string;
@@ -42,6 +59,7 @@ type JobPost = {
   closingDate?: string;
   endDate?: string;
   importantDates?: ImportantDate[];
+  quickInfoPanels?: QuickInfoPanel[];
   createdAt?: any;
 };
 
@@ -49,49 +67,78 @@ function getTimeValue(item: JobPost) {
   return item.createdAt?.seconds || 0;
 }
 
+function parseDateValue(value?: any) {
+  if (!value) return null;
+
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    const date = new Date(value.seconds * 1000);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  if (typeof value !== "string") return null;
+
+  const cleanValue = value.trim();
+
+  if (!cleanValue) return null;
+
+  const ddMmYyyy = cleanValue.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+
+  if (ddMmYyyy) {
+    const day = Number(ddMmYyyy[1]);
+    const month = Number(ddMmYyyy[2]);
+    const year = Number(ddMmYyyy[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const yyyyMmDd = cleanValue.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+
+  if (yyyyMmDd) {
+    const year = Number(yyyyMmDd[1]);
+    const month = Number(yyyyMmDd[2]);
+    const day = Number(yyyyMmDd[3]);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  const date = new Date(cleanValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 function formatDate(value?: any) {
   if (!value) return "";
 
-  if (typeof value === "object" && typeof value.seconds === "number") {
-    return new Date(value.seconds * 1000).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  const parsedDate = parseDateValue(value);
+
+  if (!parsedDate) {
+    return typeof value === "string" ? value.trim() : "";
   }
 
-  if (typeof value === "string") {
-    const cleanValue = value.trim();
-
-    if (!cleanValue) return "";
-
-    const date = new Date(cleanValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return cleanValue;
-    }
-
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
-  return "";
+  return parsedDate.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
-function getPublishedDate(item: JobPost) {
-  return formatDate(item.createdAt);
-}
-
-function getStartDate(item: JobPost) {
+function getRawStartDate(item: JobPost) {
   const directDate =
-    item.startDate || item.applicationStartDate || item.openingDate || "";
+    item.startDate ||
+    item.applicationStartDate ||
+    item.applicationOpenDate ||
+    item.openingDate ||
+    "";
 
-  if (directDate) {
-    return formatDate(directDate);
-  }
+  if (directDate) return directDate;
 
   const matchedDate = item.importantDates?.find((dateItem) => {
     const label = (dateItem.label || "").toLowerCase();
@@ -103,10 +150,10 @@ function getStartDate(item: JobPost) {
     );
   });
 
-  return formatDate(matchedDate?.value);
+  return matchedDate?.value || "";
 }
 
-function getLastDate(item: JobPost) {
+function getRawLastDate(item: JobPost) {
   const directDate =
     item.lastDate ||
     item.applicationLastDate ||
@@ -115,9 +162,7 @@ function getLastDate(item: JobPost) {
     item.endDate ||
     "";
 
-  if (directDate) {
-    return formatDate(directDate);
-  }
+  if (directDate) return directDate;
 
   const matchedDate = item.importantDates?.find((dateItem) => {
     const label = (dateItem.label || "").toLowerCase();
@@ -129,66 +174,157 @@ function getLastDate(item: JobPost) {
     );
   });
 
-  return formatDate(matchedDate?.value);
+  return matchedDate?.value || "";
 }
 
-function getMeta(item: JobPost) {
-  const text =
-    item.department ||
-    item.organization ||
-    item.content ||
-    "Click to read full job details, eligibility, important dates and links.";
-
-  return text.length > 110 ? `${text.slice(0, 110)}...` : text;
+function getPublishedDate(item: JobPost) {
+  return formatDate(item.createdAt);
 }
 
-function JobRow({ job }: { job: JobPost }) {
-  const publishedDate = getPublishedDate(job);
+function getStartDate(item: JobPost) {
+  return formatDate(getRawStartDate(item));
+}
+
+function getLastDate(item: JobPost) {
+  return formatDate(getRawLastDate(item));
+}
+
+function getPostName(item: JobPost) {
+  if (Array.isArray(item.postNames) && item.postNames.length > 0) {
+    return item.postNames.filter(Boolean).join(", ");
+  }
+
+  if (item.postName) return item.postName;
+
+  const quickInfoPostNames =
+    item.quickInfoPanels
+      ?.map((panel) => panel.postName)
+      .filter(Boolean)
+      .join(", ") || "";
+
+  if (quickInfoPostNames) return quickInfoPostNames;
+
+  return item.department || item.organization || "Post details available";
+}
+
+function isDeadlineWithinNext7Days(item: JobPost) {
+  const lastDate = parseDateValue(getRawLastDate(item));
+
+  if (!lastDate) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const nextSevenDays = new Date(today);
+  nextSevenDays.setDate(today.getDate() + 7);
+
+  return lastDate >= today && lastDate <= nextSevenDays;
+}
+
+function LatestJobStack({ job, index }: { job: JobPost; index: number }) {
   const startDate = getStartDate(job);
   const lastDate = getLastDate(job);
+  const postName = getPostName(job);
 
   return (
-    <Link href={`/post/${job.slug || job.id}`} className="os-list-row">
-      <div className="os-list-row-content">
-        <div className="os-list-title-line">
-          <h3>{job.title || "Untitled Job"}</h3>
+    <Link
+      href={`/post/${job.slug || job.id}`}
+      className={`os-job-stack-card os-job-stack-color-${index % 8}`}
+    >
+      <h3>{job.title || "Untitled Job"}</h3>
 
-          <div className="os-list-date-line">
-            {publishedDate ? (
-              <span className="os-date-published">
-                Published: {publishedDate}
-              </span>
-            ) : null}
+      <p>{postName}</p>
 
-            {startDate ? (
-              <span className="os-date-start">Start: {startDate}</span>
-            ) : null}
-
-            {lastDate ? (
-              <span className="os-date-end">Last: {lastDate}</span>
-            ) : null}
-          </div>
-        </div>
-
-        {job.subCategories && job.subCategories.length > 0 ? (
-          <div className="os-list-tag-row">
-            {job.subCategories.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
-          </div>
+      <div className="os-job-stack-date-row">
+        {startDate ? (
+          <span className="os-job-stack-start">Start Date - {startDate}</span>
         ) : null}
 
-        <p>{getMeta(job)}</p>
+        {lastDate ? (
+          <span className="os-job-stack-end">Last Date - {lastDate}</span>
+        ) : null}
       </div>
-
-      <span className="os-list-arrow">›</span>
     </Link>
   );
 }
 
+function AllJobItem({ job }: { job: JobPost }) {
+  const publishedDate = getPublishedDate(job);
+
+  return (
+    <Link href={`/post/${job.slug || job.id}`} className="os-all-job-item">
+      <h3>{job.title || "Untitled Job"}</h3>
+
+      {publishedDate ? (
+        <span>Published: {publishedDate}</span>
+      ) : (
+        <span>Published date not available</span>
+      )}
+    </Link>
+  );
+}
+
+function ReminderItem({ job }: { job: JobPost }) {
+  const lastDate = getLastDate(job);
+
+  return (
+    <Link href={`/post/${job.slug || job.id}`} className="os-reminder-item">
+      <span>{job.title || "Untitled Job"}</span>
+      {lastDate ? <strong>Last Date: {lastDate}</strong> : null}
+    </Link>
+  );
+}
+
+function buildReminderShareText(reminderJobs: JobPost[], origin: string) {
+  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
+
+  reminderJobs.forEach((job, index) => {
+    const title = job.title || "Untitled Job";
+    const lastDate = getLastDate(job) || "Date not available";
+    const postLink = `${origin}/post/${job.slug || job.id}`;
+
+    lines.push(title);
+    lines.push(`Last Date: ${lastDate}`);
+    lines.push(postLink);
+
+    if (index < reminderJobs.length - 1) {
+      lines.push("");
+    }
+  });
+
+  return lines.join("\n");
+}
+
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobPost[]>([]);
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
   const [loading, setLoading] = useState(true);
+
+  const latestJobs = jobs.slice(0, LATEST_STACK_COUNT);
+  const visibleJobs = jobs.slice(0, visibleCount);
+  const canViewMore = visibleCount < jobs.length;
+
+  const reminderJobs = jobs
+    .filter((job) => isDeadlineWithinNext7Days(job))
+    .sort((a, b) => {
+      const dateA = parseDateValue(getRawLastDate(a))?.getTime() || 0;
+      const dateB = parseDateValue(getRawLastDate(b))?.getTime() || 0;
+
+      return dateA - dateB;
+    });
+
+  const handleShareReminder = () => {
+    if (reminderJobs.length === 0) return;
+
+    const shareText = buildReminderShareText(
+      reminderJobs,
+      window.location.origin
+    );
+
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  };
 
   useEffect(() => {
     const loadJobs = async () => {
@@ -215,6 +351,8 @@ export default function JobsPage() {
                 : [],
               department: data.department || "",
               organization: data.organization || "",
+              postName: data.postName || data.jobPostName || data.post || "",
+              postNames: Array.isArray(data.postNames) ? data.postNames : [],
               startDate:
                 data.startDate ||
                 data.applicationStartDate ||
@@ -222,6 +360,7 @@ export default function JobsPage() {
                 data.openingDate ||
                 "",
               applicationStartDate: data.applicationStartDate || "",
+              applicationOpenDate: data.applicationOpenDate || "",
               openingDate: data.openingDate || "",
               lastDate:
                 data.lastDate ||
@@ -235,14 +374,17 @@ export default function JobsPage() {
               closingDate: data.closingDate || "",
               endDate: data.endDate || "",
               importantDates: data.importantDates || [],
+              quickInfoPanels: Array.isArray(data.quickInfoPanels)
+                ? data.quickInfoPanels
+                : [],
               createdAt: data.createdAt || null,
             };
           })
           .filter((item) => item.category === "jobs")
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a))
-          .slice(0, 10);
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
 
         setJobs(jobList);
+        setVisibleCount(POSTS_PER_PAGE);
       } catch (error) {
         console.error(error);
         alert("Failed to load jobs");
@@ -258,20 +400,32 @@ export default function JobsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>Odisha Sathi Jobs</p>
-          <h1>Latest Jobs</h1>
-          <span>
-            Odisha jobs, central jobs, apprenticeship, 10th, ITI, diploma and
-            graduate job updates.
-          </span>
+          <p>ODISHA SATHI JOBS  (Find all the jobs updates in this page)</p>
         </section>
 
         <section className="os-jobs-layout">
           <div className="os-jobs-main">
+            <section className="os-list-section os-latest-stack-section">
+              <div className="os-list-section-head">
+                <h2>Latest Jobs</h2>
+              </div>
+
+              {loading ? (
+                <p className="os-list-status">Loading jobs...</p>
+              ) : latestJobs.length === 0 ? (
+                <p className="os-list-status">No jobs found.</p>
+              ) : (
+                <div className="os-job-stack-grid">
+                  {latestJobs.map((job, index) => (
+                    <LatestJobStack key={job.id} job={job} index={index} />
+                  ))}
+                </div>
+              )}
+            </section>
+
             <section className="os-list-section">
               <div className="os-list-section-head">
-                <h2>Recently Added Jobs</h2>
-                <span>{jobs.length} Updates</span>
+                <h2>All Jobs</h2>
               </div>
 
               {loading ? (
@@ -279,11 +433,27 @@ export default function JobsPage() {
               ) : jobs.length === 0 ? (
                 <p className="os-list-status">No jobs found.</p>
               ) : (
-                <div className="os-list-board">
-                  {jobs.map((job) => (
-                    <JobRow key={job.id} job={job} />
-                  ))}
-                </div>
+                <>
+                  <div className="os-all-job-grid">
+                    {visibleJobs.map((job) => (
+                      <AllJobItem key={job.id} job={job} />
+                    ))}
+                  </div>
+
+                  {canViewMore ? (
+                    <div className="os-view-more-wrap">
+                      <button
+                        type="button"
+                        className="os-view-more-btn"
+                        onClick={() =>
+                          setVisibleCount((current) => current + POSTS_PER_PAGE)
+                        }
+                      >
+                        View More
+                      </button>
+                    </div>
+                  ) : null}
+                </>
               )}
             </section>
           </div>
@@ -307,17 +477,37 @@ export default function JobsPage() {
               <Link href="/jobs">Latest Jobs</Link>
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
-              <Link href="/admit-cards">Admit Cards</Link>
+              <Link href="/admit-cards">Admit Cards & Exams</Link>
               <Link href="/schemes">Schemes</Link>
               <Link href="/tools">Tools</Link>
             </section>
 
-            <section className="os-side-card os-side-note">
-              <h2>Job Updates</h2>
-              <p>
-                Check this page regularly for Odisha and central government job
-                updates with important dates and useful links.
-              </p>
+            <section className="os-side-card os-reminder-card">
+              <div className="os-reminder-head">
+                <h2>Last Date Reminder</h2>
+
+                <ReminderShareButtons
+                  getShareText={() =>
+                    buildReminderShareText(reminderJobs, window.location.origin)
+                  }
+                  disabled={loading || reminderJobs.length === 0}
+                  label="Last Date Reminder"
+                />
+              </div>
+
+              {loading ? (
+                <p className="os-side-status">Loading reminders...</p>
+              ) : reminderJobs.length === 0 ? (
+                <p className="os-side-status">
+                  No job deadline in the next 7 days.
+                </p>
+              ) : (
+                <div className="os-reminder-list">
+                  {reminderJobs.map((job) => (
+                    <ReminderItem key={job.id} job={job} />
+                  ))}
+                </div>
+              )}
             </section>
           </aside>
         </section>
@@ -343,31 +533,13 @@ export default function JobsPage() {
         }
 
         .os-list-top p {
-          margin: 0 0 5px;
-          color: #ea580c;
-          font-size: 13px;
-          line-height: 1.2;
-          font-weight: 900;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
-        }
-
-        .os-list-top h1 {
           margin: 0;
-          color: #0f172a;
-          font-size: 32px;
-          line-height: 1.12;
+          color: #c2410c;
+          font-size: 13px;
+          line-height: 1.35;
           font-weight: 900;
-          letter-spacing: -0.04em;
-        }
-
-        .os-list-top span {
-          display: block;
-          margin-top: 6px;
-          color: #475569;
-          font-size: 14px;
-          line-height: 1.45;
-          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
         }
 
         .os-jobs-layout {
@@ -378,6 +550,8 @@ export default function JobsPage() {
         }
 
         .os-jobs-main {
+          display: grid;
+          gap: 16px;
           min-width: 0;
         }
 
@@ -409,133 +583,154 @@ export default function JobsPage() {
           letter-spacing: -0.025em;
         }
 
-        .os-list-section-head span {
-          color: #64748b;
-          font-size: 13px;
-          font-weight: 800;
-          white-space: nowrap;
-        }
-
-        .os-list-board {
+        .os-job-stack-grid {
           display: grid;
-        }
-
-        .os-list-row {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: center;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 12px;
-          padding: 13px 16px;
-          text-decoration: none;
-          color: inherit;
-          background: #ffffff;
-          border-bottom: 1px solid #f1f5f9;
+          padding: 14px;
         }
 
-        .os-list-row:last-child {
-          border-bottom: none;
-        }
-
-        .os-list-row:hover {
-          background: #fff7ed;
-        }
-
-        .os-list-row-content {
-          min-width: 0;
-        }
-
-        .os-list-title-line {
-          display: grid;
-          grid-template-columns: minmax(0, 1fr) auto;
-          align-items: start;
-          gap: 12px;
-        }
-
-        .os-list-row h3 {
-          margin: 0;
-          color: #1d4ed8;
-          font-size: 15.5px;
-          line-height: 1.38;
-          font-weight: 800;
-          letter-spacing: -0.01em;
-          transition: color 0.15s ease;
-        }
-
-        .os-list-row:hover h3,
-        .os-list-row:hover .os-list-arrow {
-          color: #ea580c;
-        }
-
-        .os-list-date-line {
+        .os-job-stack-card {
+          min-height: 112px;
           display: flex;
-          flex-wrap: wrap;
-          justify-content: flex-end;
-          gap: 5px;
-          max-width: 390px;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 14px;
+          border: 1px solid rgba(15, 23, 42, 0.08);
+          border-radius: 10px;
+          text-decoration: none;
+          color: #0f172a;
+          box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
+          transition:
+            transform 0.18s ease,
+            box-shadow 0.18s ease;
         }
 
-        .os-list-date-line span {
-          color: #475569;
+        .os-job-stack-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.09);
+        }
+
+        .os-job-stack-card h3 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 14.5px;
+          line-height: 1.3;
+          font-weight: 900;
+          letter-spacing: -0.02em;
+        }
+
+        .os-job-stack-card p {
+          margin: 0;
+          color: #1f2937;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 800;
+        }
+
+        .os-job-stack-date-row {
+          display: grid;
+          gap: 4px;
+          margin-top: auto;
+        }
+
+        .os-job-stack-date-row span {
           font-size: 12px;
           line-height: 1.2;
-          font-weight: 800;
-          white-space: nowrap;
-          transition: color 0.15s ease;
+          font-weight: 900;
         }
 
-        .os-list-row:hover .os-date-start {
-          color: #16a34a;
+        .os-job-stack-start {
+          color: #166534;
         }
 
-        .os-list-row:hover .os-date-end {
+        .os-job-stack-end {
           color: #dc2626;
         }
 
-        .os-list-tag-row {
+        .os-job-stack-color-0 {
+          background: linear-gradient(135deg, #fff7ed, #fed7aa);
+        }
+
+        .os-job-stack-color-1 {
+          background: linear-gradient(135deg, #eff6ff, #bfdbfe);
+        }
+
+        .os-job-stack-color-2 {
+          background: linear-gradient(135deg, #ecfdf5, #86efac);
+        }
+
+        .os-job-stack-color-3 {
+          background: linear-gradient(135deg, #fff1f2, #fecdd3);
+        }
+
+        .os-job-stack-color-4 {
+          background: linear-gradient(135deg, #f5f3ff, #ddd6fe);
+        }
+
+        .os-job-stack-color-5 {
+          background: linear-gradient(135deg, #fefce8, #fde68a);
+        }
+
+        .os-job-stack-color-6 {
+          background: linear-gradient(135deg, #ecfeff, #a5f3fc);
+        }
+
+        .os-job-stack-color-7 {
+          background: linear-gradient(135deg, #fdf2f8, #fbcfe8);
+        }
+
+        .os-all-job-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .os-all-job-item {
+          min-height: 62px;
           display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-          margin-top: 8px;
-        }
-
-        .os-list-tag-row span {
-          display: inline-flex;
-          width: fit-content;
-          padding: 4px 8px;
-          border-radius: 999px;
-          background: #f8fafc;
-          color: #475569;
-          border: 1px solid #e2e8f0;
-          font-size: 11px;
-          line-height: 1;
-          font-weight: 800;
-        }
-
-        .os-list-row p {
-          margin: 6px 0 0;
-          color: #64748b;
-          font-size: 13px;
-          line-height: 1.45;
-          font-weight: 500;
-        }
-
-        .os-list-arrow {
-          width: 28px;
-          height: 28px;
-          border-radius: 999px;
-          display: inline-flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
-          background: #eff6ff;
-          color: #2563eb;
-          font-size: 22px;
-          line-height: 1;
-          font-weight: 700;
-          transition: color 0.15s ease, background 0.15s ease;
+          flex-direction: column;
+          gap: 5px;
+          padding: 12px 14px;
+          text-decoration: none;
+          color: inherit;
+          background: #ffffff;
+          border-right: 1px solid #f1f5f9;
+          border-bottom: 1px solid #f1f5f9;
+          transition:
+            background 0.15s ease,
+            color 0.15s ease;
         }
 
-        .os-list-row:hover .os-list-arrow {
-          background: #ffedd5;
+        .os-all-job-item:nth-child(2n) {
+          border-right: none;
+        }
+
+        .os-all-job-item:hover {
+          background: #fff7ed;
+        }
+
+        .os-all-job-item h3 {
+          margin: 0;
+          color: #1d4ed8;
+          font-size: 14px;
+          line-height: 1.35;
+          font-weight: 900;
+          letter-spacing: -0.01em;
+        }
+
+        .os-all-job-item:hover h3 {
+          color: #ea580c;
+        }
+
+        .os-all-job-item span {
+          color: #64748b;
+          font-size: 12px;
+          line-height: 1.2;
+          font-weight: 800;
         }
 
         .os-list-status {
@@ -544,6 +739,44 @@ export default function JobsPage() {
           color: #64748b;
           font-size: 14px;
           line-height: 1.5;
+          font-weight: 600;
+        }
+
+        .os-view-more-wrap {
+          display: flex;
+          justify-content: center;
+          padding: 16px;
+          border-top: 1px solid #f1f5f9;
+          background: #ffffff;
+        }
+
+        .os-view-more-btn {
+          min-width: 150px;
+          min-height: 42px;
+          padding: 10px 22px;
+          border: none;
+          border-radius: 999px;
+          background: #0b63ce;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+          transition:
+            transform 0.18s ease,
+            background 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-view-more-btn:hover {
+          background: #e85d04;
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(232, 93, 4, 0.2);
+        }
+
+        .os-view-more-btn:active {
+          transform: translateY(0);
+          box-shadow: 0 6px 14px rgba(37, 99, 235, 0.16);
         }
 
         .os-jobs-sidebar {
@@ -570,7 +803,9 @@ export default function JobsPage() {
           text-decoration: none;
           font-size: 14px;
           font-weight: 800;
-          transition: color 0.15s ease, background 0.15s ease;
+          transition:
+            color 0.15s ease,
+            background 0.15s ease;
         }
 
         .os-side-card a:last-child {
@@ -596,12 +831,107 @@ export default function JobsPage() {
           text-decoration: none;
         }
 
-        .os-side-note p {
+        .os-reminder-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+
+        .os-reminder-head h2 {
+          margin: 0;
+          color: #dc2626;
+        }
+
+        .os-whatsapp-share-btn {
+          width: 34px;
+          height: 34px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: none;
+          border-radius: 999px;
+          background: #25d366;
+          color: #ffffff;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(37, 211, 102, 0.24);
+          transition:
+            transform 0.18s ease,
+            opacity 0.18s ease,
+            box-shadow 0.18s ease;
+        }
+
+        .os-whatsapp-share-btn svg {
+          width: 21px;
+          height: 21px;
+          fill: currentColor;
+        }
+
+        .os-whatsapp-share-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 24px rgba(37, 211, 102, 0.32);
+        }
+
+        .os-whatsapp-share-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+          box-shadow: none;
+        }
+
+        .os-whatsapp-share-btn:disabled:hover {
+          transform: none;
+        }
+
+        .os-side-status {
           margin: 0;
           color: #64748b;
           font-size: 14px;
-          line-height: 1.6;
-          font-weight: 500;
+          line-height: 1.5;
+          font-weight: 600;
+        }
+
+        .os-reminder-list {
+          display: grid;
+          gap: 8px;
+        }
+
+        .os-reminder-item {
+          display: grid !important;
+          gap: 4px;
+          padding: 9px 8px !important;
+          border: 1px solid #fee2e2 !important;
+          border-radius: 10px;
+          background: #fff7f7;
+          text-decoration: none !important;
+        }
+
+        .os-reminder-item span {
+          color: #1d4ed8;
+          font-size: 13px;
+          line-height: 1.35;
+          font-weight: 900;
+        }
+
+        .os-reminder-item strong {
+          color: #dc2626;
+          font-size: 12px;
+          line-height: 1.2;
+          font-weight: 900;
+        }
+
+        .os-reminder-item:hover {
+          background: #fff1f2 !important;
+        }
+
+        .os-reminder-item:hover span {
+          color: #ea580c;
+        }
+
+        @media (max-width: 1000px) {
+          .os-job-stack-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 900px) {
@@ -610,12 +940,8 @@ export default function JobsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top h1 {
-            font-size: 26px;
-          }
-
-          .os-list-top span {
-            font-size: 13px;
+          .os-list-top p {
+            font-size: 12px;
           }
 
           .os-jobs-layout {
@@ -626,34 +952,35 @@ export default function JobsPage() {
             position: static;
           }
 
-          .os-list-row {
-            padding: 13px 14px;
-          }
-
-          .os-list-title-line {
-            grid-template-columns: 1fr;
-            gap: 6px;
-          }
-
-          .os-list-date-line {
-            justify-content: flex-start;
-            max-width: 100%;
-          }
-
-          .os-list-row h3 {
-            font-size: 15px;
-          }
-
-          .os-list-date-line span {
-            font-size: 12px;
-          }
-
-          .os-list-row p {
-            font-size: 12.8px;
-          }
-
           .os-list-section-head {
             padding: 13px 14px;
+          }
+
+          .os-view-more-wrap {
+            padding: 14px;
+          }
+
+          .os-view-more-btn {
+            width: 100%;
+          }
+        }
+
+        @media (max-width: 620px) {
+          .os-job-stack-grid {
+            grid-template-columns: 1fr;
+            padding: 12px;
+          }
+
+          .os-all-job-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .os-all-job-item {
+            border-right: none;
+          }
+
+          .os-job-stack-card {
+            min-height: 104px;
           }
         }
       `}</style>

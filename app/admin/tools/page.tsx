@@ -30,6 +30,7 @@ export default function AdminToolsPage() {
   const [tools, setTools] = useState<ToolPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   async function loadTools() {
     try {
@@ -95,11 +96,40 @@ export default function AdminToolsPage() {
   return (
     <AdminLayout>
       <div style={{ display: "grid", gap: "24px" }}>
-        <div>
-          <h1>Tools</h1>
-          <p>Manage PDF tools and image tools external links.</p>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: "12px",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <h1 style={{ margin: "0 0 6px" }}>Tools</h1>
+            <p style={{ margin: 0, color: "#64748b" }}>
+              Saved tools first. Use Create New Tool only when needed.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowCreateForm((oldValue) => !oldValue)}
+            style={{
+              border: "1px solid #2563eb",
+              borderRadius: "10px",
+              background: showCreateForm ? "#f3f4f6" : "#2563eb",
+              color: showCreateForm ? "#111827" : "#ffffff",
+              padding: "10px 14px",
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            {showCreateForm ? "Hide Form" : "+ Create New Tool"}
+          </button>
         </div>
 
+        {showCreateForm ? (
         <div
           style={{
             background: "white",
@@ -111,6 +141,7 @@ export default function AdminToolsPage() {
           <h2>Create New Tool</h2>
           <ToolForm />
         </div>
+        ) : null}
 
         <div
           style={{

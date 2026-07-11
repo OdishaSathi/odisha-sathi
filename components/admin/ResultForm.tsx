@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { ResultLink, ResultPost, ResultStatus } from "@/types/result";
 import { createResultSlug } from "@/lib/results";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryOptions,
+} from "@/lib/adminSubCategories";
 
 type ResultFormProps = {
   initialData?: ResultPost | null;
@@ -10,6 +14,20 @@ type ResultFormProps = {
   onCancel?: () => void;
   submitLabel?: string;
 };
+
+
+const RESULT_BASE_CATEGORY_OPTIONS = [
+  { label: "Odisha Results", value: "odisha-results" },
+  { label: "Central Results", value: "central-results" },
+  { label: "Board Results", value: "board-results" },
+  { label: "University Results", value: "university-results" },
+  { label: "Entrance Results", value: "entrance-results" },
+  { label: "Recruitment Results", value: "recruitment-results" },
+  { label: "10th Results", value: "10th-results" },
+  { label: "+2 Results", value: "plus-two-results" },
+  { label: "+3 Results", value: "plus-three-results" },
+  { label: "Other Results", value: "other-results" },
+];
 
 const emptyLinks: ResultLink[] = [
   {
@@ -31,9 +49,19 @@ const emptyForm: ResultPost = {
   slug: "",
   examName: "",
   organization: "",
+  subCategory: "odisha-results",
+  subCategories: ["Odisha Results", "odisha-results"],
+  resultCategory: "Odisha Results",
+  resultCategories: ["Odisha Results"],
+  categoryName: "Odisha Results",
+  categorySlug: "odisha-results",
+  subCategorySlug: "odisha-results",
   resultDate: "",
+  resultDateDisplay: "",
+  importantDates: [],
   description: "",
   youtubeUrl: "",
+  youtubeUrls: [],
   status: "Released",
   links: emptyLinks,
 };
@@ -45,7 +73,31 @@ export default function ResultForm({
   submitLabel = "Save Result",
 }: ResultFormProps) {
   const [formData, setFormData] = useState<ResultPost>(emptyForm);
+  const [resultCategoryOptions, setResultCategoryOptions] = useState(RESULT_BASE_CATEGORY_OPTIONS);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadManagedResultCategories() {
+      try {
+        const managed = await getActiveAdminSubCategories("results");
+        if (isMounted) {
+          setResultCategoryOptions(
+            mergeSubCategoryOptions(RESULT_BASE_CATEGORY_OPTIONS, managed)
+          );
+        }
+      } catch (error) {
+        console.warn("Could not load managed result subcategories.", error);
+      }
+    }
+
+    loadManagedResultCategories();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -74,6 +126,36 @@ export default function ResultForm({
       }
 
       return updated;
+    });
+  };
+
+  const updateResultCategory = (value: string) => {
+    const selected = resultCategoryOptions.find((item) => item.value === value);
+
+    setFormData((prev) => ({
+      ...prev,
+      subCategory: value,
+      subCategories: selected ? [selected.label, selected.value] : [value],
+      resultCategory: selected?.label || value,
+      resultCategories: selected ? [selected.label] : [value],
+      categoryName: selected?.label || value,
+      categorySlug: value,
+      subCategorySlug: value,
+    }));
+  };
+
+  const updateYoutubeUrl = (index: number, value: string) => {
+    setFormData((prev) => {
+      const currentUrls = Array.isArray((prev as any).youtubeUrls)
+        ? [...((prev as any).youtubeUrls as string[])]
+        : [];
+
+      currentUrls[index] = value;
+
+      return {
+        ...prev,
+        youtubeUrls: currentUrls,
+      } as ResultPost;
     });
   };
 
@@ -134,9 +216,38 @@ export default function ResultForm({
     setIsSaving(true);
 
     try {
+      const cleanedYoutubeUrls = Array.isArray((formData as any).youtubeUrls)
+        ? ((formData as any).youtubeUrls as string[])
+            .map((item) => item.trim())
+            .filter(Boolean)
+            .slice(0, 2)
+        : [];
+
+      const selectedCategory =
+        resultCategoryOptions.find(
+          (item) => item.value === (formData.subCategory || "")
+        ) || RESULT_BASE_CATEGORY_OPTIONS[0];
+
       await onSubmit({
         ...formData,
+        subCategory: selectedCategory.value,
+        subCategories: [selectedCategory.label, selectedCategory.value],
+        resultCategory: selectedCategory.label,
+        resultCategories: [selectedCategory.label],
+        categoryName: selectedCategory.label,
+        categorySlug: selectedCategory.value,
+        subCategorySlug: selectedCategory.value,
         slug: createResultSlug(formData.slug || formData.title),
+        resultDate: (formData.resultDate || "").trim(),
+        resultDateDisplay: (formData.resultDateDisplay || "").trim(),
+        importantDates: [
+          {
+            label: "Result Date",
+            value: (formData.resultDateDisplay || formData.resultDate || "").trim(),
+          },
+        ].filter((item) => item.value),
+        youtubeUrl: (formData.youtubeUrl || "").trim(),
+        youtubeUrls: cleanedYoutubeUrls,
       });
 
       if (!initialData) {
@@ -199,11 +310,33 @@ export default function ResultForm({
         </div>
 
         <div className="admin-form-group">
+          <label>Result Subcategory</label>
+          <select
+            value={formData.subCategory || "odisha-results"}
+            onChange={(event) => updateResultCategory(event.target.value)}
+          >
+            {resultCategoryOptions.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-form-group">
           <label>Result Date</label>
           <input
             type="date"
             value={formData.resultDate}
             onChange={(event) => updateField("resultDate", event.target.value)}
+          />
+          <input
+            type="text"
+            value={formData.resultDateDisplay || ""}
+            onChange={(event) =>
+              updateField("resultDateDisplay", event.target.value)
+            }
+            placeholder="Optional display text: July 2026 / Coming Soon"
           />
         </div>
 
@@ -222,11 +355,31 @@ export default function ResultForm({
         </div>
 
         <div className="admin-form-group">
-          <label>YouTube Link</label>
+          <label>YouTube Video 1</label>
           <input
             type="url"
             value={formData.youtubeUrl || ""}
             onChange={(event) => updateField("youtubeUrl", event.target.value)}
+            placeholder="https://youtube.com/..."
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>YouTube Video 2</label>
+          <input
+            type="url"
+            value={((formData as any).youtubeUrls || [])[0] || ""}
+            onChange={(event) => updateYoutubeUrl(0, event.target.value)}
+            placeholder="https://youtube.com/..."
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>YouTube Video 3</label>
+          <input
+            type="url"
+            value={((formData as any).youtubeUrls || [])[1] || ""}
+            onChange={(event) => updateYoutubeUrl(1, event.target.value)}
             placeholder="https://youtube.com/..."
           />
         </div>

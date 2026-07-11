@@ -44,9 +44,16 @@ export async function addResult(result: ResultPost) {
     (link) => link.label.trim() !== "" && link.url.trim() !== ""
   );
 
+  const cleanImportantDates = (result.importantDates || []).filter(
+    (date) => date.label.trim() !== "" && date.value.trim() !== ""
+  );
+
   return addDoc(collection(db, COLLECTION_NAME), {
     ...result,
     links: cleanLinks,
+    importantDates: cleanImportantDates,
+    category: "results",
+    type: "results",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -57,11 +64,18 @@ export async function updateResult(id: string, result: ResultPost) {
     (link) => link.label.trim() !== "" && link.url.trim() !== ""
   );
 
+  const cleanImportantDates = (result.importantDates || []).filter(
+    (date) => date.label.trim() !== "" && date.value.trim() !== ""
+  );
+
   const ref = doc(db, COLLECTION_NAME, id);
 
   return updateDoc(ref, {
     ...result,
     links: cleanLinks,
+    importantDates: cleanImportantDates,
+    category: "results",
+    type: "results",
     updatedAt: serverTimestamp(),
   });
 }
