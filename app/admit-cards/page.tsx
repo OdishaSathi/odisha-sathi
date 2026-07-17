@@ -473,10 +473,10 @@ export default function AdmitCardsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>
+          <h1>
             ODISHA SATHI ADMIT CARDS & EXAMS  (Find all the admit card and exam
             updates in this page)
-          </p>
+          </h1>
         </section>
 
         <section className="os-admit-layout">
@@ -629,7 +629,7 @@ export default function AdmitCardsPage() {
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .os-list-top p {
+        .os-list-top h1 {
           margin: 0;
           color: #c2410c;
           font-size: 13px;
@@ -1032,7 +1032,7 @@ export default function AdmitCardsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top p {
+          .os-list-top h1 {
             font-size: 12px;
           }
 

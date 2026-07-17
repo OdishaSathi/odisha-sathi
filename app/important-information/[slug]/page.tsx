@@ -40,12 +40,6 @@ function normalizeText(value?: string) {
 
 function getPostHref(post: any, id: string) {
   const slug = post.slug || id;
-  const category = normalizeText(post.category);
-
-  if (category === "results") return `/results/${slug}`;
-  if (category === "admissions") return `/admissions/${slug}`;
-  if (category === "admit-cards") return `/admit-cards/${slug}`;
-  if (category === "schemes") return `/schemes/${slug}`;
   return `/post/${slug}`;
 }
 

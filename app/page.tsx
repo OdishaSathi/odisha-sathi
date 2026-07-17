@@ -575,22 +575,6 @@ function getTileDepartment(item: PostItem) {
 }
 
 function getLink(item: PostItem) {
-  if (item.category === "results") {
-    return `/results/${item.slug || item.id}`;
-  }
-
-  if (item.category === "admit-cards") {
-    return `/admit-cards/${item.slug || item.id}`;
-  }
-
-  if (item.category === "admissions") {
-    return `/admissions/${item.slug || item.id}`;
-  }
-
-  if (item.category === "schemes") {
-    return `/schemes/${item.slug || item.id}`;
-  }
-
   return `/post/${item.slug || item.id}`;
 }
 

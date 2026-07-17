@@ -3,6 +3,9 @@ import { collection, getDocs } from "firebase/firestore";
 import { dbServer } from "@/lib/firebaseServer";
 import { siteConfig } from "@/lib/siteConfig";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const STATIC_ROUTES = [
   "/",
   "/jobs",
@@ -18,6 +21,21 @@ const STATIC_ROUTES = [
   "/terms-and-conditions",
   "/correction-request",
   "/sitemap",
+];
+
+const PUBLIC_POST_COLLECTIONS = [
+  "posts",
+  "jobs",
+  "admissions",
+  "admitCards",
+  "admit-cards",
+  "admitcards",
+  "results",
+  "result",
+  "schemes",
+  "scheme",
+  "governmentSchemes",
+  "government-schemes",
 ];
 
 function getBaseUrl() {
@@ -46,13 +64,24 @@ function getPostRoute(data: any, id: string) {
   const encodedSlug = encodeURIComponent(slug);
   const category = normalizeText(data.category);
 
-  if (category === "results") return `/results/${encodedSlug}`;
-  if (category === "admissions") return `/admissions/${encodedSlug}`;
-  if (category === "admit-cards") return `/admit-cards/${encodedSlug}`;
-  if (category === "schemes") return `/schemes/${encodedSlug}`;
-  if (category === "tools") return null;
+  if (category === "tools" || category === "scheme-category") return null;
 
   return `/post/${encodedSlug}`;
+}
+
+function isTestPost(data: any, id: string) {
+  const value = `${data.slug || id} ${data.title || ""}`.toLowerCase();
+  return /(^|[\s_-])test([\s_-]|$)/.test(value);
+}
+
+async function loadSitemapCollection(collectionName: string) {
+  try {
+    const snapshot = await getDocs(collection(dbServer, collectionName));
+    return snapshot.docs;
+  } catch (error) {
+    console.warn(`Sitemap skipped ${collectionName}`, error);
+    return [];
+  }
 }
 
 function dedupeRoutes(routes: MetadataRoute.Sitemap) {
@@ -67,14 +96,18 @@ function dedupeRoutes(routes: MetadataRoute.Sitemap) {
 
 async function getPublicPostRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    const snapshot = await getDocs(collection(dbServer, "posts"));
     const baseUrl = getBaseUrl();
+    const documentGroups = await Promise.all(
+      PUBLIC_POST_COLLECTIONS.map(loadSitemapCollection)
+    );
 
-    return snapshot.docs
+    return documentGroups
+      .flat()
       .map((docItem) => {
         const data = docItem.data();
 
         if (data.published === false || data.status === "hidden") return null;
+        if (isTestPost(data, docItem.id)) return null;
 
         const route = getPostRoute(data, docItem.id);
         if (!route) return null;

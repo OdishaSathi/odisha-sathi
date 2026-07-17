@@ -112,22 +112,6 @@ function getPostLink(post: SearchPost) {
     return post.href;
   }
 
-  if (post.category === "schemes") {
-    return `/schemes/${post.id}`;
-  }
-
-  if (post.category === "admit-cards") {
-    return `/admit-cards/${post.slug || post.id}`;
-  }
-
-  if (post.category === "results") {
-    return `/results/${post.slug || post.id}`;
-  }
-
-  if (post.category === "admissions") {
-    return `/admissions/${post.slug || post.id}`;
-  }
-
   if (post.category === "pdf-tools") {
     return "/tools/pdf-tools";
   }
@@ -545,7 +529,7 @@ export default function SearchPage() {
               <Link href="/jobs">Latest Jobs</Link>
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
-              <Link href="/admit-cards">Admit Cards</Link>
+              <Link href="/admit-cards">Admit Cards & Exams</Link>
               <Link href="/schemes">Schemes</Link>
               <Link href="/tools">Tools</Link>
             </section>

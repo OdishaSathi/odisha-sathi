@@ -90,6 +90,61 @@ type PostData = {
   updatedAt?: any;
 };
 
+const PUBLIC_POST_COLLECTIONS = [
+  { name: "posts", category: "" },
+  { name: "jobs", category: "jobs" },
+  { name: "admissions", category: "admissions" },
+  { name: "admitCards", category: "admit-cards" },
+  { name: "admit-cards", category: "admit-cards" },
+  { name: "admitcards", category: "admit-cards" },
+  { name: "results", category: "results" },
+  { name: "result", category: "results" },
+  { name: "schemes", category: "schemes" },
+  { name: "scheme", category: "schemes" },
+  { name: "governmentSchemes", category: "schemes" },
+  { name: "government-schemes", category: "schemes" },
+];
+
+function normalizePostCategory(value?: string, fallback?: string) {
+  const category = normalizeText(value || fallback);
+
+  if (category === "job" || category === "jobs") return "jobs";
+  if (category === "result" || category === "results") return "results";
+  if (category === "admission" || category === "admissions") {
+    return "admissions";
+  }
+  if (
+    category === "admit-card" ||
+    category === "admit-cards" ||
+    category === "admitcard" ||
+    category === "admitcards" ||
+    category === "exam" ||
+    category === "exams"
+  ) {
+    return "admit-cards";
+  }
+  if (
+    category === "scheme" ||
+    category === "schemes" ||
+    category === "scholarship" ||
+    category === "scholarships"
+  ) {
+    return "schemes";
+  }
+
+  return value || fallback || "";
+}
+
+async function loadPublicPostCollection(name: string, category: string) {
+  try {
+    const snapshot = await getDocs(collection(db, name));
+    return { snapshot, category };
+  } catch (error) {
+    console.warn(`Could not load ${name}`, error);
+    return null;
+  }
+}
+
 function getBackLink(category?: string) {
   if (category === "jobs") return "/jobs";
   if (category === "results") return "/results";
@@ -129,12 +184,22 @@ function normalizeImportantLinks(
   sourceUrl?: string
 ): ImportantLinkRow[] {
   const rows = Array.isArray(value)
-    ? value.map((item, index) => ({
-        id: item?.id || `link_${index}`,
-        type: item?.type || "",
-        label: item?.label || "",
-        url: item?.url || "",
-      }))
+    ? value.map((item, index) => {
+        const type = item?.type || "";
+        const label = item?.label || "";
+        const url = String(item?.url || "").trim();
+        const linkText = `${type} ${label}`.toLowerCase();
+        const isWhatsAppPlaceholder =
+          url.includes("whatsapp.com/channel/") &&
+          !linkText.includes("whatsapp");
+
+        return {
+          id: item?.id || `link_${index}`,
+          type,
+          label,
+          url: isWhatsAppPlaceholder ? "" : url,
+        };
+      })
     : [];
 
   if (rows.length === 0 && sourceUrl) {
@@ -471,83 +536,110 @@ export default function PublicPostDetailsPage() {
       try {
         setLoading(true);
 
-        const snapshot = await getDocs(collection(db, "posts"));
+        const loadedCollections = await Promise.all(
+          PUBLIC_POST_COLLECTIONS.map((item) =>
+            loadPublicPostCollection(item.name, item.category)
+          )
+        );
 
-        const allPosts: PostData[] = snapshot.docs.map((docItem) => {
-          const data = docItem.data();
+        const allPosts: PostData[] = loadedCollections.flatMap((loaded) => {
+          if (!loaded) return [];
 
-          return {
-            id: docItem.id,
-            title: data.title || "",
-            slug: data.slug || "",
+          return loaded.snapshot.docs.map((docItem) => {
+            const data = docItem.data();
 
-            category: data.category || "",
-            subCategory: data.subCategory || "",
-            subCategories: Array.isArray(data.subCategories)
-              ? data.subCategories
-              : data.subCategory
-              ? [data.subCategory]
-              : [],
+            return {
+              id: docItem.id,
+              title: data.title || data.schemeName || "",
+              slug: data.slug || "",
 
-            excerpt: data.excerpt || "",
-            content: data.content || "",
+              category: normalizePostCategory(
+                data.category,
+                loaded.category
+              ),
+              subCategory:
+                data.subCategory ||
+                data.subcategory ||
+                data.schemeCategory ||
+                data.admitCardCategory ||
+                "",
+              subCategories: Array.isArray(data.subCategories)
+                ? data.subCategories
+                : data.subCategory
+                ? [data.subCategory]
+                : [],
 
-            shortDescription: data.shortDescription || "",
-            description: data.description || "",
+              excerpt: data.excerpt || "",
+              content: data.content || "",
 
-            imageUrl: data.imageUrl || "",
-            previewImageUrl: data.previewImageUrl || "",
-            shareImage: data.shareImage || "",
+              shortDescription: data.shortDescription || "",
+              description: data.description || "",
 
-            youtubeUrl: data.youtubeUrl || "",
-            youtubeUrls: normalizeYoutubeUrls(data),
-            youtubeVideos: normalizeVideoRows(data.youtubeVideos),
-            videos: normalizeVideoRows(data.videos),
+              imageUrl: data.imageUrl || "",
+              previewImageUrl: data.previewImageUrl || "",
+              shareImage: data.shareImage || "",
 
-            postUrl: data.postUrl || "",
-            shareTitle: data.shareTitle || "",
-            shareDescription: data.shareDescription || "",
+              youtubeUrl: data.youtubeUrl || "",
+              youtubeUrls: normalizeYoutubeUrls(data),
+              youtubeVideos: normalizeVideoRows(data.youtubeVideos),
+              videos: normalizeVideoRows(data.videos),
 
-            jobInfoPanels: normalizeJobInfoPanels(data.jobInfoPanels),
-            quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
+              postUrl: data.postUrl || "",
+              shareTitle: data.shareTitle || "",
+              shareDescription: data.shareDescription || "",
 
-            importantDates: normalizeImportantDates(data.importantDates),
-            importantLinks: normalizeImportantLinks(
-              data.importantLinks,
-              data.sourceUrl || ""
-            ),
+              jobInfoPanels: normalizeJobInfoPanels(data.jobInfoPanels),
+              quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
 
-            sourceUrl: data.sourceUrl || "",
+              importantDates: normalizeImportantDates(data.importantDates),
+              importantLinks: normalizeImportantLinks(
+                data.importantLinks,
+                data.sourceUrl || ""
+              ),
 
-            organization: data.organization || "",
-            department: data.department || "",
-            postName: data.postName || "",
-            totalVacancy: data.totalVacancy || "",
-            qualification: data.qualification || "",
-            ageLimit: data.ageLimit || "",
-            salary: data.salary || "",
-            payScale: data.payScale || "",
+              sourceUrl: data.sourceUrl || "",
 
-            syllabus: data.syllabus || "",
-            examPattern: data.examPattern || "",
-            selectionProcedure: data.selectionProcedure || "",
-            contentSections: Array.isArray(data.contentSections)
-              ? data.contentSections
-              : [],
+              organization: data.organization || "",
+              department: data.department || "",
+              postName:
+                data.postName ||
+                data.examName ||
+                data.courseName ||
+                data.schemeName ||
+                "",
+              totalVacancy: data.totalVacancy || "",
+              qualification: data.qualification || "",
+              ageLimit: data.ageLimit || "",
+              salary: data.salary || "",
+              payScale: data.payScale || "",
 
-            status: data.status || "published",
-            createdAt: data.createdAt || null,
-            updatedAt: data.updatedAt || null,
-          };
+              syllabus: data.syllabus || "",
+              examPattern: data.examPattern || "",
+              selectionProcedure: data.selectionProcedure || "",
+              contentSections: Array.isArray(data.contentSections)
+                ? data.contentSections
+                : [],
+
+              status: data.status || "published",
+              createdAt: data.createdAt || null,
+              updatedAt: data.updatedAt || null,
+            };
+          });
         });
 
+        const uniquePosts = Array.from(
+          new Map(
+            allPosts.map((item) => [item.slug || `${item.category}:${item.id}`, item])
+          ).values()
+        );
+
         const foundPost =
-          allPosts.find((item) => item.slug === pageSlug) ||
-          allPosts.find((item) => item.id === pageSlug) ||
+          uniquePosts.find((item) => item.slug === pageSlug) ||
+          uniquePosts.find((item) => item.id === pageSlug) ||
           null;
 
         if (foundPost) {
-          const relatedPosts = buildRelatedPosts(foundPost, allPosts);
+          const relatedPosts = buildRelatedPosts(foundPost, uniquePosts);
 
           setPost({
             ...foundPost,

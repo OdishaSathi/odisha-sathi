@@ -31,6 +31,21 @@ type MetaPost = {
   jobInfoPanels?: any[];
 };
 
+const PUBLIC_POST_COLLECTIONS = [
+  { name: "posts", category: "" },
+  { name: "jobs", category: "jobs" },
+  { name: "admissions", category: "admissions" },
+  { name: "admitCards", category: "admit-cards" },
+  { name: "admit-cards", category: "admit-cards" },
+  { name: "admitcards", category: "admit-cards" },
+  { name: "results", category: "results" },
+  { name: "result", category: "results" },
+  { name: "schemes", category: "schemes" },
+  { name: "scheme", category: "schemes" },
+  { name: "governmentSchemes", category: "schemes" },
+  { name: "government-schemes", category: "schemes" },
+];
+
 function cleanText(value: any, maxLength = 160) {
   const text = String(value || "")
     .replace(/<[^>]*>/g, " ")
@@ -44,37 +59,44 @@ function cleanText(value: any, maxLength = 160) {
 async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
   const pageSlug = decodeURIComponent(slug);
 
-  try {
-    const slugQuery = query(
-      collection(dbServer, "posts"),
-      where("slug", "==", pageSlug),
-      limit(1)
-    );
+  for (const item of PUBLIC_POST_COLLECTIONS) {
+    try {
+      const slugQuery = query(
+        collection(dbServer, item.name),
+        where("slug", "==", pageSlug),
+        limit(1)
+      );
 
-    const slugSnapshot = await getDocs(slugQuery);
+      const slugSnapshot = await getDocs(slugQuery);
 
-    if (!slugSnapshot.empty) {
-      const item = slugSnapshot.docs[0];
-      return {
-        id: item.id,
-        ...item.data(),
-      };
+      if (!slugSnapshot.empty) {
+        const postDoc = slugSnapshot.docs[0];
+        const data = postDoc.data();
+
+        return {
+          id: postDoc.id,
+          ...data,
+          category: data.category || item.category,
+        };
+      }
+
+      const directDoc = await getDoc(doc(dbServer, item.name, pageSlug));
+
+      if (directDoc.exists()) {
+        const data = directDoc.data();
+
+        return {
+          id: directDoc.id,
+          ...data,
+          category: data.category || item.category,
+        };
+      }
+    } catch (error) {
+      console.warn(`Metadata fetch skipped ${item.name}`, error);
     }
-
-    const directDoc = await getDoc(doc(dbServer, "posts", pageSlug));
-
-    if (directDoc.exists()) {
-      return {
-        id: directDoc.id,
-        ...directDoc.data(),
-      };
-    }
-
-    return null;
-  } catch (error) {
-    console.error("Metadata post fetch failed:", error);
-    return null;
   }
+
+  return null;
 }
 
 function getDepartmentName(post: MetaPost | null) {

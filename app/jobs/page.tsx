@@ -400,7 +400,7 @@ export default function JobsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>ODISHA SATHI JOBS  (Find all the jobs updates in this page)</p>
+          <h1>ODISHA SATHI JOBS  (Find all the jobs updates in this page)</h1>
         </section>
 
         <section className="os-jobs-layout">
@@ -532,7 +532,7 @@ export default function JobsPage() {
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .os-list-top p {
+        .os-list-top h1 {
           margin: 0;
           color: #c2410c;
           font-size: 13px;
@@ -940,7 +940,7 @@ export default function JobsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top p {
+          .os-list-top h1 {
             font-size: 12px;
           }
 

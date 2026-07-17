@@ -332,8 +332,6 @@ function getCategoryValues(item: AdmissionPost) {
   if (item.subCategory) values.push(item.subCategory);
   if (item.admissionCategory) values.push(item.admissionCategory);
   if (item.categoryName) values.push(item.categoryName);
-  if (item.categorySlug) values.push(item.categorySlug);
-  if (item.subCategorySlug) values.push(item.subCategorySlug);
 
   if (Array.isArray(item.subCategories)) values.push(...item.subCategories);
   if (Array.isArray(item.admissionCategories)) {
@@ -342,6 +340,35 @@ function getCategoryValues(item: AdmissionPost) {
   if (Array.isArray(item.categories)) values.push(...item.categories);
 
   return values.filter(Boolean);
+}
+
+function getCanonicalAdmissionCategory(value: string) {
+  const cleanValue = String(value || "").trim();
+  const compactValue = cleanValue.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (
+    compactValue.includes("plus2admission") ||
+    compactValue.includes("plustwoadmission") ||
+    compactValue === "2admission" ||
+    compactValue === "2admissions"
+  ) {
+    return "+2 Admissions";
+  }
+
+  if (
+    compactValue.includes("plus3admission") ||
+    compactValue.includes("plusthreeadmission") ||
+    compactValue === "3admission" ||
+    compactValue === "3admissions"
+  ) {
+    return "+3 Admissions";
+  }
+
+  const fixedCategory = ADMISSION_SUB_CATEGORIES.find(
+    (item) => normalizeCategoryKey(item) === normalizeCategoryKey(cleanValue)
+  );
+
+  return fixedCategory || cleanValue;
 }
 
 export default function AdmissionsPage() {
@@ -358,6 +385,7 @@ export default function AdmissionsPage() {
     new Map(
       [...ADMISSION_SUB_CATEGORIES, ...availableCategories]
         .filter(Boolean)
+        .map(getCanonicalAdmissionCategory)
         .map((item) => [normalizeCategoryKey(item), item])
     ).values()
   );
@@ -489,10 +517,10 @@ export default function AdmissionsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>
+          <h1>
             ODISHA SATHI ADMISSIONS  (Find all the admission updates in this
             page)
-          </p>
+          </h1>
         </section>
 
         <section className="os-admissions-layout">
@@ -637,7 +665,7 @@ export default function AdmissionsPage() {
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .os-list-top p {
+        .os-list-top h1 {
           margin: 0;
           color: #c2410c;
           font-size: 13px;
@@ -1040,7 +1068,7 @@ export default function AdmissionsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top p {
+          .os-list-top h1 {
             font-size: 12px;
           }
 

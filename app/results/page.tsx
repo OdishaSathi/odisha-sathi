@@ -164,6 +164,16 @@ function getResultKey(item: ResultPost) {
   return item.slug || item.id;
 }
 
+async function loadResultCollection(collectionName: string) {
+  try {
+    const snapshot = await getDocs(collection(db, collectionName));
+    return { collectionName, snapshot };
+  } catch (error) {
+    console.warn(`Could not load ${collectionName}`, error);
+    return null;
+  }
+}
+
 function LatestResultStack({
   result,
   index,
@@ -234,8 +244,16 @@ export default function ResultsPage() {
 
         const allResults: ResultPost[] = [];
 
-        for (const collectionName of RESULT_COLLECTIONS) {
-          const snapshot = await getDocs(collection(db, collectionName));
+        const loadedCollections = await Promise.all(
+          RESULT_COLLECTIONS.map((collectionName) =>
+            loadResultCollection(collectionName)
+          )
+        );
+
+        loadedCollections.forEach((loaded) => {
+          if (!loaded) return;
+
+          const { collectionName, snapshot } = loaded;
 
           snapshot.docs.forEach((docItem) => {
             const data = docItem.data();
@@ -272,7 +290,7 @@ export default function ResultsPage() {
               sourceCollection: collectionName,
             });
           });
-        }
+        });
 
         const uniqueResults = Array.from(
           new Map(
@@ -299,7 +317,7 @@ export default function ResultsPage() {
     <main className="os-list-page">
       <div className="os-list-container">
         <section className="os-list-top">
-          <p>ODISHA SATHI RESULTS  (Find all the result updates in this page)</p>
+          <h1>ODISHA SATHI RESULTS  (Find all the result updates in this page)</h1>
         </section>
 
         <section className="os-results-layout">
@@ -407,7 +425,7 @@ export default function ResultsPage() {
           border-bottom: 1px solid #e5e7eb;
         }
 
-        .os-list-top p {
+        .os-list-top h1 {
           margin: 0;
           color: #c2410c;
           font-size: 13px;
@@ -713,7 +731,7 @@ export default function ResultsPage() {
             padding-top: 18px;
           }
 
-          .os-list-top p {
+          .os-list-top h1 {
             font-size: 12px;
           }
 
