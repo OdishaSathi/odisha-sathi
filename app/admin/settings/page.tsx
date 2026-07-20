@@ -248,7 +248,7 @@ export default function AdminSettingsPage() {
       );
 
       setForm((previous) => ({ ...previous, quickAccessLinks }));
-      setMessage("Settings saved successfully. Public pages are not connected to these values yet, so existing UI is unchanged.");
+      setMessage("Settings saved successfully. Valid social links will now appear automatically in the public follow controls.");
     } catch (error) {
       console.error(error);
       setMessage(
@@ -274,8 +274,8 @@ export default function AdminSettingsPage() {
           <div>
             <h1 style={{ margin: "0 0 6px", color: "#111827" }}>Settings</h1>
             <p style={{ margin: 0, color: "#64748b" }}>
-              Admin-controlled settings saved safely. Public pages will keep their
-              current design until we connect these controls in later phases.
+              Add or update your public social-platform links here. Valid links
+              automatically appear in the website follow controls.
             </p>
           </div>
 
@@ -520,9 +520,9 @@ export default function AdminSettingsPage() {
             Safe coding note
           </h2>
           <p style={{ margin: 0, color: "#7c2d12", lineHeight: 1.65 }}>
-            These values are saved in a separate settings document. Public pages
-            are intentionally not connected in this phase, so existing frontend
-            UI, SEO tags, footer, search and category behavior remain untouched.
+            Social-platform links are connected to the public follow controls.
+            Empty links remain hidden or disabled, so you can add each platform
+            whenever it becomes available.
           </p>
         </section>
       </form>

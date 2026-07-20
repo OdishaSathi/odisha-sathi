@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const SCHEME_COLLECTIONS = [
   "posts",
@@ -612,23 +613,14 @@ function ReminderItem({ scheme }: { scheme: SchemePost }) {
 }
 
 function buildReminderShareText(reminderSchemes: SchemePost[], origin: string) {
-  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
-
-  reminderSchemes.forEach((scheme, index) => {
-    const title = getSchemeTitle(scheme);
-    const lastDate = getLastDate(scheme) || "Date not available";
-    const postLink = `${origin}/post/${scheme.slug || scheme.id}`;
-
-    lines.push(title);
-    lines.push(`Last Date: ${lastDate}`);
-    lines.push(postLink);
-
-    if (index < reminderSchemes.length - 1) {
-      lines.push("");
-    }
-  });
-
-  return lines.join("\n");
+  return buildLastDateReminderShareText(
+    reminderSchemes.map((scheme) => ({
+      title: getSchemeTitle(scheme),
+      category: "Government Scheme",
+      lastDate: getLastDate(scheme) || "Date not available",
+      url: `${origin}/post/${scheme.slug || scheme.id}`,
+    }))
+  );
 }
 
 export default function SchemeCategoryPage() {

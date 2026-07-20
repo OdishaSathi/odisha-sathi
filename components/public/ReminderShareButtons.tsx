@@ -11,17 +11,23 @@ function openShareWindow(url: string) {
 }
 
 function getPlatformShareUrl(platform: "whatsapp" | "telegram" | "facebook", shareText: string) {
-  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
-
   if (platform === "whatsapp") {
-    return `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    const isDesktop =
+      typeof window !== "undefined" &&
+      !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const whatsappBase = isDesktop
+      ? "https://web.whatsapp.com/send"
+      : "https://wa.me/";
+    return `${whatsappBase}?text=${encodeURIComponent(shareText)}`;
   }
 
   if (platform === "telegram") {
-    return `https://t.me/share/url?url=${encodeURIComponent(pageUrl)}&text=${encodeURIComponent(shareText)}`;
+    return `https://t.me/share/url?text=${encodeURIComponent(shareText)}`;
   }
 
-  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}&quote=${encodeURIComponent(shareText)}`;
+  const firstReminderLink =
+    shareText.match(/https?:\/\/[^\s]+\?[^\s]*reminder=1/)?.[0] || "";
+  return `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(firstReminderLink)}&quote=${encodeURIComponent(shareText)}`;
 }
 
 const PLATFORM_ITEMS = [

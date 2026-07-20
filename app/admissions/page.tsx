@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const ADMISSION_SUB_CATEGORIES = [
   "+2 Admissions",
@@ -297,23 +298,14 @@ function ReminderItem({ admission }: { admission: AdmissionPost }) {
 }
 
 function buildReminderShareText(reminderAdmissions: AdmissionPost[], origin: string) {
-  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
-
-  reminderAdmissions.forEach((admission, index) => {
-    const title = admission.title || "Untitled Admission";
-    const lastDate = getLastDate(admission) || "Date not available";
-    const postLink = `${origin}/post/${admission.slug || admission.id}`;
-
-    lines.push(title);
-    lines.push(`Last Date: ${lastDate}`);
-    lines.push(postLink);
-
-    if (index < reminderAdmissions.length - 1) {
-      lines.push("");
-    }
-  });
-
-  return lines.join("\n");
+  return buildLastDateReminderShareText(
+    reminderAdmissions.map((admission) => ({
+      title: admission.title || "Untitled Admission",
+      category: "Admission",
+      lastDate: getLastDate(admission) || "Date not available",
+      url: `${origin}/post/${admission.slug || admission.id}`,
+    }))
+  );
 }
 
 function normalizeCategoryKey(value?: string) {

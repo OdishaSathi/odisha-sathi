@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getCategoryLabel } from "@/lib/defaultImages";
+import { buildPostShareMessage } from "@/lib/postShare";
 import type {
   JobFeeRow,
   JobInfoPanel,
@@ -102,6 +103,21 @@ function getDisplayLabel(type?: string, label?: string): string {
   if (label?.trim()) return label.trim();
   if (type?.trim()) return type.trim();
   return "Details";
+}
+
+function getShareCategory(category?: string) {
+  const value = String(category || "").toLowerCase();
+  if (value === "jobs" || value === "job") return "Job";
+  if (value === "admissions" || value === "admission") return "Admission";
+  if (value === "results" || value === "result") return "Result";
+  if (value.includes("admit") || value === "exams" || value === "exam") {
+    return "Admit Card & Exam";
+  }
+  if (value === "schemes" || value === "scheme") return "Government Scheme";
+  if (value === "scholarships" || value === "scholarship") {
+    return "Scholarship";
+  }
+  return getCategoryLabel(category).replace(/^Latest\s+/i, "");
 }
 
 function cleanDateRows(rows?: ImportantDateRow[]): ImportantDateRow[] {
@@ -350,7 +366,17 @@ export default function PostDetailLayout({
   post,
   backHref = "/",
 }: PostDetailLayoutProps) {
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [nativeShareAvailable, setNativeShareAvailable] = useState(false);
+
+  useEffect(() => {
+    setIsDesktop(!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
+    setNativeShareAvailable(typeof navigator.share === "function");
+  }, []);
+
   const categoryLabel = getCategoryLabel(post.category);
+  const shareCategory = getShareCategory(post.category);
 
   const importantDates = cleanDateRows(post.importantDates);
   const importantLinks = cleanLinkRows(post.importantLinks);
@@ -381,8 +407,57 @@ export default function PostDetailLayout({
   const contentSections = cleanContentSections(post.contentSections);
   const isJobDetail = post.category === "jobs";
   const whatsappShareText = isJobDetail
-    ? shareUrl
-    : `${shareTitle}\n${shareDescription}\n${shareUrl}`;
+    ? buildPostShareMessage({
+        title: shareTitle,
+        category: shareCategory,
+        url: shareUrl,
+        description: shareDescription,
+        importantDates,
+      })
+    : buildPostShareMessage({
+        title: shareTitle,
+        category: shareCategory,
+        url: shareUrl,
+        importantDates,
+      });
+  const whatsappBase = isDesktop
+    ? "https://web.whatsapp.com/send"
+    : "https://wa.me/";
+
+  const copyPostLink = async () => {
+    if (!shareUrl) return;
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+    } catch {
+      const input = document.createElement("textarea");
+      input.value = shareUrl;
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+
+    setLinkCopied(true);
+    window.setTimeout(() => setLinkCopied(false), 1800);
+  };
+
+  const shareWithAnotherApp = async () => {
+    if (!nativeShareAvailable || !shareUrl) return;
+    try {
+      await navigator.share({
+        title: shareTitle,
+        text: whatsappShareText,
+        url: shareUrl,
+      });
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") {
+        console.warn("Native post sharing was unavailable", error);
+      }
+    }
+  };
   const jobDetails = isJobDetail ? post.jobDetails || [] : [];
   const hasVacancyDetails = jobDetails.some((panel) =>
     panel.vacancyCategories.some(
@@ -621,7 +696,7 @@ export default function PostDetailLayout({
                   </span>
 
                   <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
+                    href={`${whatsappBase}?text=${encodeURIComponent(
                       whatsappShareText
                     )}`}
                     target="_blank"
@@ -635,15 +710,9 @@ WhatsApp
                   </a>
 
                   <a
-                    href={
-                      isJobDetail
-                        ? `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`
-                        : `https://t.me/share/url?url=${encodeURIComponent(
-                            shareUrl
-                          )}&text=${encodeURIComponent(
-                            `${shareTitle}\n${shareDescription}`
-                          )}`
-                    }
+                    href={`https://t.me/share/url?url=${encodeURIComponent(
+                      shareUrl
+                    )}&text=${encodeURIComponent(whatsappShareText)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="share-btn telegram"
@@ -653,6 +722,48 @@ WhatsApp
 </span>
 Telegram
                   </a>
+
+                  <a
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                      shareUrl
+                    )}&quote=${encodeURIComponent(whatsappShareText)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="share-btn facebook"
+                  >
+                    <span className="share-icon" aria-hidden="true">
+                      <FacebookIcon />
+                    </span>
+                    Facebook
+                  </a>
+
+                  {nativeShareAvailable ? (
+                    <button
+                      type="button"
+                      className="share-btn more-share"
+                      onClick={shareWithAnotherApp}
+                      title="Share using another installed app"
+                    >
+                      <span className="share-icon" aria-hidden="true">
+                        <MoreShareIcon />
+                      </span>
+                      More
+                    </button>
+                  ) : null}
+
+                  <button
+                    type="button"
+                    className="share-btn copy-link"
+                    onClick={copyPostLink}
+                    disabled={!shareUrl}
+                    aria-live="polite"
+                    title="Copy this post link"
+                  >
+                    <span className="share-icon" aria-hidden="true">
+                      <CopyLinkIcon />
+                    </span>
+                    {linkCopied ? "Copied!" : "Copy Link"}
+                  </button>
                 </div>
               </section>
             </section>
@@ -1157,6 +1268,30 @@ function TelegramIcon() {
   return (
     <svg viewBox="0 0 32 32" role="img" focusable="false">
       <path d="M27.63 6.43c.31-1.43-.74-2-1.9-1.54L4.58 13.05c-1.44.56-1.42 1.35-.25 1.71l5.43 1.7 12.58-7.93c.6-.36 1.14-.17.7.22l-10.19 9.2-.39 5.77c.57 0 .82-.26 1.14-.57l2.74-2.66 5.7 4.21c1.05.58 1.8.28 2.06-.97l3.53-17.3Z" />
+    </svg>
+  );
+}
+
+function CopyLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" focusable="false">
+      <path d="M10.6 13.4a1 1 0 0 0 1.4 0l3.4-3.4a3 3 0 1 0-4.2-4.2L9.8 7.2a1 1 0 1 0 1.4 1.4l1.4-1.4a1 1 0 1 1 1.4 1.4L10.6 12a1 1 0 0 0 0 1.4Zm2.8-2.8a1 1 0 0 0-1.4 0L8.6 14a1 1 0 1 1-1.4-1.4l1.4-1.4a1 1 0 1 0-1.4-1.4l-1.4 1.4A3 3 0 1 0 10 15.4l3.4-3.4a1 1 0 0 0 0-1.4Z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 32 32" role="img" focusable="false">
+      <path d="M19.1 17.9h3.28l.52-4.02h-3.8v-2.2c0-1.06.34-1.78 1.9-1.78h2.02V6.3c-.35-.05-1.55-.15-2.95-.15-2.92 0-4.92 1.78-4.92 5.05v2.68h-3.3v4.02h3.3v10h3.95v-10Z" />
+    </svg>
+  );
+}
+
+function MoreShareIcon() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" focusable="false">
+      <path d="M18 16a3 3 0 0 0-2.39 1.2l-6.7-3.35a3.2 3.2 0 0 0 0-1.7l6.7-3.35A3 3 0 1 0 15 7a2.7 2.7 0 0 0 .09.7L8.4 11.05a3 3 0 1 0 0 3.9l6.69 3.35A2.7 2.7 0 0 0 15 19a3 3 0 1 0 3-3Z" />
     </svg>
   );
 }
@@ -1980,12 +2115,47 @@ function PostDetailStyles() {
         background: #229ed9;
       }
 
+      .share-btn.facebook {
+        background: #1877f2;
+      }
+
+      .share-btn.copy-link {
+        border: 0;
+        background: #334155;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .share-btn.more-share {
+        border: 0;
+        background: #7c3aed;
+        cursor: pointer;
+        font: inherit;
+      }
+
       .share-btn.whatsapp:hover {
         background: #128c7e;
       }
 
       .share-btn.telegram:hover {
         background: #0f82b8;
+      }
+
+      .share-btn.facebook:hover {
+        background: #0f5fc7;
+      }
+
+      .share-btn.copy-link:hover {
+        background: #1e293b;
+      }
+
+      .share-btn.more-share:hover {
+        background: #6d28d9;
+      }
+
+      .share-btn.copy-link:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
       }
 
       .share-icon {
@@ -2012,6 +2182,18 @@ function PostDetailStyles() {
 
 .share-btn.telegram .share-icon {
   color: #229ed9;
+}
+
+.share-btn.facebook .share-icon {
+  color: #1877f2;
+}
+
+.share-btn.copy-link .share-icon {
+  color: #334155;
+}
+
+.share-btn.more-share .share-icon {
+  color: #7c3aed;
 }
 
       .post-detail-sidebar {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -276,23 +277,14 @@ function ReminderItem({ job }: { job: JobPost }) {
 }
 
 function buildReminderShareText(reminderJobs: JobPost[], origin: string) {
-  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
-
-  reminderJobs.forEach((job, index) => {
-    const title = job.title || "Untitled Job";
-    const lastDate = getLastDate(job) || "Date not available";
-    const postLink = `${origin}/post/${job.slug || job.id}`;
-
-    lines.push(title);
-    lines.push(`Last Date: ${lastDate}`);
-    lines.push(postLink);
-
-    if (index < reminderJobs.length - 1) {
-      lines.push("");
-    }
-  });
-
-  return lines.join("\n");
+  return buildLastDateReminderShareText(
+    reminderJobs.map((job) => ({
+      title: job.title || "Untitled Job",
+      category: "Job",
+      lastDate: getLastDate(job) || "Date not available",
+      url: `${origin}/post/${job.slug || job.id}`,
+    }))
+  );
 }
 
 export default function JobsPage() {

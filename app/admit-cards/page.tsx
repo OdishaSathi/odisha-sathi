@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const ADMIT_CARD_SUB_CATEGORIES = [
   { label: "Odisha Admit Cards & Exams", value: "Odisha Admit Cards" },
@@ -367,26 +368,15 @@ function buildExamReminderShareText(
   reminderAdmitCards: AdmitCardPost[],
   origin: string
 ) {
-  const lines: string[] = [
-    "Odisha Sathi Exam Date and Admit Card Reminder",
-    "",
-  ];
-
-  reminderAdmitCards.forEach((admitCard, index) => {
-    const title = admitCard.title || "Untitled Admit Card & Exam";
-    const examDate = getExamDate(admitCard) || "Date not available";
-    const postLink = `${origin}/post/${admitCard.slug || admitCard.id}`;
-
-    lines.push(title);
-    lines.push(`Exam Date: ${examDate}`);
-    lines.push(postLink);
-
-    if (index < reminderAdmitCards.length - 1) {
-      lines.push("");
-    }
-  });
-
-  return lines.join("\n");
+  return buildLastDateReminderShareText(
+    reminderAdmitCards.map((admitCard) => ({
+      title: admitCard.title || "Untitled Admit Card & Exam",
+      category: "Admit Card & Exam",
+      lastDate: getExamDate(admitCard) || "Date not available",
+      dateLabel: "Exam Date",
+      url: `${origin}/post/${admitCard.slug || admitCard.id}`,
+    }))
+  );
 }
 
 export default function AdmitCardsPage() {

@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
 import { siteConfig } from "@/lib/siteConfig";
+import { db } from "@/lib/firebase";
 
 function isUsableSocialLink(href?: string) {
   if (!href) return false;
@@ -65,11 +70,34 @@ type SocialLinksProps = {
 };
 
 export default function SocialLinks({ className = "", iconOnly = false }: SocialLinksProps) {
+  const [publicLinks, setPublicLinks] = useState(siteConfig.socialLinks);
+
+  useEffect(() => {
+    getDoc(doc(db, "siteSettings", "main"))
+      .then((snapshot) => {
+        if (!snapshot.exists()) return;
+        const data = snapshot.data();
+        setPublicLinks((current) => ({
+          ...current,
+          whatsapp: data.whatsapp?.trim() || current.whatsapp,
+          telegram: data.telegram?.trim() || current.telegram,
+          youtube: data.youtube?.trim() || current.youtube,
+          facebook: data.facebook?.trim() || current.facebook,
+          instagram: data.instagram?.trim() || current.instagram,
+        }));
+      })
+      .catch((error) => console.warn("Public social links unavailable", error));
+  }, []);
+
   const modeClass = iconOnly ? "social-link-row-icons-only" : "";
+  const resolvedSocialItems = socialItems.map((item) => ({
+    ...item,
+    href: publicLinks[item.key as keyof typeof publicLinks],
+  }));
 
   return (
     <div className={`social-link-row ${modeClass} ${className}`.trim()}>
-      {socialItems.map((item) => {
+      {resolvedSocialItems.map((item) => {
         const isActive = isUsableSocialLink(item.href);
         const content = (
           <>

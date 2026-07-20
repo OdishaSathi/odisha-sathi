@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { dbServer } from "@/lib/firebaseServer";
 import PublicPostDetailsClient from "@/components/public/PublicPostDetailsClient";
+import { decorateShareMetadata } from "@/lib/postShare";
 import {
   buildJobShareSummary,
   getJobShareThumbnail,
@@ -11,6 +12,9 @@ import {
 type PostPageProps = {
   params: Promise<{
     slug: string;
+  }>;
+  searchParams?: Promise<{
+    reminder?: string | string[];
   }>;
 };
 
@@ -180,8 +184,11 @@ function buildOgImageUrl(post: MetaPost | null) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: PostPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const isReminderShare = resolvedSearchParams.reminder === "1";
   const post = await getPostForMetadata(slug);
   const isJobPost = isJobPostData(post);
   const jobShareSummary = isJobPost ? buildJobShareSummary(post) : null;
@@ -191,9 +198,19 @@ export async function generateMetadata({
     90
   );
 
-  const shareTitle = jobShareSummary?.title || pageTitle;
-  const description =
+  const normalShareTitle = jobShareSummary?.title || pageTitle;
+  const normalDescription =
     jobShareSummary?.metadataDescription || getDescription(post);
+  const decoratedMetadata = decorateShareMetadata(
+    normalShareTitle,
+    normalDescription
+  );
+  const shareTitle = isReminderShare
+    ? "Odisha Sathi Last Date Reminder"
+    : decoratedMetadata.title;
+  const description = isReminderShare
+    ? `${normalShareTitle} • ${post?.category || "Latest Update"}`
+    : decoratedMetadata.description;
   const imageUrl = buildOgImageUrl(post);
   const canonicalUrl = `/post/${encodeURIComponent(slug)}`;
 
@@ -210,20 +227,22 @@ export async function generateMetadata({
       url: canonicalUrl,
       siteName: "Odisha Sathi",
       type: "article",
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: shareTitle,
-        },
-      ],
+      images: isReminderShare
+        ? []
+        : [
+            {
+              url: imageUrl,
+              width: 1200,
+              height: 630,
+              alt: shareTitle,
+            },
+          ],
     },
     twitter: {
-      card: "summary_large_image",
+      card: isReminderShare ? "summary" : "summary_large_image",
       title: shareTitle,
       description,
-      images: [imageUrl],
+      images: isReminderShare ? [] : [imageUrl],
     },
   };
 }

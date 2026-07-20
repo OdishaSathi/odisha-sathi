@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
+import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const LATEST_TILE_LIMIT = 12;
 const SECTION_LIMIT = 6;
@@ -825,27 +826,20 @@ function getImportantInfoLink(item: ImportantInformationItem) {
 }
 
 function buildHomeReminderShareText(reminders: PostItem[], origin: string) {
-  const lines: string[] = ["Odisha Sathi Last Date Reminder", ""];
-
-  reminders.forEach((item, index) => {
-    const reminderInfo = getReminderDateInfo(item);
-    const dateLabel = reminderInfo?.label || "Last Date";
-    const dateValue = reminderInfo
-      ? formatDateForPurpose(reminderInfo.rawDate, "end")
-      : "Date not available";
-    const postLink = `${origin}${getLink(item)}`;
-
-    lines.push(getTitle(item));
-    lines.push(`Category: ${getCategoryLabel(item)}`);
-    lines.push(`${dateLabel}: ${dateValue}`);
-    lines.push(postLink);
-
-    if (index < reminders.length - 1) {
-      lines.push("");
-    }
-  });
-
-  return lines.join("\n");
+  return buildLastDateReminderShareText(
+    reminders.map((item) => {
+      const reminderInfo = getReminderDateInfo(item);
+      return {
+        title: getTitle(item),
+        category: getCategoryLabel(item),
+        lastDate: reminderInfo
+          ? formatDateForPurpose(reminderInfo.rawDate, "end")
+          : "Date not available",
+        dateLabel: reminderInfo?.label || "Last Date",
+        url: `${origin}${getLink(item)}`,
+      };
+    })
+  );
 }
 
 function LatestPostTile({ item }: { item: PostItem; index: number }) {
