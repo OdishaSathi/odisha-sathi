@@ -1322,14 +1322,14 @@ function PostDetailStyles() {
         border-radius: 18px;
         overflow: hidden;
         border: 1px solid #e5e7eb;
-        background: #ffffff;
+        background: #f8fafc;
         margin-bottom: 22px;
       }
 
       .post-detail-image-box img {
         width: 100%;
-        aspect-ratio: 1200 / 630;
-        object-fit: cover;
+        height: auto;
+        object-fit: contain;
         display: block;
       }
 

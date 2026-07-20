@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { dbServer } from "@/lib/firebaseServer";
 import PublicPostDetailsClient from "@/components/public/PublicPostDetailsClient";
+import {
+  buildJobShareSummary,
+  getJobShareThumbnail,
+} from "@/lib/jobShare";
 
 type PostPageProps = {
   params: Promise<{
@@ -151,16 +155,8 @@ function getDescription(post: MetaPost | null) {
   );
 }
 
-function buildOgImageUrl(post: MetaPost | null, slug: string) {
-  const customImage =
-    post?.previewImageUrl?.trim() ||
-    post?.imageUrl?.trim() ||
-    post?.bannerImageUrl?.trim() ||
-    post?.bannerUrl?.trim() ||
-    post?.imageUrls?.find((item) => String(item || "").trim())?.trim() ||
-    post?.shareImage?.trim();
-
-  if (customImage) return customImage;
+function buildOgImageUrl(post: MetaPost | null) {
+  const shareThumbnail = getJobShareThumbnail(post);
 
   const params = new URLSearchParams({
     category: post?.category || "Job",
@@ -169,7 +165,16 @@ function buildOgImageUrl(post: MetaPost | null, slug: string) {
     posts: getPostNames(post),
   });
 
-  return `/api/og/post?${params.toString()}`;
+  const fallbackUrl = `/api/og/post?${params.toString()}`;
+
+  if (!shareThumbnail) return fallbackUrl;
+
+  const thumbnailParams = new URLSearchParams({
+    src: shareThumbnail,
+    fallback: fallbackUrl,
+  });
+
+  return `/api/og/thumbnail?${thumbnailParams.toString()}`;
 }
 
 export async function generateMetadata({
@@ -177,25 +182,29 @@ export async function generateMetadata({
 }: PostPageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPostForMetadata(slug);
+  const isJobPost = String(post?.category || "").toLowerCase() === "jobs";
+  const jobShareSummary = isJobPost ? buildJobShareSummary(post) : null;
 
-  const title = cleanText(
+  const pageTitle = cleanText(
     post?.shareTitle || post?.title || "Odisha Sathi Update",
     90
   );
 
-  const description = getDescription(post);
-  const imageUrl = buildOgImageUrl(post, slug);
+  const shareTitle = jobShareSummary?.title || pageTitle;
+  const description =
+    jobShareSummary?.metadataDescription || getDescription(post);
+  const imageUrl = buildOgImageUrl(post);
   const canonicalUrl = `/post/${encodeURIComponent(slug)}`;
 
   return {
     metadataBase: new URL("https://odishasathi.in"),
-    title,
+    title: pageTitle,
     description,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title,
+      title: shareTitle,
       description,
       url: canonicalUrl,
       siteName: "Odisha Sathi",
@@ -205,13 +214,13 @@ export async function generateMetadata({
           url: imageUrl,
           width: 1200,
           height: 630,
-          alt: title,
+          alt: shareTitle,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title,
+      title: shareTitle,
       description,
       images: [imageUrl],
     },

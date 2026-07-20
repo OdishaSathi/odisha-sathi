@@ -14,6 +14,7 @@ import {
   normalizeJobInfoPanels,
 } from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
+import { buildJobShareSummary } from "@/lib/jobShare";
 import PostDetailLayout, {
   CommonPostDetailData,
   ImportantDateRow,
@@ -173,6 +174,17 @@ function getPostHref(post: PostData) {
 
 function getAbsolutePostUrl(post: PostData) {
   return `https://odishasathi.in${getPostHref(post)}`;
+}
+
+function getSharePostUrl(post: PostData) {
+  const baseUrl = getAbsolutePostUrl(post);
+  const version =
+    post.updatedAt?.seconds ||
+    (typeof post.updatedAt?.toMillis === "function"
+      ? post.updatedAt.toMillis()
+      : "");
+
+  return version ? `${baseUrl}?v=${version}` : baseUrl;
 }
 
 function normalizeImportantDates(value: any): ImportantDateRow[] {
@@ -448,6 +460,9 @@ function buildContentSections(post: PostData): DetailContentSection[] {
 }
 
 function mapToCommonPost(post: PostData): CommonPostDetailData {
+  const jobShareSummary =
+    post.category === "jobs" ? buildJobShareSummary(post) : null;
+
   return {
     title: post.title,
     category: post.category || "post",
@@ -471,9 +486,13 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     youtubeVideos: post.youtubeVideos || [],
     videos: post.videos || [],
 
-    postUrl: post.postUrl || getAbsolutePostUrl(post),
-    shareTitle: post.shareTitle || post.title,
+    postUrl:
+      post.category === "jobs"
+        ? getSharePostUrl(post)
+        : post.postUrl || getAbsolutePostUrl(post),
+    shareTitle: jobShareSummary?.title || post.shareTitle || post.title,
     shareDescription:
+      jobShareSummary?.text ||
       post.shareDescription ||
       post.shortDescription ||
       post.excerpt ||
