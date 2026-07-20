@@ -5,6 +5,7 @@ import PublicPostDetailsClient from "@/components/public/PublicPostDetailsClient
 import {
   buildJobShareSummary,
   getJobShareThumbnail,
+  isJobPostData,
 } from "@/lib/jobShare";
 
 type PostPageProps = {
@@ -83,7 +84,7 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
         return {
           id: postDoc.id,
           ...data,
-          category: data.category || item.category,
+          category: item.category || data.category,
         };
       }
 
@@ -95,7 +96,7 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
         return {
           id: directDoc.id,
           ...data,
-          category: data.category || item.category,
+          category: item.category || data.category,
         };
       }
     } catch (error) {
@@ -182,7 +183,7 @@ export async function generateMetadata({
 }: PostPageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPostForMetadata(slug);
-  const isJobPost = String(post?.category || "").toLowerCase() === "jobs";
+  const isJobPost = isJobPostData(post);
   const jobShareSummary = isJobPost ? buildJobShareSummary(post) : null;
 
   const pageTitle = cleanText(

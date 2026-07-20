@@ -14,7 +14,7 @@ import {
   normalizeJobInfoPanels,
 } from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
-import { buildJobShareSummary } from "@/lib/jobShare";
+import { buildJobShareSummary, isJobPostData } from "@/lib/jobShare";
 import PostDetailLayout, {
   CommonPostDetailData,
   ImportantDateRow,
@@ -184,7 +184,12 @@ function getSharePostUrl(post: PostData) {
       ? post.updatedAt.toMillis()
       : "");
 
-  return version ? `${baseUrl}?v=${version}` : baseUrl;
+  const params = new URLSearchParams({
+    v: String(version || "current"),
+    share: "2",
+  });
+
+  return `${baseUrl}?${params.toString()}`;
 }
 
 function normalizeImportantDates(value: any): ImportantDateRow[] {
@@ -460,8 +465,9 @@ function buildContentSections(post: PostData): DetailContentSection[] {
 }
 
 function mapToCommonPost(post: PostData): CommonPostDetailData {
-  const jobShareSummary =
-    post.category === "jobs" ? buildJobShareSummary(post) : null;
+  const jobShareSummary = isJobPostData(post)
+    ? buildJobShareSummary(post)
+    : null;
 
   return {
     title: post.title,
@@ -487,7 +493,7 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     videos: post.videos || [],
 
     postUrl:
-      post.category === "jobs"
+      isJobPostData(post)
         ? getSharePostUrl(post)
         : post.postUrl || getAbsolutePostUrl(post),
     shareTitle: jobShareSummary?.title || post.shareTitle || post.title,

@@ -380,6 +380,9 @@ export default function PostDetailLayout({
   const relatedPosts = (post.relatedPosts || []).slice(0, 5);
   const contentSections = cleanContentSections(post.contentSections);
   const isJobDetail = post.category === "jobs";
+  const whatsappShareText = isJobDetail
+    ? shareUrl
+    : `${shareTitle}\n${shareDescription}\n${shareUrl}`;
   const jobDetails = isJobDetail ? post.jobDetails || [] : [];
   const hasVacancyDetails = jobDetails.some((panel) =>
     panel.vacancyCategories.some(
@@ -619,7 +622,7 @@ export default function PostDetailLayout({
 
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(
-                      `${shareTitle}\n${shareDescription}\n${shareUrl}`
+                      whatsappShareText
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -632,9 +635,15 @@ WhatsApp
                   </a>
 
                   <a
-                    href={`https://t.me/share/url?url=${encodeURIComponent(
-                      shareUrl
-                    )}&text=${encodeURIComponent(`${shareTitle}\n${shareDescription}`)}`}
+                    href={
+                      isJobDetail
+                        ? `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`
+                        : `https://t.me/share/url?url=${encodeURIComponent(
+                            shareUrl
+                          )}&text=${encodeURIComponent(
+                            `${shareTitle}\n${shareDescription}`
+                          )}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="share-btn telegram"

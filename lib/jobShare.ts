@@ -19,6 +19,16 @@ function cleanString(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+export function isJobPostData(data: any) {
+  const category = cleanString(
+    data?.category || data?.postType || data?.type || data?.section
+  )
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+  return category === "job" || category === "jobs";
+}
+
 function uniqueStrings(values: unknown[]) {
   return Array.from(
     new Set(values.map(cleanString).filter(Boolean))
