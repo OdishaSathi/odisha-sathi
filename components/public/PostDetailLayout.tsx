@@ -1,6 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { getCategoryLabel } from "@/lib/defaultImages";
-import type { JobInfoPanel } from "@/lib/jobDetails";
+import type {
+  JobFeeRow,
+  JobInfoPanel,
+  RequiredDocumentRow,
+} from "@/lib/jobDetails";
 
 export type ImportantDateRow = {
   id?: string;
@@ -75,6 +82,8 @@ export type CommonPostDetailData = {
   infoRows?: InfoRow[];
   infoSections?: InfoSection[];
   jobDetails?: JobInfoPanel[];
+  feeStructureRows?: JobFeeRow[];
+  documentsRequired?: RequiredDocumentRow[];
 
   status?: string;
   createdAt?: string;
@@ -392,8 +401,11 @@ export default function PostDetailLayout({
   const hasQualificationDetails = jobDetails.some((panel) =>
     panel.qualification.trim()
   );
-  const hasDocumentDetails = jobDetails.some((panel) =>
-    panel.documentsRequired.some((item) => item.required && item.name.trim())
+  const feeStructureRows = post.feeStructureRows || [];
+  const documentsRequired = post.documentsRequired || [];
+  const hasFeeStructureDetails = feeStructureRows.some((row) => row.fee.trim());
+  const hasDocumentDetails = documentsRequired.some(
+    (item) => item.required && item.name.trim()
   );
   const firstVideo = videos[0];
   const firstVideoId = getYouTubeId(firstVideo?.url);
@@ -411,6 +423,9 @@ export default function PostDetailLayout({
           ? { id: "category-wise-vacancy", title: "Category-wise Vacancy" }
           : null,
         hasAgeDetails ? { id: "age-criteria", title: "Age Criteria" } : null,
+        hasFeeStructureDetails
+          ? { id: "fee-structure", title: "Fee Structure" }
+          : null,
         hasQualificationDetails
           ? {
               id: "educational-qualification",
@@ -493,28 +508,15 @@ export default function PostDetailLayout({
 
           <div className="post-detail-grid">
             <section className="post-detail-main">
-              {post.previewImageUrl?.trim() ? (
-                <div className="post-detail-image-box">
-                  <img src={post.previewImageUrl} alt={post.title} />
-                </div>
-              ) : youtubeBannerUrl ? (
-                <a
-                  className="post-detail-image-box youtube-banner"
-                  href={firstVideo?.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Watch ${post.title} video on YouTube`}
-                >
-                  <img src={youtubeBannerUrl} alt={`${post.title} video thumbnail`} />
-                  <span>Watch Video</span>
-                </a>
-              ) : (
-                <DefaultPostBanner
-                  categoryLabel={categoryLabel}
-                  departmentName={departmentName}
-                  postNames={postNames}
-                />
-              )}
+              <PostBanner
+                title={post.title}
+                uploadedImageUrl={post.previewImageUrl || ""}
+                youtubeBannerUrl={youtubeBannerUrl}
+                youtubeUrl={firstVideo?.url || ""}
+                categoryLabel={categoryLabel}
+                departmentName={departmentName}
+                postNames={postNames}
+              />
 
               {tableOfContents.length > 1 ? (
                 <TableOfContents items={tableOfContents} />
@@ -542,8 +544,9 @@ export default function PostDetailLayout({
                 <>
                   <JobVacancySection panels={jobDetails} />
                   <JobAgeSection panels={jobDetails} />
+                  <JobFeeStructureSection rows={feeStructureRows} />
                   <JobQualificationSection panels={jobDetails} />
-                  <JobDocumentsSection panels={jobDetails} />
+                  <JobDocumentsSection documents={documentsRequired} />
                 </>
               ) : null}
 
@@ -755,6 +758,65 @@ function DefaultPostBanner({
   );
 }
 
+function PostBanner({
+  title,
+  uploadedImageUrl,
+  youtubeBannerUrl,
+  youtubeUrl,
+  categoryLabel,
+  departmentName,
+  postNames,
+}: {
+  title: string;
+  uploadedImageUrl: string;
+  youtubeBannerUrl: string;
+  youtubeUrl: string;
+  categoryLabel: string;
+  departmentName: string;
+  postNames: string;
+}) {
+  const [uploadedImageFailed, setUploadedImageFailed] = useState(false);
+
+  useEffect(() => {
+    setUploadedImageFailed(false);
+  }, [uploadedImageUrl]);
+
+  if (uploadedImageUrl.trim() && !uploadedImageFailed) {
+    return (
+      <div className="post-detail-image-box">
+        <img
+          src={uploadedImageUrl.trim()}
+          alt={title}
+          onError={() => setUploadedImageFailed(true)}
+        />
+      </div>
+    );
+  }
+
+  if (youtubeBannerUrl) {
+    return (
+      <a
+        className="post-detail-image-box youtube-banner"
+        href={youtubeUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Watch ${title} video on YouTube`}
+      >
+        <img src={youtubeBannerUrl} alt={`${title} video thumbnail`} />
+        <span>Watch Video</span>
+      </a>
+    );
+  }
+
+  return (
+    <DefaultPostBanner
+      categoryLabel={categoryLabel}
+      departmentName={departmentName}
+      postNames={postNames}
+    />
+  );
+}
+
 function QuickInfoTable({ id, title, rows }: { id?: string; title: string; rows: InfoRow[] }) {
   const cleanRows = cleanInfoRows(rows);
 
@@ -961,35 +1023,63 @@ function JobQualificationSection({ panels }: { panels: JobInfoPanel[] }) {
   );
 }
 
-function JobDocumentsSection({ panels }: { panels: JobInfoPanel[] }) {
-  const visiblePanels = panels
-    .map((panel, index) => ({
-      panel,
-      index,
-      documents: panel.documentsRequired.filter(
-        (item) => item.required && item.name.trim()
-      ),
-    }))
-    .filter((item) => item.documents.length > 0);
+function JobFeeStructureSection({ rows }: { rows: JobFeeRow[] }) {
+  const visibleRows = rows.filter((row) => row.fee.trim());
 
-  if (visiblePanels.length === 0) return null;
+  if (visibleRows.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id="fee-structure">
+      <SectionHeader title="Fee Structure" />
+
+      <div className="job-detail-table-scroll standalone-table">
+        <table className="job-detail-data-table fee-table">
+          <thead>
+            <tr>
+              <th>Post / Vacancy</th>
+              <th>Applicant Category</th>
+              <th>Fee</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleRows.map((row) => (
+              <tr key={row.id}>
+                <th scope="row">{row.postName || "All Posts"}</th>
+                <td>{row.category || "All Categories"}</td>
+                <td>
+                  <strong>{row.fee}</strong>
+                </td>
+                <td>{row.remarks || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function JobDocumentsSection({
+  documents,
+}: {
+  documents: RequiredDocumentRow[];
+}) {
+  const visibleDocuments = documents.filter(
+    (item) => item.required && item.name.trim()
+  );
+
+  if (visibleDocuments.length === 0) return null;
 
   return (
     <section className="post-detail-section" id="documents-required">
       <SectionHeader title="Documents Required" />
 
-      <div className="job-detail-stack-list compact">
-        {visiblePanels.map(({ panel, index, documents }) => (
-          <div className="job-detail-text-block" key={panel.id}>
-            <h3>{getPanelTitle(panel, index)}</h3>
-            <ul className="job-detail-document-list">
-              {documents.map((document) => (
-                <li key={document.id}>{document.name}</li>
-              ))}
-            </ul>
-          </div>
+      <ul className="job-detail-document-list common-documents">
+        {visibleDocuments.map((document) => (
+          <li key={document.id}>{document.name}</li>
         ))}
-      </div>
+      </ul>
     </section>
   );
 }
@@ -1527,6 +1617,20 @@ function PostDetailStyles() {
       .job-detail-table-scroll {
         width: 100%;
         overflow-x: auto;
+      }
+
+      .job-detail-table-scroll.standalone-table {
+        box-sizing: border-box;
+        padding: 14px;
+      }
+
+      .standalone-table .job-detail-data-table {
+        border: 1px solid #e2e8f0;
+      }
+
+      .fee-table td:nth-child(3) strong {
+        color: #166534;
+        font-weight: 950;
       }
 
       .job-detail-data-table {

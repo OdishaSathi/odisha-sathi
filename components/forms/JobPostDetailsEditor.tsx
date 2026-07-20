@@ -2,15 +2,11 @@
 
 import {
   DEFAULT_VACANCY_CATEGORIES,
-  OPTIONAL_JOB_DOCUMENTS,
-  REQUIRED_JOB_DOCUMENTS,
   AgeCriteriaRow,
   JobInfoPanel,
-  RequiredDocumentRow,
   VacancyCategoryRow,
   createAgeCriteriaRow,
   createJobInfoPanel,
-  createRequiredDocument,
   createVacancyRow,
 } from "@/lib/jobDetails";
 
@@ -83,52 +79,6 @@ export default function JobPostDetailsEditor({
     }));
   };
 
-  const hasDocument = (panel: JobInfoPanel, name: string) =>
-    panel.documentsRequired.some(
-      (item) => item.name.toLowerCase() === name.toLowerCase() && item.required
-    );
-
-  const toggleOptionalDocument = (
-    panelId: string,
-    documentName: string,
-    checked: boolean
-  ) => {
-    updatePanel(panelId, (panel) => {
-      const filtered = panel.documentsRequired.filter(
-        (item) => item.name.toLowerCase() !== documentName.toLowerCase()
-      );
-
-      return {
-        ...panel,
-        documentsRequired: checked
-          ? [...filtered, createRequiredDocument(documentName, true)]
-          : filtered,
-      };
-    });
-  };
-
-  const updateCustomDocument = (
-    panelId: string,
-    rowId: string,
-    name: string
-  ) => {
-    updatePanel(panelId, (panel) => ({
-      ...panel,
-      documentsRequired: panel.documentsRequired.map((item) =>
-        item.id === rowId ? { ...item, name } : item
-      ),
-    }));
-  };
-
-  const removeDocument = (panelId: string, rowId: string) => {
-    updatePanel(panelId, (panel) => ({
-      ...panel,
-      documentsRequired: panel.documentsRequired.filter(
-        (item) => item.id !== rowId
-      ),
-    }));
-  };
-
   return (
     <section className="job-editor-section">
       <div className="job-editor-heading">
@@ -148,10 +98,6 @@ export default function JobPostDetailsEditor({
 
       <div className="job-editor-panel-list">
         {panels.map((panel, index) => {
-          const customDocuments = panel.documentsRequired.filter(
-            (item) => item.custom
-          );
-
           return (
             <article className="job-editor-panel" key={panel.id}>
               <div className="job-editor-panel-top">
@@ -510,83 +456,6 @@ export default function JobPostDetailsEditor({
                 </label>
               </details>
 
-              <details className="job-editor-details">
-                <summary>Documents required</summary>
-                <p className="job-editor-note">
-                  The five standard documents are compulsory. Select only the
-                  additional documents required for this post.
-                </p>
-
-                <div className="job-editor-document-grid">
-                  {REQUIRED_JOB_DOCUMENTS.map((name) => (
-                    <label key={name} className="required">
-                      <input type="checkbox" checked readOnly />
-                      {name}
-                    </label>
-                  ))}
-
-                  {OPTIONAL_JOB_DOCUMENTS.map((name) => (
-                    <label key={name}>
-                      <input
-                        type="checkbox"
-                        checked={hasDocument(panel, name)}
-                        onChange={(event) =>
-                          toggleOptionalDocument(
-                            panel.id,
-                            name,
-                            event.target.checked
-                          )
-                        }
-                      />
-                      {name}
-                    </label>
-                  ))}
-                </div>
-
-                {customDocuments.length > 0 ? (
-                  <div className="job-editor-custom-documents">
-                    {customDocuments.map((item: RequiredDocumentRow) => (
-                      <div key={item.id}>
-                        <input
-                          value={item.name}
-                          onChange={(event) =>
-                            updateCustomDocument(
-                              panel.id,
-                              item.id,
-                              event.target.value
-                            )
-                          }
-                          placeholder="Custom document name"
-                        />
-                        <button
-                          type="button"
-                          className="job-editor-icon-remove"
-                          onClick={() => removeDocument(panel.id, item.id)}
-                          aria-label="Remove custom document"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  className="job-editor-add-row"
-                  onClick={() =>
-                    updatePanel(panel.id, (current) => ({
-                      ...current,
-                      documentsRequired: [
-                        ...current.documentsRequired,
-                        createRequiredDocument("", true, true),
-                      ],
-                    }))
-                  }
-                >
-                  + Add custom document
-                </button>
-              </details>
             </article>
           );
         })}
@@ -816,52 +685,6 @@ export default function JobPostDetailsEditor({
           padding: 0 14px;
         }
 
-        .job-editor-document-grid {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px;
-          padding: 12px 14px;
-        }
-
-        .job-editor-document-grid label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 9px;
-          border: 1px solid #e2e8f0;
-          border-radius: 9px;
-          background: #ffffff;
-          color: #334155;
-          font-size: 12px;
-          font-weight: 750;
-        }
-
-        .job-editor-document-grid label.required {
-          background: #f0fdf4;
-          border-color: #bbf7d0;
-          color: #166534;
-        }
-
-        .job-editor-document-grid input[type="checkbox"] {
-          width: 16px;
-          min-height: 16px;
-          padding: 0;
-          accent-color: #2563eb;
-        }
-
-        .job-editor-custom-documents {
-          display: grid;
-          gap: 8px;
-          padding: 0 14px;
-        }
-
-        .job-editor-custom-documents > div {
-          display: grid;
-          grid-template-columns: 1fr auto;
-          gap: 8px;
-          align-items: center;
-        }
-
         @media (max-width: 700px) {
           .job-editor-section {
             padding: 12px;
@@ -878,8 +701,7 @@ export default function JobPostDetailsEditor({
             width: 100%;
           }
 
-          .job-editor-grid,
-          .job-editor-document-grid {
+          .job-editor-grid {
             grid-template-columns: 1fr;
           }
         }

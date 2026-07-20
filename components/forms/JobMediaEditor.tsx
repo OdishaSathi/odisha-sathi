@@ -11,6 +11,7 @@ type JobMediaEditorProps = {
   youtubeUrl3: string;
   onImageUrlChange: (value: string) => void;
   onYoutubeUrlChange: (index: number, value: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 };
 
 export default function JobMediaEditor({
@@ -20,6 +21,7 @@ export default function JobMediaEditor({
   youtubeUrl3,
   onImageUrlChange,
   onYoutubeUrlChange,
+  onUploadingChange,
 }: JobMediaEditorProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
@@ -39,6 +41,7 @@ export default function JobMediaEditor({
 
     try {
       setUploading(true);
+      onUploadingChange?.(true);
       setUploadError("");
 
       const safeName = file.name
@@ -54,14 +57,23 @@ export default function JobMediaEditor({
         contentType: file.type,
       });
 
-      onImageUrlChange(await getDownloadURL(imageRef));
+      const downloadUrl = await getDownloadURL(imageRef);
+      onImageUrlChange(downloadUrl);
     } catch (error) {
       console.error(error);
+      const errorCode =
+        typeof error === "object" && error && "code" in error
+          ? String((error as { code?: unknown }).code || "")
+          : "";
+
       setUploadError(
-        "Image upload failed. Check Firebase Storage rules or paste an image URL."
+        errorCode === "storage/unauthorized"
+          ? "Image upload was blocked by Firebase Storage permission. Paste a direct image URL for now, or update the Storage rules."
+          : "Image upload failed. Please retry or paste a direct image URL."
       );
     } finally {
       setUploading(false);
+      onUploadingChange?.(false);
     }
   };
 
@@ -94,7 +106,10 @@ export default function JobMediaEditor({
             <input
               type="url"
               value={imageUrl}
-              onChange={(event) => onImageUrlChange(event.target.value)}
+              onChange={(event) => {
+                setUploadError("");
+                onImageUrlChange(event.target.value);
+              }}
               placeholder="https://example.com/job-banner.jpg"
             />
             <small>Leave blank to use a YouTube thumbnail or default banner.</small>
@@ -106,7 +121,13 @@ export default function JobMediaEditor({
         {imageUrl.trim() ? (
           <div className="job-media-preview">
             <img src={imageUrl} alt="Selected Job banner preview" />
-            <button type="button" onClick={() => onImageUrlChange("")}>
+            <button
+              type="button"
+              onClick={() => {
+                setUploadError("");
+                onImageUrlChange("");
+              }}
+            >
               Remove image
             </button>
           </div>

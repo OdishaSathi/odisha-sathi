@@ -22,6 +22,9 @@ type MetaPost = {
   content?: string;
   previewImageUrl?: string;
   imageUrl?: string;
+  bannerImageUrl?: string;
+  bannerUrl?: string;
+  imageUrls?: string[];
   shareImage?: string;
   shareTitle?: string;
   shareDescription?: string;
@@ -152,6 +155,9 @@ function buildOgImageUrl(post: MetaPost | null, slug: string) {
   const customImage =
     post?.previewImageUrl?.trim() ||
     post?.imageUrl?.trim() ||
+    post?.bannerImageUrl?.trim() ||
+    post?.bannerUrl?.trim() ||
+    post?.imageUrls?.find((item) => String(item || "").trim())?.trim() ||
     post?.shareImage?.trim();
 
   if (customImage) return customImage;

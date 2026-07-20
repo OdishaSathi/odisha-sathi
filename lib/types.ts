@@ -27,6 +27,9 @@ export type Post = {
   excerpt: string;
   content: string;
   imageUrl?: string;
+  bannerImageUrl?: string;
+  bannerUrl?: string;
+  imageUrls?: string[];
   sourceUrl?: string;
   tags?: string[];
 
@@ -48,12 +51,18 @@ export type Post = {
   links?: ImportantLinkRow[];
   extraLinks?: ImportantLinkRow[];
   jobInfoPanels?: import("@/lib/jobDetails").JobInfoPanel[];
+  feeStructureRows?: import("@/lib/jobDetails").JobFeeRow[];
+  applicationFeeRows?: import("@/lib/jobDetails").JobFeeRow[];
+  documentsRequired?: import("@/lib/jobDetails").RequiredDocumentRow[];
+  requiredDocuments?: import("@/lib/jobDetails").RequiredDocumentRow[];
 
   // Jobs-specific optional fields
   organization?: string;
   department?: string;
   postName?: string;
   totalVacancy?: string;
+  feeStructure?: string;
+  applicationFee?: string;
   qualification?: string;
   ageLimit?: string;
   salary?: string;

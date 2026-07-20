@@ -6,7 +6,11 @@ import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
+  JobFeeRow,
   JobInfoPanel,
+  RequiredDocumentRow,
+  normalizeJobDocuments,
+  normalizeJobFeeRows,
   normalizeJobInfoPanels,
 } from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
@@ -47,6 +51,9 @@ type PostData = {
   imageUrl?: string;
   previewImageUrl?: string;
   shareImage?: string;
+  bannerImageUrl?: string;
+  bannerUrl?: string;
+  imageUrls?: string[];
 
   youtubeUrl?: string;
   youtubeUrls?: string[];
@@ -58,6 +65,8 @@ type PostData = {
   shareDescription?: string;
 
   jobInfoPanels?: JobInfoPanel[];
+  feeStructureRows?: JobFeeRow[];
+  documentsRequired?: RequiredDocumentRow[];
   quickInfoRows?: QuickInfoRow[];
 
   importantDates?: ImportantDateRow[];
@@ -69,6 +78,8 @@ type PostData = {
   department?: string;
   postName?: string;
   totalVacancy?: string;
+  feeStructure?: string;
+  applicationFee?: string;
   qualification?: string;
   ageLimit?: string;
   salary?: string;
@@ -223,6 +234,29 @@ function normalizeYoutubeUrls(data: any): string[] {
   addUrl(data.youtubeShortsUrl);
 
   return Array.from(new Set(urls));
+}
+
+function normalizePostImageUrl(data: any): string {
+  const imageUrls = Array.isArray(data?.imageUrls) ? data.imageUrls : [];
+  const images = Array.isArray(data?.images) ? data.images : [];
+
+  const candidates = [
+    data?.previewImageUrl,
+    data?.imageUrl,
+    data?.bannerImageUrl,
+    data?.bannerUrl,
+    data?.shareImage,
+    data?.shareImageUrl,
+    data?.thumbnailUrl,
+    data?.thumbnail,
+    typeof data?.image === "string" ? data.image : data?.image?.url,
+    imageUrls[0],
+    typeof images[0] === "string" ? images[0] : images[0]?.url,
+  ];
+
+  return candidates.find(
+    (value) => typeof value === "string" && value.trim()
+  )?.trim() || "";
 }
 
 function normalizeVideoRows(value: any): VideoRow[] {
@@ -424,7 +458,13 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     notificationNumber: post.notificationNumber || "",
 
     previewImageUrl:
-      post.previewImageUrl || post.imageUrl || post.shareImage || "",
+      post.previewImageUrl ||
+      post.imageUrl ||
+      post.bannerImageUrl ||
+      post.bannerUrl ||
+      post.shareImage ||
+      post.imageUrls?.[0] ||
+      "",
 
     youtubeUrl: post.youtubeUrl || "",
     youtubeUrls: post.youtubeUrls || [],
@@ -445,6 +485,8 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
 
     infoSections: buildInfoSections(post),
     jobDetails: post.jobInfoPanels || [],
+    feeStructureRows: post.feeStructureRows || [],
+    documentsRequired: post.documentsRequired || [],
     relatedPosts: post.relatedPosts || [],
     contentSections: buildContentSections(post),
 
@@ -483,6 +525,7 @@ export default function PublicPostDetailsPage() {
 
           return loaded.snapshot.docs.map((docItem) => {
             const data = docItem.data();
+            const normalizedImageUrl = normalizePostImageUrl(data);
 
             return {
               id: docItem.id,
@@ -513,9 +556,12 @@ export default function PublicPostDetailsPage() {
               notificationNumber:
                 data.notificationNumber || data.notificationNo || "",
 
-              imageUrl: data.imageUrl || "",
-              previewImageUrl: data.previewImageUrl || "",
+              imageUrl: normalizedImageUrl,
+              previewImageUrl: normalizedImageUrl,
               shareImage: data.shareImage || "",
+              bannerImageUrl: data.bannerImageUrl || "",
+              bannerUrl: data.bannerUrl || "",
+              imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
 
               youtubeUrl: data.youtubeUrl || "",
               youtubeUrls: normalizeYoutubeUrls(data),
@@ -527,6 +573,8 @@ export default function PublicPostDetailsPage() {
               shareDescription: data.shareDescription || "",
 
               jobInfoPanels: normalizeJobInfoPanels(data),
+              feeStructureRows: normalizeJobFeeRows(data),
+              documentsRequired: normalizeJobDocuments(data),
               quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
 
               importantDates: normalizeImportantDates(data.importantDates),
@@ -543,6 +591,9 @@ export default function PublicPostDetailsPage() {
                 data.schemeName ||
                 "",
               totalVacancy: data.totalVacancy || "",
+              feeStructure:
+                data.feeStructure || data.applicationFee || data.fees || "",
+              applicationFee: data.applicationFee || "",
               qualification: data.qualification || "",
               ageLimit: data.ageLimit || "",
               salary: data.salary || "",

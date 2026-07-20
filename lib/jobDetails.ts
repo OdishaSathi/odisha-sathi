@@ -21,6 +21,14 @@ export type RequiredDocumentRow = {
   custom?: boolean;
 };
 
+export type JobFeeRow = {
+  id: string;
+  postName: string;
+  category: string;
+  fee: string;
+  remarks: string;
+};
+
 export type JobInfoPanel = {
   id: string;
   organization: string;
@@ -32,7 +40,6 @@ export type JobInfoPanel = {
   salary: string;
   vacancyCategories: VacancyCategoryRow[];
   ageCriteria: AgeCriteriaRow[];
-  documentsRequired: RequiredDocumentRow[];
 };
 
 export const DEFAULT_VACANCY_CATEGORIES = [
@@ -99,10 +106,20 @@ export function createRequiredDocument(
   };
 }
 
-function createMandatoryDocuments() {
+export function createDefaultJobDocuments() {
   return REQUIRED_JOB_DOCUMENTS.map((name) =>
     createRequiredDocument(name, true)
   );
+}
+
+export function createJobFeeRow(): JobFeeRow {
+  return {
+    id: createJobDetailId("fee"),
+    postName: "",
+    category: "",
+    fee: "",
+    remarks: "",
+  };
 }
 
 export function createJobInfoPanel(): JobInfoPanel {
@@ -117,7 +134,6 @@ export function createJobInfoPanel(): JobInfoPanel {
     salary: "",
     vacancyCategories: DEFAULT_VACANCY_CATEGORIES.map(createVacancyRow),
     ageCriteria: [],
-    documentsRequired: createMandatoryDocuments(),
   };
 }
 
@@ -183,15 +199,127 @@ function normalizeDocuments(value: unknown): RequiredDocumentRow[] {
         .filter((item) => item.name)
     : [];
 
+  const uniqueSavedRows = savedRows.filter(
+    (item, index, rows) =>
+      rows.findIndex(
+        (candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()
+      ) === index
+  );
+
   const savedNames = new Set(
-    savedRows.map((item) => item.name.toLowerCase())
+    uniqueSavedRows.map((item) => item.name.toLowerCase())
   );
 
   const missingMandatory = REQUIRED_JOB_DOCUMENTS.filter(
     (name) => !savedNames.has(name.toLowerCase())
   ).map((name) => createRequiredDocument(name, true));
 
-  return [...missingMandatory, ...savedRows];
+  return [...missingMandatory, ...uniqueSavedRows];
+}
+
+export function normalizeJobDocuments(data: any): RequiredDocumentRow[] {
+  const directDocuments = [data?.documentsRequired, data?.requiredDocuments].find(
+    (value) => Array.isArray(value) && value.length > 0
+  );
+
+  if (Array.isArray(directDocuments) && directDocuments.length > 0) {
+    return normalizeDocuments(directDocuments);
+  }
+
+  const legacyPanelDocuments = Array.isArray(data?.jobInfoPanels)
+    ? data.jobInfoPanels.flatMap((panel: any) =>
+        Array.isArray(panel?.documentsRequired)
+          ? panel.documentsRequired
+          : Array.isArray(panel?.requiredDocuments)
+          ? panel.requiredDocuments
+          : []
+      )
+    : [];
+
+  return normalizeDocuments(legacyPanelDocuments);
+}
+
+export function cleanJobDocuments(rows: RequiredDocumentRow[]) {
+  return normalizeDocuments(rows)
+    .map((item) => ({
+      ...item,
+      name: item.name.trim(),
+    }))
+    .filter((item) => item.name && item.required);
+}
+
+function normalizeFeeRow(item: any, index: number): JobFeeRow {
+  if (typeof item === "string") {
+    return {
+      ...createJobFeeRow(),
+      postName: "All Posts",
+      fee: item.trim(),
+    };
+  }
+
+  return {
+    id: item?.id || createJobDetailId(`fee_${index}`),
+    postName: cleanString(
+      item?.postName || item?.vacancyName || item?.designation
+    ),
+    category: cleanString(
+      item?.category || item?.applicantCategory || item?.feeCategory
+    ),
+    fee: cleanString(
+      item?.fee || item?.amount || item?.applicationFee || item?.value
+    ),
+    remarks: cleanString(item?.remarks || item?.note || item?.details),
+  };
+}
+
+export function normalizeJobFeeRows(data: any): JobFeeRow[] {
+  const directRows = [
+    data?.feeStructureRows,
+    data?.applicationFeeRows,
+    data?.feeRows,
+  ].find((value) => Array.isArray(value) && value.length > 0);
+
+  if (Array.isArray(directRows)) {
+    return directRows
+      .map(normalizeFeeRow)
+      .filter((row) => row.fee || row.category || row.postName || row.remarks);
+  }
+
+  const legacyPanelRows = Array.isArray(data?.jobInfoPanels)
+    ? data.jobInfoPanels
+        .map((panel: any, index: number) => ({
+          id: createJobDetailId(`fee_${index}`),
+          postName: cleanString(panel?.postName) || "All Posts",
+          category: "",
+          fee: cleanString(
+            panel?.feeStructure || panel?.applicationFee || panel?.fees
+          ),
+          remarks: "",
+        }))
+        .filter((row: JobFeeRow) => row.fee)
+    : [];
+
+  if (legacyPanelRows.length > 0) return legacyPanelRows;
+
+  const legacyFee = cleanString(
+    data?.feeStructure || data?.applicationFee || data?.fees
+  );
+
+  return legacyFee
+    ? [{ ...createJobFeeRow(), postName: "All Posts", fee: legacyFee }]
+    : [];
+}
+
+export function cleanJobFeeRows(rows: JobFeeRow[]) {
+  return rows
+    .map((row) => ({
+      ...row,
+      postName: row.postName.trim(),
+      category: row.category.trim(),
+      fee: row.fee.trim(),
+      remarks: row.remarks.trim(),
+    }))
+    .filter((row) => row.fee);
 }
 
 function normalizePanel(item: any, fallback: any = {}): JobInfoPanel {
@@ -215,9 +343,6 @@ function normalizePanel(item: any, fallback: any = {}): JobInfoPanel {
     ),
     ageCriteria: normalizeAgeRows(
       item?.ageCriteria || item?.categoryWiseAge || item?.ageRelaxations
-    ),
-    documentsRequired: normalizeDocuments(
-      item?.documentsRequired || item?.requiredDocuments
     ),
   };
 }
@@ -263,10 +388,7 @@ export function isJobInfoPanelFilled(panel: JobInfoPanel) {
       panel.ageCutoffDate.trim() ||
       panel.salary.trim() ||
       panel.vacancyCategories.some(hasVacancyData) ||
-      panel.ageCriteria.some(hasAgeData) ||
-      panel.documentsRequired.some(
-        (item) => item.custom && item.name.trim()
-      )
+      panel.ageCriteria.some(hasAgeData)
   );
 }
 
@@ -298,11 +420,5 @@ export function cleanJobInfoPanels(panels: JobInfoPanel[]) {
         relaxation: row.relaxation.trim(),
       }))
       .filter(hasAgeData),
-    documentsRequired: panel.documentsRequired
-      .map((item) => ({
-        ...item,
-        name: item.name.trim(),
-      }))
-      .filter((item) => item.name && item.required),
   }));
 }

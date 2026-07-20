@@ -7,11 +7,19 @@ import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import PostDynamicTables from "@/components/admin/PostDynamicTables";
 import JobMediaEditor from "@/components/forms/JobMediaEditor";
+import JobCommonDetailsEditor from "@/components/forms/JobCommonDetailsEditor";
 import JobPostDetailsEditor from "@/components/forms/JobPostDetailsEditor";
 import {
+  JobFeeRow,
   JobInfoPanel,
+  RequiredDocumentRow,
+  cleanJobDocuments,
+  cleanJobFeeRows,
   cleanJobInfoPanels,
+  createDefaultJobDocuments,
   createJobInfoPanel,
+  normalizeJobDocuments,
+  normalizeJobFeeRows,
   normalizeJobInfoPanels,
 } from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
@@ -110,8 +118,13 @@ export function EditJobForm({ id, postId }: EditJobFormProps) {
   const [jobInfoPanels, setJobInfoPanels] = useState<JobInfoPanel[]>([
     createJobInfoPanel(),
   ]);
+  const [feeStructureRows, setFeeStructureRows] = useState<JobFeeRow[]>([]);
+  const [documentsRequired, setDocumentsRequired] = useState<
+    RequiredDocumentRow[]
+  >(createDefaultJobDocuments());
 
   const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
 const [youtubeUrl2, setYoutubeUrl2] = useState("");
 const [youtubeUrl3, setYoutubeUrl3] = useState("");
@@ -199,8 +212,18 @@ const [youtubeUrl3, setYoutubeUrl3] = useState("");
         setSelectionProcedure(data.selectionProcedure || "");
 
         setJobInfoPanels(normalizeJobInfoPanels(data));
+        setFeeStructureRows(normalizeJobFeeRows(data));
+        setDocumentsRequired(normalizeJobDocuments(data));
 
-        setPreviewImageUrl(data.previewImageUrl || data.imageUrl || "");
+        setPreviewImageUrl(
+          data.previewImageUrl ||
+            data.imageUrl ||
+            data.bannerImageUrl ||
+            data.bannerUrl ||
+            data.shareImage ||
+            (Array.isArray(data.imageUrls) ? data.imageUrls[0] : "") ||
+            ""
+        );
         setYoutubeUrl(data.youtubeUrl || "");
 
 const savedYoutubeUrls = Array.isArray(data.youtubeUrls)
@@ -263,8 +286,11 @@ setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
       setSaving(true);
 
       const cleanedPanels = cleanJobInfoPanels(jobInfoPanels);
+      const cleanedFeeRows = cleanJobFeeRows(feeStructureRows);
+      const cleanedDocuments = cleanJobDocuments(documentsRequired);
 
       const firstPanel = cleanedPanels[0];
+      const resolvedImageUrl = previewImageUrl.trim();
 
       const cleanedDates = cleanImportantDates(importantDates);
 const cleanedLinks = cleanImportantLinks(importantLinks);
@@ -291,6 +317,10 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         selectionProcedure: selectionProcedure.trim(),
 
         jobInfoPanels: cleanedPanels,
+        feeStructureRows: cleanedFeeRows,
+        applicationFeeRows: cleanedFeeRows,
+        documentsRequired: cleanedDocuments,
+        requiredDocuments: cleanedDocuments,
 
         organization: firstPanel?.organization || "",
         department: firstPanel?.organization || "",
@@ -301,15 +331,16 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         salary: firstPanel?.salary || "",
         payScale: firstPanel?.salary || "",
 
-        previewImageUrl: previewImageUrl.trim(),
-        imageUrl: previewImageUrl.trim(),
+        previewImageUrl: resolvedImageUrl,
+        imageUrl: resolvedImageUrl,
+        bannerImageUrl: resolvedImageUrl,
 
         youtubeUrl: youtubeUrl.trim(),
 youtubeUrls: cleanedYoutubeUrls,
 
         shareTitle: shareTitle.trim(),
         shareDescription: shareDescription.trim(),
-        shareImage: previewImageUrl.trim(),
+        shareImage: resolvedImageUrl,
 
         importantDates: cleanedDates,
         importantLinks: cleanedLinks,
@@ -430,6 +461,16 @@ youtubeUrls: cleanedYoutubeUrls,
         onChange={setJobInfoPanels}
       />
 
+      <JobCommonDetailsEditor
+        feeRows={feeStructureRows}
+        documents={documentsRequired}
+        postNames={jobInfoPanels
+          .map((panel) => panel.postName.trim())
+          .filter(Boolean)}
+        onFeeRowsChange={setFeeStructureRows}
+        onDocumentsChange={setDocumentsRequired}
+      />
+
       <section style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Description</h3>
 
@@ -506,6 +547,7 @@ youtubeUrls: cleanedYoutubeUrls,
         youtubeUrl2={youtubeUrl2}
         youtubeUrl3={youtubeUrl3}
         onImageUrlChange={setPreviewImageUrl}
+        onUploadingChange={setImageUploading}
         onYoutubeUrlChange={(index, value) => {
           if (index === 0) setYoutubeUrl(value);
           if (index === 1) setYoutubeUrl2(value);
@@ -548,8 +590,16 @@ youtubeUrls: cleanedYoutubeUrls,
         </div>
       </details>
 
-      <button type="submit" disabled={saving} style={submitButtonStyle}>
-        {saving ? "Updating..." : "Update Job"}
+      <button
+        type="submit"
+        disabled={saving || imageUploading}
+        style={submitButtonStyle}
+      >
+        {imageUploading
+          ? "Wait for image upload..."
+          : saving
+          ? "Updating..."
+          : "Update Job"}
       </button>
     </form>
   );
