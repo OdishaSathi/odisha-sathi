@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCategoryLabel } from "@/lib/defaultImages";
+import type { JobInfoPanel } from "@/lib/jobDetails";
 
 export type ImportantDateRow = {
   id?: string;
@@ -56,6 +57,7 @@ export type CommonPostDetailData = {
 
   shortDescription?: string;
   description?: string;
+  notificationNumber?: string;
   previewImageUrl?: string;
 
   shareTitle?: string;
@@ -72,6 +74,7 @@ export type CommonPostDetailData = {
 
   infoRows?: InfoRow[];
   infoSections?: InfoSection[];
+  jobDetails?: JobInfoPanel[];
 
   status?: string;
   createdAt?: string;
@@ -368,6 +371,35 @@ export default function PostDetailLayout({
   const relatedPosts = (post.relatedPosts || []).slice(0, 5);
   const contentSections = cleanContentSections(post.contentSections);
   const isJobDetail = post.category === "jobs";
+  const jobDetails = isJobDetail ? post.jobDetails || [] : [];
+  const hasVacancyDetails = jobDetails.some((panel) =>
+    panel.vacancyCategories.some(
+      (row) => row.total.trim() || row.male.trim() || row.female.trim()
+    )
+  );
+  const hasAgeDetails = jobDetails.some(
+    (panel) =>
+      panel.ageLimit.trim() ||
+      panel.ageCutoffDate.trim() ||
+      panel.ageCriteria.some(
+        (row) =>
+          row.category.trim() &&
+          (row.minimumAge.trim() ||
+            row.maximumAge.trim() ||
+            row.relaxation.trim())
+      )
+  );
+  const hasQualificationDetails = jobDetails.some((panel) =>
+    panel.qualification.trim()
+  );
+  const hasDocumentDetails = jobDetails.some((panel) =>
+    panel.documentsRequired.some((item) => item.required && item.name.trim())
+  );
+  const firstVideo = videos[0];
+  const firstVideoId = getYouTubeId(firstVideo?.url);
+  const youtubeBannerUrl = firstVideoId
+    ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
+    : "";
 
   const tableOfContents: TableOfContentsItem[] = isJobDetail
     ? [
@@ -375,16 +407,29 @@ export default function PostDetailLayout({
         quickInfoSections.length > 0
           ? { id: "post-details", title: "Post Details" }
           : null,
+        hasVacancyDetails
+          ? { id: "category-wise-vacancy", title: "Category-wise Vacancy" }
+          : null,
+        hasAgeDetails ? { id: "age-criteria", title: "Age Criteria" } : null,
+        hasQualificationDetails
+          ? {
+              id: "educational-qualification",
+              title: "Educational Qualification",
+            }
+          : null,
+        hasDocumentDetails
+          ? { id: "documents-required", title: "Documents Required" }
+          : null,
+        ...contentSections.map((section) => ({
+          id: section.id || normalizeAnchorId(section.title, "content-section"),
+          title: section.title,
+        })),
         importantDates.length > 0
           ? { id: "important-dates", title: "Important Dates" }
           : null,
         importantLinks.length > 0
           ? { id: "important-links", title: "Important Links" }
           : null,
-        ...contentSections.map((section) => ({
-          id: section.id || normalizeAnchorId(section.title, "content-section"),
-          title: section.title,
-        })),
         videos.length > 0 ? { id: "video-guide", title: "Video Guide" } : null,
         { id: "share-this-post", title: "Sharing Buttons" },
       ].filter(Boolean) as TableOfContentsItem[]
@@ -407,6 +452,8 @@ export default function PostDetailLayout({
 
         <article className="post-detail-shell">
           <header className="post-detail-header">
+            <h1>{post.title}</h1>
+
             <div className="post-detail-badge-row">
               <span className="post-detail-category-badge">{categoryLabel}</span>
 
@@ -420,8 +467,6 @@ export default function PostDetailLayout({
                 </span>
               ) : null}
             </div>
-
-            <h1>{post.title}</h1>
 
             {post.subCategories && post.subCategories.length > 0 ? (
               <div className="post-detail-chip-row">
@@ -438,6 +483,12 @@ export default function PostDetailLayout({
                 {post.shortDescription}
               </p>
             ) : null}
+
+            {post.notificationNumber?.trim() ? (
+              <p className="post-detail-notification-number">
+                Notification No.: <strong>{post.notificationNumber.trim()}</strong>
+              </p>
+            ) : null}
           </header>
 
           <div className="post-detail-grid">
@@ -446,6 +497,17 @@ export default function PostDetailLayout({
                 <div className="post-detail-image-box">
                   <img src={post.previewImageUrl} alt={post.title} />
                 </div>
+              ) : youtubeBannerUrl ? (
+                <a
+                  className="post-detail-image-box youtube-banner"
+                  href={firstVideo?.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Watch ${post.title} video on YouTube`}
+                >
+                  <img src={youtubeBannerUrl} alt={`${post.title} video thumbnail`} />
+                  <span>Watch Video</span>
+                </a>
               ) : (
                 <DefaultPostBanner
                   categoryLabel={categoryLabel}
@@ -458,10 +520,12 @@ export default function PostDetailLayout({
                 <TableOfContents items={tableOfContents} />
               ) : null}
 
-              <section className="post-detail-section" id="description">
-                <SectionHeader title="Description" />
-                <DetailDescription description={post.description} />
-              </section>
+              {post.description?.trim() ? (
+                <section className="post-detail-section" id="description">
+                  <SectionHeader title="Description" />
+                  <DetailDescription description={post.description} />
+                </section>
+              ) : null}
 
               {quickInfoSections.length > 0 ? (
                 quickInfoSections.map((section, index) => (
@@ -472,19 +536,30 @@ export default function PostDetailLayout({
                     rows={section.rows}
                   />
                 ))
-              ) : (
-                <section className="post-detail-section">
-                  <SectionHeader title="Post Details" />
-                  <p className="post-detail-empty-text">
-                    Post information will be updated soon.
-                  </p>
-                </section>
-              )}
+              ) : null}
 
-              <section className="post-detail-section" id="important-dates">
-                <SectionHeader title="Important Dates" />
+              {isJobDetail ? (
+                <>
+                  <JobVacancySection panels={jobDetails} />
+                  <JobAgeSection panels={jobDetails} />
+                  <JobQualificationSection panels={jobDetails} />
+                  <JobDocumentsSection panels={jobDetails} />
+                </>
+              ) : null}
 
-                {importantDates.length > 0 ? (
+              {isJobDetail
+                ? contentSections.map((section) => (
+                    <DetailTextSection
+                      key={section.id || section.title}
+                      section={section}
+                    />
+                  ))
+                : null}
+
+              {importantDates.length > 0 ? (
+                <section className="post-detail-section" id="important-dates">
+                  <SectionHeader title="Important Dates" />
+
                   <div className="post-detail-date-list">
                     {importantDates.map((row, index) => (
                       <div
@@ -496,17 +571,13 @@ export default function PostDetailLayout({
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="post-detail-empty-text">
-                    Important dates will be updated soon.
-                  </p>
-                )}
-              </section>
+                </section>
+              ) : null}
 
-              <section className="post-detail-section" id="important-links">
-                <SectionHeader title="Important Links" />
+              {importantLinks.length > 0 ? (
+                <section className="post-detail-section" id="important-links">
+                  <SectionHeader title="Important Links" />
 
-                {importantLinks.length > 0 ? (
                   <div className="post-detail-link-list">
                     {importantLinks.map((row, index) => (
                       <a
@@ -521,16 +592,17 @@ export default function PostDetailLayout({
                       </a>
                     ))}
                   </div>
-                ) : (
-                  <p className="post-detail-empty-text">
-                    Important links will be updated soon.
-                  </p>
-                )}
-              </section>
+                </section>
+              ) : null}
 
-              {contentSections.map((section) => (
-                <DetailTextSection key={section.id || section.title} section={section} />
-              ))}
+              {!isJobDetail
+                ? contentSections.map((section) => (
+                    <DetailTextSection
+                      key={section.id || section.title}
+                      section={section}
+                    />
+                  ))
+                : null}
 
               <VideoGuideSection videos={videos} title={post.title} />
 
@@ -706,6 +778,222 @@ function QuickInfoTable({ id, title, rows }: { id?: string; title: string; rows:
   );
 }
 
+function getPanelTitle(panel: JobInfoPanel, index: number) {
+  return panel.postName.trim() || `Post ${index + 1}`;
+}
+
+function getCalculatedVacancyTotal(panel: JobInfoPanel) {
+  if (panel.totalVacancy.trim()) return panel.totalVacancy.trim();
+
+  const totals = panel.vacancyCategories
+    .filter((row) => row.total.trim() || row.male.trim() || row.female.trim())
+    .map((row) => {
+    const value = row.total.replace(/[^0-9.-]/g, "");
+    return value ? Number(value) : Number.NaN;
+    });
+
+  if (totals.length === 0 || totals.some((value) => Number.isNaN(value))) {
+    return "";
+  }
+
+  return String(totals.reduce((sum, value) => sum + value, 0));
+}
+
+function JobVacancySection({ panels }: { panels: JobInfoPanel[] }) {
+  const visiblePanels = panels
+    .map((panel, index) => ({
+      panel,
+      index,
+      rows: panel.vacancyCategories.filter(
+        (row) => row.total.trim() || row.male.trim() || row.female.trim()
+      ),
+    }))
+    .filter((item) => item.rows.length > 0);
+
+  if (visiblePanels.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id="category-wise-vacancy">
+      <SectionHeader title="Category-wise Vacancy" />
+
+      <div className="job-detail-stack-list">
+        {visiblePanels.map(({ panel, index, rows }) => {
+          const totalVacancy = getCalculatedVacancyTotal(panel);
+
+          return (
+            <div className="job-detail-data-block" key={panel.id}>
+              <h3>{getPanelTitle(panel, index)}</h3>
+
+              <div className="job-detail-table-scroll">
+                <table className="job-detail-data-table vacancy-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Total</th>
+                      <th>Male</th>
+                      <th>Female</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.id}>
+                        <th scope="row">{row.category}</th>
+                        <td>{row.total || "—"}</td>
+                        <td>{row.male || "—"}</td>
+                        <td>{row.female || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalVacancy ? (
+                <p className="job-detail-total-vacancy">
+                  Total Number of Vacancies: <strong>{totalVacancy}</strong>
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function JobAgeSection({ panels }: { panels: JobInfoPanel[] }) {
+  const visiblePanels = panels
+    .map((panel, index) => ({
+      panel,
+      index,
+      rows: panel.ageCriteria.filter(
+        (row) =>
+          row.category.trim() &&
+          (row.minimumAge.trim() ||
+            row.maximumAge.trim() ||
+            row.relaxation.trim())
+      ),
+    }))
+    .filter(
+      ({ panel, rows }) =>
+        panel.ageLimit.trim() || panel.ageCutoffDate.trim() || rows.length > 0
+    );
+
+  if (visiblePanels.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id="age-criteria">
+      <SectionHeader title="Age Criteria" />
+
+      <div className="job-detail-stack-list">
+        {visiblePanels.map(({ panel, index, rows }) => (
+          <div className="job-detail-data-block" key={panel.id}>
+            <h3>{getPanelTitle(panel, index)}</h3>
+
+            {panel.ageLimit.trim() || panel.ageCutoffDate.trim() ? (
+              <div className="job-detail-summary-grid">
+                {panel.ageLimit.trim() ? (
+                  <div>
+                    <span>General Age Limit</span>
+                    <strong>{panel.ageLimit}</strong>
+                  </div>
+                ) : null}
+
+                {panel.ageCutoffDate.trim() ? (
+                  <div>
+                    <span>Age Calculated as on</span>
+                    <strong>{panel.ageCutoffDate}</strong>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {rows.length > 0 ? (
+              <div className="job-detail-table-scroll">
+                <table className="job-detail-data-table age-table">
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Minimum Age</th>
+                      <th>Maximum Age</th>
+                      <th>Relaxation / Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => (
+                      <tr key={row.id}>
+                        <th scope="row">{row.category}</th>
+                        <td>{row.minimumAge || "—"}</td>
+                        <td>{row.maximumAge || "—"}</td>
+                        <td>{row.relaxation || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function JobQualificationSection({ panels }: { panels: JobInfoPanel[] }) {
+  const visiblePanels = panels
+    .map((panel, index) => ({ panel, index }))
+    .filter(({ panel }) => panel.qualification.trim());
+
+  if (visiblePanels.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id="educational-qualification">
+      <SectionHeader title="Educational Qualification" />
+
+      <div className="job-detail-stack-list compact">
+        {visiblePanels.map(({ panel, index }) => (
+          <div className="job-detail-text-block" key={panel.id}>
+            <h3>{getPanelTitle(panel, index)}</h3>
+            <p>{panel.qualification}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function JobDocumentsSection({ panels }: { panels: JobInfoPanel[] }) {
+  const visiblePanels = panels
+    .map((panel, index) => ({
+      panel,
+      index,
+      documents: panel.documentsRequired.filter(
+        (item) => item.required && item.name.trim()
+      ),
+    }))
+    .filter((item) => item.documents.length > 0);
+
+  if (visiblePanels.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id="documents-required">
+      <SectionHeader title="Documents Required" />
+
+      <div className="job-detail-stack-list compact">
+        {visiblePanels.map(({ panel, index, documents }) => (
+          <div className="job-detail-text-block" key={panel.id}>
+            <h3>{getPanelTitle(panel, index)}</h3>
+            <ul className="job-detail-document-list">
+              {documents.map((document) => (
+                <li key={document.id}>{document.name}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function VideoGuideSection({
   videos,
   title,
@@ -842,7 +1130,7 @@ function PostDetailStyles() {
         flex-wrap: wrap;
         gap: 8px;
         align-items: center;
-        margin-bottom: 12px;
+        margin: 12px 0 0;
       }
 
       .post-detail-category-badge,
@@ -914,6 +1202,18 @@ function PostDetailStyles() {
         line-height: 1.65;
       }
 
+      .post-detail-notification-number {
+        margin: 10px 0 0;
+        color: #166534;
+        font-size: 15px;
+        line-height: 1.5;
+        font-weight: 850;
+      }
+
+      .post-detail-notification-number strong {
+        font-weight: 950;
+      }
+
       .post-detail-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) 330px;
@@ -941,6 +1241,31 @@ function PostDetailStyles() {
         aspect-ratio: 1200 / 630;
         object-fit: cover;
         display: block;
+      }
+
+      .post-detail-image-box.youtube-banner {
+        position: relative;
+        display: block;
+        text-decoration: none;
+        background: #0f172a;
+      }
+
+      .post-detail-image-box.youtube-banner span {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 38px;
+        padding: 8px 15px;
+        border-radius: 999px;
+        background: rgba(220, 38, 38, 0.94);
+        color: #ffffff;
+        font-size: 13px;
+        font-weight: 950;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
       }
 
       .default-post-banner {
@@ -1167,6 +1492,162 @@ function PostDetailStyles() {
       .post-detail-info-table strong {
         color: #334155;
         font-weight: 650;
+      }
+
+      .job-detail-stack-list {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+      }
+
+      .job-detail-stack-list.compact {
+        gap: 10px;
+      }
+
+      .job-detail-data-block,
+      .job-detail-text-block {
+        border: 1px solid #e2e8f0;
+        border-radius: 13px;
+        background: #ffffff;
+        overflow: hidden;
+      }
+
+      .job-detail-data-block > h3,
+      .job-detail-text-block > h3 {
+        margin: 0;
+        padding: 11px 13px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 15px;
+        line-height: 1.35;
+        font-weight: 950;
+      }
+
+      .job-detail-table-scroll {
+        width: 100%;
+        overflow-x: auto;
+      }
+
+      .job-detail-data-table {
+        width: 100%;
+        min-width: 560px;
+        border-collapse: collapse;
+      }
+
+      .job-detail-data-table th,
+      .job-detail-data-table td {
+        padding: 10px 12px;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        font-size: 13.5px;
+        line-height: 1.4;
+        text-align: center;
+      }
+
+      .job-detail-data-table tr:last-child th,
+      .job-detail-data-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .job-detail-data-table th:last-child,
+      .job-detail-data-table td:last-child {
+        border-right: 0;
+      }
+
+      .job-detail-data-table thead th {
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-weight: 950;
+      }
+
+      .job-detail-data-table tbody th {
+        background: #f8fafc;
+        color: #0f172a;
+        font-weight: 900;
+        text-align: left;
+      }
+
+      .job-detail-total-vacancy {
+        margin: 0;
+        padding: 12px 13px;
+        border-top: 1px solid #e2e8f0;
+        background: #f0fdf4;
+        color: #166534;
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .job-detail-total-vacancy strong {
+        font-weight: 950;
+      }
+
+      .job-detail-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .job-detail-summary-grid > div {
+        display: grid;
+        gap: 4px;
+        padding: 10px 11px;
+        border: 1px solid #dbeafe;
+        border-radius: 10px;
+        background: #eff6ff;
+      }
+
+      .job-detail-summary-grid span {
+        color: #475569;
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .job-detail-summary-grid strong {
+        color: #0f172a;
+        font-size: 14px;
+        font-weight: 950;
+      }
+
+      .job-detail-text-block p {
+        margin: 0;
+        padding: 12px 13px;
+        color: #334155;
+        font-size: 14.5px;
+        line-height: 1.7;
+        white-space: pre-line;
+      }
+
+      .job-detail-document-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin: 0;
+        padding: 12px 13px;
+        list-style: none;
+      }
+
+      .job-detail-document-list li {
+        position: relative;
+        padding: 9px 10px 9px 34px;
+        border: 1px solid #e2e8f0;
+        border-radius: 9px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .job-detail-document-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #16a34a;
+        font-weight: 950;
       }
 
       .post-detail-date-list {
@@ -1549,6 +2030,10 @@ function PostDetailStyles() {
           border-right: 0;
           border-bottom: 1px solid #eef2f7;
         }
+
+        .job-detail-data-table {
+          min-width: 620px;
+        }
       }
 
       @media (max-width: 520px) {
@@ -1578,6 +2063,27 @@ function PostDetailStyles() {
         .post-detail-description {
           font-size: 15px;
           padding: 13px;
+        }
+
+        .job-detail-stack-list {
+          padding: 10px;
+        }
+
+        .job-detail-summary-grid,
+        .job-detail-document-list {
+          grid-template-columns: 1fr;
+          padding: 10px;
+        }
+
+        .job-detail-data-block > h3,
+        .job-detail-text-block > h3 {
+          padding: 10px 11px;
+          font-size: 14px;
+        }
+
+        .job-detail-text-block p,
+        .job-detail-total-vacancy {
+          padding: 10px 11px;
         }
 
         .post-detail-link-row strong,

@@ -33,6 +33,7 @@ export type Post = {
   // New common post detail fields
   shortDescription?: string;
   description?: string;
+  notificationNumber?: string;
   previewImageUrl?: string;
   youtubeUrl?: string;
 
@@ -46,6 +47,7 @@ export type Post = {
   importantLinks?: ImportantLinkRow[];
   links?: ImportantLinkRow[];
   extraLinks?: ImportantLinkRow[];
+  jobInfoPanels?: import("@/lib/jobDetails").JobInfoPanel[];
 
   // Jobs-specific optional fields
   organization?: string;

@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import {
+  JobInfoPanel,
+  normalizeJobInfoPanels,
+} from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import PostDetailLayout, {
   CommonPostDetailData,
@@ -16,16 +20,6 @@ import PostDetailLayout, {
   VideoRow,
   DetailContentSection,
 } from "@/components/public/PostDetailLayout";
-
-type JobInfoPanel = {
-  id?: string;
-  organization?: string;
-  postName?: string;
-  totalVacancy?: string;
-  qualification?: string;
-  ageLimit?: string;
-  salary?: string;
-};
 
 type QuickInfoRow = {
   id?: string;
@@ -48,6 +42,7 @@ type PostData = {
 
   shortDescription?: string;
   description?: string;
+  notificationNumber?: string;
 
   imageUrl?: string;
   previewImageUrl?: string;
@@ -189,31 +184,6 @@ function normalizeImportantLinks(data: any): ImportantLinkRow[] {
   }));
 }
 
-function normalizeJobInfoPanels(value: any): JobInfoPanel[] {
-  if (!Array.isArray(value)) return [];
-
-  return value
-    .map((item, index) => ({
-      id: item?.id || `panel_${index}`,
-      organization: item?.organization || "",
-      postName: item?.postName || "",
-      totalVacancy: item?.totalVacancy || "",
-      qualification: item?.qualification || "",
-      ageLimit: item?.ageLimit || "",
-      salary: item?.salary || "",
-    }))
-    .filter((panel) => {
-      return (
-        panel.organization?.trim() ||
-        panel.postName?.trim() ||
-        panel.totalVacancy?.trim() ||
-        panel.qualification?.trim() ||
-        panel.ageLimit?.trim() ||
-        panel.salary?.trim()
-      );
-    });
-}
-
 function normalizeQuickInfoRows(value: any): QuickInfoRow[] {
   if (!Array.isArray(value)) return [];
 
@@ -294,10 +264,6 @@ function panelToRows(panel: JobInfoPanel): InfoRow[] {
       value: panel.qualification || "",
     },
     {
-      label: "Age Limit",
-      value: panel.ageLimit || "",
-    },
-    {
       label: "Salary / Pay Scale",
       value: panel.salary || "",
     },
@@ -326,14 +292,7 @@ function buildInfoSections(post: PostData): InfoSection[] {
     ];
   }
 
-  const oldPanel: JobInfoPanel = {
-    organization: post.organization || post.department || "",
-    postName: post.postName || "",
-    totalVacancy: post.totalVacancy || "",
-    qualification: post.qualification || "",
-    ageLimit: post.ageLimit || "",
-    salary: post.salary || post.payScale || "",
-  };
+  const oldPanel = normalizeJobInfoPanels(post)[0];
 
   return [
     {
@@ -415,19 +374,19 @@ function buildRelatedPosts(
 function buildContentSections(post: PostData): DetailContentSection[] {
   const sections: DetailContentSection[] = [];
 
-  if (post.syllabus?.trim()) {
-    sections.push({
-      id: "syllabus",
-      title: "Syllabus",
-      content: post.syllabus.trim(),
-    });
-  }
-
   if (post.examPattern?.trim()) {
     sections.push({
       id: "exam-pattern",
       title: "Exam Pattern",
       content: post.examPattern.trim(),
+    });
+  }
+
+  if (post.syllabus?.trim()) {
+    sections.push({
+      id: "syllabus",
+      title: "Syllabus",
+      content: post.syllabus.trim(),
     });
   }
 
@@ -462,6 +421,7 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
 
     shortDescription: post.shortDescription || post.excerpt || "",
     description: post.description || post.content || "",
+    notificationNumber: post.notificationNumber || "",
 
     previewImageUrl:
       post.previewImageUrl || post.imageUrl || post.shareImage || "",
@@ -484,6 +444,7 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     importantLinks: post.importantLinks || [],
 
     infoSections: buildInfoSections(post),
+    jobDetails: post.jobInfoPanels || [],
     relatedPosts: post.relatedPosts || [],
     contentSections: buildContentSections(post),
 
@@ -549,6 +510,8 @@ export default function PublicPostDetailsPage() {
 
               shortDescription: data.shortDescription || "",
               description: data.description || "",
+              notificationNumber:
+                data.notificationNumber || data.notificationNo || "",
 
               imageUrl: data.imageUrl || "",
               previewImageUrl: data.previewImageUrl || "",
@@ -563,7 +526,7 @@ export default function PublicPostDetailsPage() {
               shareTitle: data.shareTitle || "",
               shareDescription: data.shareDescription || "",
 
-              jobInfoPanels: normalizeJobInfoPanels(data.jobInfoPanels),
+              jobInfoPanels: normalizeJobInfoPanels(data),
               quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
 
               importantDates: normalizeImportantDates(data.importantDates),

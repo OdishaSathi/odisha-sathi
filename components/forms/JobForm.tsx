@@ -5,6 +5,13 @@ import type { CSSProperties } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import PostDynamicTables from "@/components/admin/PostDynamicTables";
+import JobMediaEditor from "@/components/forms/JobMediaEditor";
+import JobPostDetailsEditor from "@/components/forms/JobPostDetailsEditor";
+import {
+  JobInfoPanel,
+  cleanJobInfoPanels,
+  createJobInfoPanel,
+} from "@/lib/jobDetails";
 import {
   ImportantDateRow,
   ImportantLinkRow,
@@ -34,28 +41,6 @@ const JOB_SUB_CATEGORIES = [
 
 const STATUS_OPTIONS = ["published"] as const;
 
-type JobInfoPanel = {
-  id: string;
-  organization: string;
-  postName: string;
-  totalVacancy: string;
-  qualification: string;
-  ageLimit: string;
-  salary: string;
-};
-
-function createPanel(): JobInfoPanel {
-  return {
-    id: `panel_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    organization: "",
-    postName: "",
-    totalVacancy: "",
-    qualification: "",
-    ageLimit: "",
-    salary: "",
-  };
-}
-
 function makeSlug(text: string) {
   return text
     .toLowerCase()
@@ -70,29 +55,19 @@ function makeExcerpt(shortDescription: string, description: string) {
   return `${source.slice(0, 157)}...`;
 }
 
-function isPanelFilled(panel: JobInfoPanel) {
-  return (
-    panel.organization.trim() ||
-    panel.postName.trim() ||
-    panel.totalVacancy.trim() ||
-    panel.qualification.trim() ||
-    panel.ageLimit.trim() ||
-    panel.salary.trim()
-  );
-}
-
 export function JobForm({ onSaved }: { onSaved?: () => void } = {}) {
   const [title, setTitle] = useState("");
   const [manualSlug, setManualSlug] = useState("");
 
   const [shortDescription, setShortDescription] = useState("");
+  const [notificationNumber, setNotificationNumber] = useState("");
   const [description, setDescription] = useState("");
   const [syllabus, setSyllabus] = useState("");
   const [examPattern, setExamPattern] = useState("");
   const [selectionProcedure, setSelectionProcedure] = useState("");
 
   const [jobInfoPanels, setJobInfoPanels] = useState<JobInfoPanel[]>([
-    createPanel(),
+    createJobInfoPanel(),
   ]);
 
   const [previewImageUrl, setPreviewImageUrl] = useState("");
@@ -149,38 +124,16 @@ const [youtubeUrl3, setYoutubeUrl3] = useState("");
     );
   }
 
-  function updatePanel(
-    panelId: string,
-    field: keyof Omit<JobInfoPanel, "id">,
-    value: string
-  ) {
-    setJobInfoPanels((oldPanels) =>
-      oldPanels.map((panel) =>
-        panel.id === panelId ? { ...panel, [field]: value } : panel
-      )
-    );
-  }
-
-  function addPanel() {
-    setJobInfoPanels((oldPanels) => [...oldPanels, createPanel()]);
-  }
-
-  function removePanel(panelId: string) {
-    setJobInfoPanels((oldPanels) => {
-      if (oldPanels.length === 1) return oldPanels;
-      return oldPanels.filter((panel) => panel.id !== panelId);
-    });
-  }
-
   function resetForm() {
     setTitle("");
     setManualSlug("");
     setShortDescription("");
+    setNotificationNumber("");
     setDescription("");
     setSyllabus("");
     setExamPattern("");
     setSelectionProcedure("");
-    setJobInfoPanels([createPanel()]);
+    setJobInfoPanels([createJobInfoPanel()]);
     setPreviewImageUrl("");
     setYoutubeUrl("");
 setYoutubeUrl2("");
@@ -206,11 +159,6 @@ setYoutubeUrl3("");
       return;
     }
 
-    if (!description.trim()) {
-      alert("Please enter full job description");
-      return;
-    }
-
     if (subCategories.length === 0) {
       alert("Please select at least one job subcategory");
       return;
@@ -219,17 +167,7 @@ setYoutubeUrl3("");
     try {
       setSaving(true);
 
-      const cleanedPanels = jobInfoPanels
-        .filter(isPanelFilled)
-        .map((panel) => ({
-          id: panel.id,
-          organization: panel.organization.trim(),
-          postName: panel.postName.trim(),
-          totalVacancy: panel.totalVacancy.trim(),
-          qualification: panel.qualification.trim(),
-          ageLimit: panel.ageLimit.trim(),
-          salary: panel.salary.trim(),
-        }));
+      const cleanedPanels = cleanJobInfoPanels(jobInfoPanels);
 
       const firstPanel = cleanedPanels[0];
 
@@ -251,6 +189,7 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         content: description.trim(),
 
         shortDescription: shortDescription.trim(),
+        notificationNumber: notificationNumber.trim(),
         description: description.trim(),
         syllabus: syllabus.trim(),
         examPattern: examPattern.trim(),
@@ -347,6 +286,17 @@ youtubeUrls: cleanedYoutubeUrls,
               ))}
             </select>
           </label>
+
+          <label style={labelStyle}>
+            Notification Number
+            <input
+              type="text"
+              placeholder="Example: OSSC-1234/2026"
+              value={notificationNumber}
+              onChange={(e) => setNotificationNumber(e.target.value)}
+              style={inputStyle}
+            />
+          </label>
         </div>
       </section>
 
@@ -378,116 +328,10 @@ youtubeUrls: cleanedYoutubeUrls,
         </div>
       </section>
 
-      <section style={sectionStyle}>
-        <div style={sectionHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>Quick Information Panels</h3>
-            <p style={sectionTextStyle}>
-              Add one panel for each different post under the same recruitment.
-            </p>
-          </div>
-
-          <button type="button" onClick={addPanel} style={addButtonStyle}>
-            + Add Another Post Panel
-          </button>
-        </div>
-
-        <div style={{ display: "grid", gap: "16px" }}>
-          {jobInfoPanels.map((panel, index) => (
-            <div key={panel.id} style={panelCardStyle}>
-              <div style={panelTopStyle}>
-                <h4 style={{ margin: 0, color: "#0f172a" }}>
-                  Quick Information - Post {index + 1}
-                </h4>
-
-                {jobInfoPanels.length > 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => removePanel(panel.id)}
-                    style={removeButtonStyle}
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </div>
-
-              <div style={gridStyle}>
-                <label style={labelStyle}>
-                  Organization / Department
-                  <input
-                    value={panel.organization}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "organization", e.target.value)
-                    }
-                    placeholder="Example: OSSC"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={labelStyle}>
-                  Post Name
-                  <input
-                    value={panel.postName}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "postName", e.target.value)
-                    }
-                    placeholder="Example: Junior Assistant"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={labelStyle}>
-                  Total Vacancy
-                  <input
-                    value={panel.totalVacancy}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "totalVacancy", e.target.value)
-                    }
-                    placeholder="Example: 74 Posts"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={labelStyle}>
-                  Qualification
-                  <input
-                    value={panel.qualification}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "qualification", e.target.value)
-                    }
-                    placeholder="Example: +3 / Degree"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={labelStyle}>
-                  Age Limit
-                  <input
-                    value={panel.ageLimit}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "ageLimit", e.target.value)
-                    }
-                    placeholder="Example: 21 to 38 Years"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={labelStyle}>
-                  Salary / Pay Scale
-                  <input
-                    value={panel.salary}
-                    onChange={(e) =>
-                      updatePanel(panel.id, "salary", e.target.value)
-                    }
-                    placeholder="Example: ₹19,900 - ₹63,200"
-                    style={inputStyle}
-                  />
-                </label>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <JobPostDetailsEditor
+        panels={jobInfoPanels}
+        onChange={setJobInfoPanels}
+      />
 
       <section style={sectionStyle}>
         <h3 style={sectionTitleStyle}>Description</h3>
@@ -505,7 +349,7 @@ youtubeUrls: cleanedYoutubeUrls,
           </label>
 
           <label style={labelStyle}>
-            Full Description *
+            Full Description
             <textarea
               placeholder="Enter full job details"
               value={description}
@@ -515,21 +359,19 @@ youtubeUrls: cleanedYoutubeUrls,
             />
           </label>
 
-          <label style={labelStyle}>
-            Syllabus
-            <textarea
-              placeholder="Add syllabus details if available. This will appear in the job detail Table of Contents."
-              value={syllabus}
-              onChange={(e) => setSyllabus(e.target.value)}
-              rows={5}
-              style={textareaStyle}
-            />
-          </label>
+        </div>
+      </section>
 
+      <details style={sectionStyle}>
+        <summary style={compactSummaryStyle}>
+          Optional Exam Pattern, Syllabus and Selection Procedure
+        </summary>
+
+        <div style={{ display: "grid", gap: "14px", marginTop: "14px" }}>
           <label style={labelStyle}>
             Exam Pattern
             <textarea
-              placeholder="Add exam pattern details if available."
+              placeholder="Add exam pattern details only when available."
               value={examPattern}
               onChange={(e) => setExamPattern(e.target.value)}
               rows={5}
@@ -538,9 +380,20 @@ youtubeUrls: cleanedYoutubeUrls,
           </label>
 
           <label style={labelStyle}>
+            Syllabus
+            <textarea
+              placeholder="Add syllabus details only when available."
+              value={syllabus}
+              onChange={(e) => setSyllabus(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </label>
+
+          <label style={labelStyle}>
             Selection Procedure
             <textarea
-              placeholder="Add selection process/procedure if available."
+              placeholder="Add selection stages only when available."
               value={selectionProcedure}
               onChange={(e) => setSelectionProcedure(e.target.value)}
               rows={5}
@@ -548,57 +401,20 @@ youtubeUrls: cleanedYoutubeUrls,
             />
           </label>
         </div>
-      </section>
+      </details>
 
-      <section style={sectionStyle}>
-  <h3 style={sectionTitleStyle}>Preview and Video Guide</h3>
-
-  <div style={gridStyle}>
-    <label style={labelStyle}>
-      Custom Preview Image URL
-      <input
-        type="url"
-        placeholder="https://example.com/image.jpg"
-        value={previewImageUrl}
-        onChange={(e) => setPreviewImageUrl(e.target.value)}
-        style={inputStyle}
+      <JobMediaEditor
+        imageUrl={previewImageUrl}
+        youtubeUrl={youtubeUrl}
+        youtubeUrl2={youtubeUrl2}
+        youtubeUrl3={youtubeUrl3}
+        onImageUrlChange={setPreviewImageUrl}
+        onYoutubeUrlChange={(index, value) => {
+          if (index === 0) setYoutubeUrl(value);
+          if (index === 1) setYoutubeUrl2(value);
+          if (index === 2) setYoutubeUrl3(value);
+        }}
       />
-    </label>
-
-    <label style={labelStyle}>
-      YouTube Video 1
-      <input
-        type="url"
-        placeholder="Long video, short video, or YouTube Shorts link"
-        value={youtubeUrl}
-        onChange={(e) => setYoutubeUrl(e.target.value)}
-        style={inputStyle}
-      />
-    </label>
-
-    <label style={labelStyle}>
-      YouTube Video 2
-      <input
-        type="url"
-        placeholder="Optional second video link"
-        value={youtubeUrl2}
-        onChange={(e) => setYoutubeUrl2(e.target.value)}
-        style={inputStyle}
-      />
-    </label>
-
-    <label style={labelStyle}>
-      YouTube Video 3
-      <input
-        type="url"
-        placeholder="Optional third video link"
-        value={youtubeUrl3}
-        onChange={(e) => setYoutubeUrl3(e.target.value)}
-        style={inputStyle}
-      />
-    </label>
-  </div>
-</section>
 
       <PostDynamicTables
         importantDates={importantDates}
@@ -607,10 +423,10 @@ youtubeUrls: cleanedYoutubeUrls,
         onLinksChange={setImportantLinks}
       />
 
-      <section style={sectionStyle}>
-        <h3 style={sectionTitleStyle}>Social Sharing Preview</h3>
+      <details style={sectionStyle}>
+        <summary style={compactSummaryStyle}>Social Sharing Preview</summary>
 
-        <div style={gridStyle}>
+        <div style={{ ...gridStyle, marginTop: "14px" }}>
           <label style={labelStyle}>
             Share Title
             <input
@@ -633,7 +449,7 @@ youtubeUrls: cleanedYoutubeUrls,
             />
           </label>
         </div>
-      </section>
+      </details>
 
       <button type="submit" disabled={saving} style={submitButtonStyle}>
         {saving ? "Saving..." : "Save Job"}
@@ -663,6 +479,13 @@ const sectionTitleStyle: CSSProperties = {
   fontSize: "18px",
   fontWeight: 900,
   color: "#111827",
+};
+
+const compactSummaryStyle: CSSProperties = {
+  color: "#111827",
+  fontSize: "16px",
+  fontWeight: 900,
+  cursor: "pointer",
 };
 
 const sectionTextStyle: CSSProperties = {

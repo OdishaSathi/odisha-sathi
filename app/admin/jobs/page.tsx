@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
@@ -42,6 +42,23 @@ export default function AdminJobsPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredJobs = useMemo(() => {
+    const queryText = searchQuery.trim().toLowerCase();
+    if (!queryText) return jobs;
+
+    return jobs.filter((job) => {
+      const categories = [
+        job.subCategory,
+        ...(job.subCategories || []),
+      ].join(" ");
+
+      return `${job.title} ${job.slug || ""} ${categories}`
+        .toLowerCase()
+        .includes(queryText);
+    });
+  }, [jobs, searchQuery]);
 
   const loadJobs = async () => {
     try {
@@ -171,18 +188,44 @@ export default function AdminJobsPage() {
               </p>
             </div>
 
-            <button type="button" onClick={loadJobs} style={actionButtonStyle}>
-              Refresh
-            </button>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search saved jobs"
+                aria-label="Search saved jobs"
+                style={{
+                  width: "min(260px, 100%)",
+                  minHeight: "38px",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: "9px",
+                  padding: "8px 10px",
+                  color: "#0f172a",
+                  background: "#ffffff",
+                }}
+              />
+
+              <button type="button" onClick={loadJobs} style={actionButtonStyle}>
+                Refresh
+              </button>
+            </div>
           </div>
 
           {loading ? (
             <p>Loading jobs...</p>
-          ) : jobs.length === 0 ? (
-            <p>No jobs found.</p>
+          ) : filteredJobs.length === 0 ? (
+            <p>{searchQuery.trim() ? "No matching jobs found." : "No jobs found."}</p>
           ) : (
-            <div style={{ display: "grid", gap: "12px" }}>
-              {jobs.map((job) => {
+            <div style={{ display: "grid", gap: "9px" }}>
+              {filteredJobs.map((job) => {
                 const selectedSubCategories =
                   job.subCategories && job.subCategories.length > 0
                     ? job.subCategories
@@ -194,22 +237,23 @@ export default function AdminJobsPage() {
                   <div
                     key={job.id}
                     style={{
-                      padding: "14px",
+                      padding: "11px 12px",
                       border: "1px solid #e5e7eb",
                       borderRadius: "10px",
                       display: "grid",
-                      gap: "12px",
+                      gap: "9px",
                     }}
                   >
-                    <h3 style={{ margin: 0 }}>{job.title}</h3>
+                    <h3 style={{ margin: 0, fontSize: "16px", lineHeight: 1.4 }}>
+                      {job.title}
+                    </h3>
 
                     <div
                       style={{
-                        display: "grid",
-                        gridTemplateColumns: "74px 74px 74px auto",
-                        gap: "10px",
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
                         alignItems: "center",
-                        width: "fit-content",
                       }}
                     >
                       <Link
