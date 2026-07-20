@@ -279,6 +279,7 @@ youtubeUrls: cleanedYoutubeUrls,
 
         importantDates: cleanedDates,
         importantLinks: cleanedLinks,
+        links: cleanedLinks,
         sourceUrl: cleanedLinks[0]?.url || "",
 
         tags: subCategories,

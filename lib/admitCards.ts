@@ -11,6 +11,10 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import {
+  normalizeCompatiblePostLinks,
+  toStoredPostLinks,
+} from "@/lib/postLinkCompatibility";
 import { AdmitCard } from "@/types/admitCard";
 
 const COLLECTION_NAME = "admitCards";
@@ -40,8 +44,12 @@ export async function getAdmitCardBySlug(slug: string): Promise<AdmitCard | null
 }
 
 export async function addAdmitCard(admitCard: AdmitCard) {
-  const cleanLinks = (admitCard.links || []).filter(
-    (link) => link.label.trim() !== "" && link.url.trim() !== ""
+  const cleanLinks = toStoredPostLinks(
+    normalizeCompatiblePostLinks(
+      admitCard.links?.length
+        ? { links: admitCard.links }
+        : (admitCard as unknown as Record<string, unknown>)
+    )
   );
 
   const cleanImportantDates = (admitCard.importantDates || []).filter(
@@ -51,6 +59,7 @@ export async function addAdmitCard(admitCard: AdmitCard) {
   return addDoc(collection(db, COLLECTION_NAME), {
     ...admitCard,
     links: cleanLinks,
+    importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
     category: "admit-cards",
     type: "admit-cards",
@@ -60,8 +69,12 @@ export async function addAdmitCard(admitCard: AdmitCard) {
 }
 
 export async function updateAdmitCard(id: string, admitCard: AdmitCard) {
-  const cleanLinks = (admitCard.links || []).filter(
-    (link) => link.label.trim() !== "" && link.url.trim() !== ""
+  const cleanLinks = toStoredPostLinks(
+    normalizeCompatiblePostLinks(
+      admitCard.links?.length
+        ? { links: admitCard.links }
+        : (admitCard as unknown as Record<string, unknown>)
+    )
   );
 
   const cleanImportantDates = (admitCard.importantDates || []).filter(
@@ -73,6 +86,7 @@ export async function updateAdmitCard(id: string, admitCard: AdmitCard) {
   return updateDoc(ref, {
     ...admitCard,
     links: cleanLinks,
+    importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
     category: "admit-cards",
     type: "admit-cards",

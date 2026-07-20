@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import PostDynamicTables from "@/components/admin/PostDynamicTables";
+import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import {
   ImportantDateRow,
   ImportantLinkRow,
@@ -128,28 +129,15 @@ function normalizeDateRows(value: any): ImportantDateRow[] {
   }));
 }
 
-function normalizeLinkRows(value: any, sourceUrl?: string): ImportantLinkRow[] {
-  if (Array.isArray(value) && value.length > 0) {
-    return value.map((item: any, index: number) => ({
-      id: item?.id || `link_${index}_${Date.now()}`,
-      type: item?.type || item?.label || "Custom",
-      label: item?.label || item?.type || "",
-      url: item?.url || "",
-    }));
-  }
+function normalizeLinkRows(data: any): ImportantLinkRow[] {
+  const rows = normalizeCompatiblePostLinks(data).map((item, index) => ({
+    id: item.id || `link_${index}_${Date.now()}`,
+    type: item.type || item.label || "Custom",
+    label: item.label || item.type || "Official Link",
+    url: item.url || "",
+  }));
 
-  if (sourceUrl) {
-    return [
-      {
-        id: `link_source_${Date.now()}`,
-        type: "Official Website",
-        label: "Official Website",
-        url: sourceUrl,
-      },
-    ];
-  }
-
-  return [createEmptyLinkRow()];
+  return rows.length > 0 ? rows : [createEmptyLinkRow()];
 }
 
 export function EditJobForm({ id, postId }: EditJobFormProps) {
@@ -310,7 +298,7 @@ setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
         setStatus("published");
 
         setImportantDates(normalizeDateRows(data.importantDates));
-        setImportantLinks(normalizeLinkRows(data.importantLinks, data.sourceUrl || ""));
+        setImportantLinks(normalizeLinkRows(data));
       } catch (error) {
         console.error(error);
         alert("Failed to load job");
@@ -413,6 +401,7 @@ youtubeUrls: cleanedYoutubeUrls,
 
         importantDates: cleanedDates,
         importantLinks: cleanedLinks,
+        links: cleanedLinks,
         sourceUrl: cleanedLinks[0]?.url || "",
 
         tags: subCategories,

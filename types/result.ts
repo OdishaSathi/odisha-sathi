@@ -1,6 +1,8 @@
 export type ResultStatus = "Released" | "Coming Soon" | "Closed";
 
 export type ResultLink = {
+  id?: string;
+  type?: string;
   label: string;
   url: string;
 };
@@ -31,6 +33,9 @@ export type ResultPost = {
   youtubeUrls?: string[];
   status: ResultStatus;
   links: ResultLink[];
+  importantLinks?: ResultLink[];
+  extraLinks?: ResultLink[];
+  sourceUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 };

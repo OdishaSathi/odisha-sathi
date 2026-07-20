@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AdmitCard, AdmitCardLink, AdmitCardStatus } from "@/types/admitCard";
 import { createAdmitCardSlug } from "@/lib/admitCards";
+import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import {
   getActiveAdminSubCategories,
   mergeSubCategoryOptions,
@@ -105,13 +106,17 @@ export default function AdmitCardForm({
 
   useEffect(() => {
     if (initialData) {
+      const savedLinks = normalizeCompatiblePostLinks(
+        initialData as unknown as Record<string, unknown>
+      ).map((row) => ({
+        label: row.label || row.type || "Official Link",
+        url: row.url || "",
+      }));
+
       setFormData({
         ...emptyForm,
         ...initialData,
-        links:
-          initialData.links && initialData.links.length > 0
-            ? initialData.links
-            : emptyLinks,
+        links: savedLinks.length > 0 ? savedLinks : emptyLinks,
       });
     } else {
       setFormData(emptyForm);
@@ -245,6 +250,12 @@ export default function AdmitCardForm({
           (item) => item.value === (formData.subCategory || "")
         ) || ADMIT_CARD_BASE_CATEGORY_OPTIONS[0];
       const selectedUpdateType = formData.updateType === "exam" ? "exam" : "admit-card";
+      const cleanedLinks = formData.links
+        .map((link) => ({
+          label: link.label.trim(),
+          url: link.url.trim(),
+        }))
+        .filter((link) => link.label && link.url);
 
       await onSubmit({
         ...formData,
@@ -278,6 +289,8 @@ export default function AdmitCardForm({
             value: (formData.examDateDisplay || formData.examDate || "").trim(),
           },
         ].filter((item) => item.value),
+        links: cleanedLinks,
+        importantLinks: cleanedLinks,
         youtubeUrl: (formData.youtubeUrl || "").trim(),
         youtubeUrls: cleanedYoutubeUrls,
       });

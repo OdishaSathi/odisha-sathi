@@ -11,6 +11,10 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import {
+  normalizeCompatiblePostLinks,
+  toStoredPostLinks,
+} from "@/lib/postLinkCompatibility";
 import { ResultPost } from "@/types/result";
 
 const COLLECTION_NAME = "results";
@@ -40,8 +44,12 @@ export async function getResultBySlug(slug: string): Promise<ResultPost | null> 
 }
 
 export async function addResult(result: ResultPost) {
-  const cleanLinks = (result.links || []).filter(
-    (link) => link.label.trim() !== "" && link.url.trim() !== ""
+  const cleanLinks = toStoredPostLinks(
+    normalizeCompatiblePostLinks(
+      result.links?.length
+        ? { links: result.links }
+        : (result as unknown as Record<string, unknown>)
+    )
   );
 
   const cleanImportantDates = (result.importantDates || []).filter(
@@ -51,6 +59,7 @@ export async function addResult(result: ResultPost) {
   return addDoc(collection(db, COLLECTION_NAME), {
     ...result,
     links: cleanLinks,
+    importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
     category: "results",
     type: "results",
@@ -60,8 +69,12 @@ export async function addResult(result: ResultPost) {
 }
 
 export async function updateResult(id: string, result: ResultPost) {
-  const cleanLinks = (result.links || []).filter(
-    (link) => link.label.trim() !== "" && link.url.trim() !== ""
+  const cleanLinks = toStoredPostLinks(
+    normalizeCompatiblePostLinks(
+      result.links?.length
+        ? { links: result.links }
+        : (result as unknown as Record<string, unknown>)
+    )
   );
 
   const cleanImportantDates = (result.importantDates || []).filter(
@@ -73,6 +86,7 @@ export async function updateResult(id: string, result: ResultPost) {
   return updateDoc(ref, {
     ...result,
     links: cleanLinks,
+    importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
     category: "results",
     type: "results",

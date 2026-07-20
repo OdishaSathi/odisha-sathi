@@ -1,6 +1,8 @@
 export type AdmitCardStatus = "Released" | "Coming Soon" | "Closed";
 
 export type AdmitCardLink = {
+  id?: string;
+  type?: string;
   label: string;
   url: string;
 };
@@ -37,6 +39,9 @@ export type AdmitCard = {
   youtubeUrls?: string[];
   status: AdmitCardStatus;
   links: AdmitCardLink[];
+  importantLinks?: AdmitCardLink[];
+  extraLinks?: AdmitCardLink[];
+  sourceUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 };

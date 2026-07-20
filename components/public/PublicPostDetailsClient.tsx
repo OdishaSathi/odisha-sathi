@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import PostDetailLayout, {
   CommonPostDetailData,
   ImportantDateRow,
@@ -179,39 +180,13 @@ function normalizeImportantDates(value: any): ImportantDateRow[] {
   }));
 }
 
-function normalizeImportantLinks(
-  value: any,
-  sourceUrl?: string
-): ImportantLinkRow[] {
-  const rows = Array.isArray(value)
-    ? value.map((item, index) => {
-        const type = item?.type || "";
-        const label = item?.label || "";
-        const url = String(item?.url || "").trim();
-        const linkText = `${type} ${label}`.toLowerCase();
-        const isWhatsAppPlaceholder =
-          url.includes("whatsapp.com/channel/") &&
-          !linkText.includes("whatsapp");
-
-        return {
-          id: item?.id || `link_${index}`,
-          type,
-          label,
-          url: isWhatsAppPlaceholder ? "" : url,
-        };
-      })
-    : [];
-
-  if (rows.length === 0 && sourceUrl) {
-    rows.push({
-      id: "source_link",
-      type: "Official Website",
-      label: "Official Website",
-      url: sourceUrl,
-    });
-  }
-
-  return rows;
+function normalizeImportantLinks(data: any): ImportantLinkRow[] {
+  return normalizeCompatiblePostLinks(data).map((row) => ({
+    id: row.id,
+    type: row.type,
+    label: row.label,
+    url: row.url,
+  }));
 }
 
 function normalizeJobInfoPanels(value: any): JobInfoPanel[] {
@@ -592,10 +567,7 @@ export default function PublicPostDetailsPage() {
               quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
 
               importantDates: normalizeImportantDates(data.importantDates),
-              importantLinks: normalizeImportantLinks(
-                data.importantLinks,
-                data.sourceUrl || ""
-              ),
+              importantLinks: normalizeImportantLinks(data),
 
               sourceUrl: data.sourceUrl || "",
 

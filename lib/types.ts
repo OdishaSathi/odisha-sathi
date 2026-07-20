@@ -44,6 +44,8 @@ export type Post = {
   // Dynamic detail tables
   importantDates?: ImportantDateRow[];
   importantLinks?: ImportantLinkRow[];
+  links?: ImportantLinkRow[];
+  extraLinks?: ImportantLinkRow[];
 
   // Jobs-specific optional fields
   organization?: string;

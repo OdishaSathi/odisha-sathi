@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { ResultLink, ResultPost, ResultStatus } from "@/types/result";
 import { createResultSlug } from "@/lib/results";
+import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import {
   getActiveAdminSubCategories,
   mergeSubCategoryOptions,
@@ -101,13 +102,17 @@ export default function ResultForm({
 
   useEffect(() => {
     if (initialData) {
+      const savedLinks = normalizeCompatiblePostLinks(
+        initialData as unknown as Record<string, unknown>
+      ).map((row) => ({
+        label: row.label || row.type || "Official Link",
+        url: row.url || "",
+      }));
+
       setFormData({
         ...emptyForm,
         ...initialData,
-        links:
-          initialData.links && initialData.links.length > 0
-            ? initialData.links
-            : emptyLinks,
+        links: savedLinks.length > 0 ? savedLinks : emptyLinks,
       });
     } else {
       setFormData(emptyForm);
@@ -227,6 +232,12 @@ export default function ResultForm({
         resultCategoryOptions.find(
           (item) => item.value === (formData.subCategory || "")
         ) || RESULT_BASE_CATEGORY_OPTIONS[0];
+      const cleanedLinks = formData.links
+        .map((link) => ({
+          label: link.label.trim(),
+          url: link.url.trim(),
+        }))
+        .filter((link) => link.label && link.url);
 
       await onSubmit({
         ...formData,
@@ -248,6 +259,8 @@ export default function ResultForm({
         ].filter((item) => item.value),
         youtubeUrl: (formData.youtubeUrl || "").trim(),
         youtubeUrls: cleanedYoutubeUrls,
+        links: cleanedLinks,
+        importantLinks: cleanedLinks,
       });
 
       if (!initialData) {
