@@ -21,7 +21,12 @@ async function accessToken() {
     subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
     token_url: "https://sts.googleapis.com/v1/token",
     service_account_impersonation_url: `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${serviceAccount}:generateAccessToken`,
-    subject_token_supplier: { getSubjectToken: getVercelOidcToken },
+    subject_token_supplier: {
+      // google-auth-library passes its own audience context to this callback.
+      // Do not forward that object to @vercel/oidc: this provider is configured
+      // to accept Vercel's normal team audience.
+      getSubjectToken: () => getVercelOidcToken(),
+    },
   });
   if (!client) throw new Error("GOOGLE_AUTH_CLIENT_FAILED");
   const result = await client.getAccessToken();
