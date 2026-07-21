@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
 import StructuredData from "@/components/StructuredData";
+import GoogleAnalytics from "@/components/GoogleAnalytics";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://odishasathi.in"),
@@ -88,6 +89,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <StructuredData />
+        <GoogleAnalytics />
         <SiteShell>{children}</SiteShell>
       </body>
     </html>
