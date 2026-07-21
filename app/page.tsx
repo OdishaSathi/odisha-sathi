@@ -8,8 +8,9 @@ import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 import { buildLastDateReminderShareText } from "@/lib/reminderShare";
 
 const LATEST_TILE_LIMIT = 12;
-const SECTION_LIMIT = 6;
-const SCHEME_LIMIT = 10;
+const JOB_SECTION_LIMIT = 18;
+const SECONDARY_SECTION_LIMIT = 6;
+const SCHEME_PAGE_SIZE = 10;
 const IMPORTANT_INFO_TILE_LIMIT = 8;
 const IMPORTANT_INFO_PAGE_SIZE = 10;
 
@@ -969,14 +970,18 @@ function HomeSectionPanel({
   href,
   items,
   emptyText,
+  limit = SECONDARY_SECTION_LIMIT,
+  className = "",
 }: {
   title: string;
   href: string;
   items: PostItem[];
   emptyText: string;
+  limit?: number;
+  className?: string;
 }) {
   return (
-    <section className="os-home-panel">
+    <section className={`os-home-panel ${className}`.trim()}>
       <div className="os-home-panel-head">
         <h2>{title}</h2>
         <Link href={href}>View All</Link>
@@ -986,7 +991,7 @@ function HomeSectionPanel({
         <p className="os-home-empty">{emptyText}</p>
       ) : (
         <div className="os-home-update-list">
-          {items.slice(0, SECTION_LIMIT).map((item) => (
+          {items.slice(0, limit).map((item) => (
             <HomeUpdateRow key={`${item.category}-${item.id}`} item={item} />
           ))}
         </div>
@@ -1042,6 +1047,7 @@ export default function HomePage() {
   const [homeData, setHomeData] = useState<HomeData>(emptyHomeData);
   const [loading, setLoading] = useState(true);
   const [visibleImportantCount, setVisibleImportantCount] = useState(IMPORTANT_INFO_PAGE_SIZE);
+  const [visibleSchemeCount, setVisibleSchemeCount] = useState(SCHEME_PAGE_SIZE);
 
   useEffect(() => {
     const loadHomeData = async () => {
@@ -1200,6 +1206,7 @@ export default function HomePage() {
         });
 
         setVisibleImportantCount(IMPORTANT_INFO_PAGE_SIZE);
+        setVisibleSchemeCount(SCHEME_PAGE_SIZE);
       } catch (error) {
         console.error(error);
       } finally {
@@ -1261,34 +1268,38 @@ export default function HomePage() {
 
             <section className="os-home-main-layout">
               <div className="os-home-left-column">
-                <div className="os-home-left-grid">
+                <div className="os-home-update-comparison">
                   <HomeSectionPanel
                     title="Latest Jobs"
                     href="/jobs"
                     items={homeData.jobs}
                     emptyText="No latest jobs available."
+                    limit={JOB_SECTION_LIMIT}
+                    className="os-home-jobs-panel"
                   />
 
-                  <HomeSectionPanel
-                    title="Latest Admit Cards & Exams"
-                    href="/admit-cards"
-                    items={homeData.admitCards}
-                    emptyText="No latest admit cards and exams available."
-                  />
+                  <div className="os-home-secondary-stack">
+                    <HomeSectionPanel
+                      title="Latest Admit Cards & Exams"
+                      href="/admit-cards"
+                      items={homeData.admitCards}
+                      emptyText="No latest admit cards and exams available."
+                    />
 
-                  <HomeSectionPanel
-                    title="Latest Results"
-                    href="/results"
-                    items={homeData.results}
-                    emptyText="No latest results available."
-                  />
+                    <HomeSectionPanel
+                      title="Latest Results"
+                      href="/results"
+                      items={homeData.results}
+                      emptyText="No latest results available."
+                    />
 
-                  <HomeSectionPanel
-                    title="Latest Admissions"
-                    href="/admissions"
-                    items={homeData.admissions}
-                    emptyText="No latest admissions available."
-                  />
+                    <HomeSectionPanel
+                      title="Latest Admissions"
+                      href="/admissions"
+                      items={homeData.admissions}
+                      emptyText="No latest admissions available."
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1336,34 +1347,52 @@ export default function HomePage() {
                   )}
                 </section>
 
-                <section className="os-home-scheme-panel">
-                  <div className="os-home-panel-head">
-                    <h2>Latest Schemes</h2>
-                    <Link href="/schemes">View All</Link>
-                  </div>
-
-                  {homeData.schemes.length === 0 ? (
-                    <p className="os-home-empty">No latest schemes available.</p>
-                  ) : (
-                    <div className="os-home-scheme-list">
-                      {homeData.schemes.slice(0, SCHEME_LIMIT).map((item) => (
-                        <SchemeRow key={`scheme-${item.id}`} item={item} />
-                      ))}
-                    </div>
-                  )}
-                </section>
               </aside>
             </section>
 
-            <AllImportantInformationStack
-              items={homeData.importantAll}
-              visibleCount={visibleImportantCount}
-              onViewMore={() =>
-                setVisibleImportantCount((oldValue) =>
-                  oldValue + IMPORTANT_INFO_PAGE_SIZE
-                )
-              }
-            />
+            <section className="os-home-bottom-layout">
+              <AllImportantInformationStack
+                items={homeData.importantAll}
+                visibleCount={visibleImportantCount}
+                onViewMore={() =>
+                  setVisibleImportantCount((oldValue) =>
+                    oldValue + IMPORTANT_INFO_PAGE_SIZE
+                  )
+                }
+              />
+
+              <section className="os-home-scheme-panel os-home-bottom-schemes">
+                <div className="os-home-panel-head">
+                  <h2>Latest Schemes</h2>
+                  <Link href="/schemes">View All</Link>
+                </div>
+
+                {homeData.schemes.length === 0 ? (
+                  <p className="os-home-empty">No latest schemes available.</p>
+                ) : (
+                  <>
+                    <div className="os-home-scheme-list">
+                      {homeData.schemes.slice(0, visibleSchemeCount).map((item) => (
+                        <SchemeRow key={`scheme-${item.id}`} item={item} />
+                      ))}
+                    </div>
+
+                    {visibleSchemeCount < homeData.schemes.length ? (
+                      <div className="os-important-view-more-wrap">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleSchemeCount((oldValue) => oldValue + SCHEME_PAGE_SIZE)
+                          }
+                        >
+                          View More
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </section>
+            </section>
           </>
         )}
       </div>
@@ -1446,9 +1475,9 @@ export default function HomePage() {
         }
 
         .os-all-important-info-section {
-          margin-top: 18px;
-          width: calc(100% - 338px);
-          max-width: calc(100% - 338px);
+          margin: 0;
+          width: 100%;
+          max-width: 100%;
         }
 
         .os-important-info-head h2 {
@@ -1794,10 +1823,56 @@ export default function HomePage() {
           min-width: 0;
         }
 
-        .os-home-left-grid {
+        .os-home-update-comparison {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
+          align-items: stretch;
+        }
+
+        .os-home-secondary-stack {
+          display: grid;
+          gap: 16px;
+        }
+
+        .os-home-jobs-panel {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .os-home-jobs-panel .os-home-update-list {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .os-home-jobs-panel .os-home-update-row {
+          flex: 1 1 auto;
+        }
+
+        .os-home-bottom-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) 320px;
+          gap: 18px;
+          align-items: stretch;
+          margin-top: 18px;
+        }
+
+        .os-home-bottom-schemes {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .os-home-bottom-schemes .os-home-scheme-list {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .os-home-bottom-schemes .os-home-scheme-row {
+          flex: 1 1 auto;
         }
 
         .os-home-right-column {
@@ -1996,16 +2071,12 @@ export default function HomePage() {
             padding: 12px;
           }
 
-          .os-all-important-info-section {
-            width: 100%;
-            max-width: 100%;
-          }
-
           .os-important-info-row {
             grid-template-columns: 1fr;
           }
 
-          .os-home-main-layout {
+          .os-home-main-layout,
+          .os-home-bottom-layout {
             grid-template-columns: 1fr;
           }
 
@@ -2013,8 +2084,13 @@ export default function HomePage() {
             position: static;
           }
 
-          .os-home-left-grid {
+          .os-home-update-comparison {
             grid-template-columns: 1fr;
+          }
+
+          .os-home-jobs-panel .os-home-update-row,
+          .os-home-bottom-schemes .os-home-scheme-row {
+            flex: initial;
           }
         }
 
