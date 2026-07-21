@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Disclaimer",
   description:
     "Disclaimer for Odisha Sathi explaining that the website is not a government website and users should verify official sources.",
+  alternates: { canonical: "/disclaimer" },
 };
 
 export default function DisclaimerPage() {

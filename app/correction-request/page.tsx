@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Correction / Update Request",
   description:
     "Request correction or update for any Odisha Sathi post with official source details.",
+  alternates: { canonical: "/correction-request" },
 };
 
 export default function CorrectionRequestPage() {

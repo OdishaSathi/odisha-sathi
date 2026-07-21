@@ -74,6 +74,15 @@ function isTestPost(data: any, id: string) {
   return /(^|[\s_-])test([\s_-]|$)/.test(value);
 }
 
+function isPublicPost(data: any) {
+  const status = normalizeText(data.status || "published");
+
+  return (
+    data.published !== false &&
+    !["draft", "archived", "hidden", "private"].includes(status)
+  );
+}
+
 async function loadSitemapCollection(collectionName: string) {
   try {
     const snapshot = await getDocs(collection(dbServer, collectionName));
@@ -106,7 +115,7 @@ async function getPublicPostRoutes(): Promise<MetadataRoute.Sitemap> {
       .map((docItem) => {
         const data = docItem.data();
 
-        if (data.published === false || data.status === "hidden") return null;
+        if (!isPublicPost(data)) return null;
         if (isTestPost(data, docItem.id)) return null;
 
         const route = getPostRoute(data, docItem.id);
@@ -135,7 +144,7 @@ async function getImportantInformationRoutes(): Promise<MetadataRoute.Sitemap> {
       .map((docItem) => {
         const data = docItem.data();
 
-        if (data.status === "hidden" || data.published === false) return null;
+        if (!isPublicPost(data)) return null;
 
         const slug = data.slug || docItem.id;
 

@@ -94,6 +94,7 @@ type PostData = {
   contentSections?: DetailContentSection[];
 
   status?: string;
+  published?: boolean;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -632,6 +633,7 @@ export default function PublicPostDetailsPage() {
                 : [],
 
               status: data.status || "published",
+              published: data.published !== false,
               createdAt: data.createdAt || null,
               updatedAt: data.updatedAt || null,
             };
@@ -649,7 +651,17 @@ export default function PublicPostDetailsPage() {
           uniquePosts.find((item) => item.id === pageSlug) ||
           null;
 
-        if (foundPost) {
+        const foundPostStatus = String(
+          foundPost?.status || "published"
+        ).toLowerCase();
+        const isPublicFoundPost =
+          foundPost &&
+          foundPost.published !== false &&
+          !["draft", "archived", "hidden", "private"].includes(
+            foundPostStatus
+          );
+
+        if (foundPost && isPublicFoundPost) {
           const relatedPosts = buildRelatedPosts(foundPost, uniquePosts);
 
           setPost({

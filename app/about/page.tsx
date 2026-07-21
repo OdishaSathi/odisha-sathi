@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "About Us",
   description:
     "Learn about Odisha Sathi, an informational platform sharing Odisha jobs, admissions, admit cards, exams, results, schemes and useful online updates.",
+  alternates: { canonical: "/about" },
 };
 
 export default function AboutPage() {

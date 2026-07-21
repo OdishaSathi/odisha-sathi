@@ -68,6 +68,14 @@ function cleanText(value: any, maxLength = 160) {
   return `${text.slice(0, maxLength - 3)}...`;
 }
 
+function isPublicPost(data: any) {
+  const status = String(data?.status || "published").toLowerCase();
+  return (
+    data?.published !== false &&
+    !["draft", "archived", "hidden", "private"].includes(status)
+  );
+}
+
 async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
   const pageSlug = decodeURIComponent(slug);
 
@@ -85,6 +93,8 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
         const postDoc = slugSnapshot.docs[0];
         const data = postDoc.data();
 
+        if (!isPublicPost(data)) continue;
+
         return {
           id: postDoc.id,
           ...data,
@@ -96,6 +106,8 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
 
       if (directDoc.exists()) {
         const data = directDoc.data();
+
+        if (!isPublicPost(data)) continue;
 
         return {
           id: directDoc.id,

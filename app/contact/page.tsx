@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Contact Us",
   description:
     "Contact Odisha Sathi for correction requests, update requests, feedback and website-related communication.",
+  alternates: { canonical: "/contact" },
 };
 
 export default function ContactPage() {

@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Sitemap",
   description:
     "Sitemap for Odisha Sathi with main sections, important pages and user-friendly links.",
+  alternates: { canonical: "/sitemap" },
 };
 
 const sitemapGroups = [

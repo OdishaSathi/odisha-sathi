@@ -133,7 +133,13 @@ async function getPostBySlugOrId(category: SectionCategory, slugOrId: string) {
     if (directSnap.exists()) {
       const data = directSnap.data();
 
-      if (data.category === category && data.published !== false) {
+      if (
+        data.category === category &&
+        data.published !== false &&
+        !["draft", "archived", "hidden", "private"].includes(
+          String(data.status || "published").toLowerCase()
+        )
+      ) {
         return {
           id: directSnap.id,
           ...data,
@@ -152,6 +158,9 @@ async function getPostBySlugOrId(category: SectionCategory, slugOrId: string) {
 
     return (
       data.published !== false &&
+      !["draft", "archived", "hidden", "private"].includes(
+        String(data.status || "published").toLowerCase()
+      ) &&
       (data.slug === cleanSlugOrId || docItem.id === cleanSlugOrId)
     );
   });
