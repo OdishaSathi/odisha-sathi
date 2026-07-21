@@ -2,55 +2,105 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  FileText,
+  GraduationCap,
+  Home,
+  Info,
+  LayoutGrid,
+  Settings,
+  ShieldCheck,
+  Tags,
+  Wrench,
+  X,
+} from "lucide-react";
 
-const menuItems = [
-  { label: "Dashboard", href: "/admin" },
-  { label: "Jobs", href: "/admin/jobs" },
-  { label: "Results", href: "/admin/results" },
-  { label: "Admissions", href: "/admin/admissions" },
-  { label: "Admit Cards & Exams", href: "/admin/admit-cards" },
-  { label: "Schemes", href: "/admin/schemes" },
-  { label: "Important Info", href: "/admin/important-information" },
-  { label: "Tools", href: "/admin/tools" },
-  { label: "Sub Categories", href: "/admin/categories" },
-  { label: "Settings", href: "/admin/settings" },
+const menuGroups = [
+  {
+    label: "Overview",
+    items: [
+      { label: "Dashboard", href: "/admin", icon: Home },
+      { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { label: "Jobs", href: "/admin/jobs", icon: BriefcaseBusiness },
+      { label: "Results", href: "/admin/results", icon: FileText },
+      { label: "Admissions", href: "/admin/admissions", icon: GraduationCap },
+      { label: "Admit Cards & Exams", href: "/admin/admit-cards", icon: ShieldCheck },
+      { label: "Schemes", href: "/admin/schemes", icon: LayoutGrid },
+      { label: "Important Info", href: "/admin/important-information", icon: Info },
+    ],
+  },
+  {
+    label: "Manage",
+    items: [
+      { label: "Tools", href: "/admin/tools", icon: Wrench },
+      { label: "Sub Categories", href: "/admin/categories", icon: Tags },
+      { label: "Settings", href: "/admin/settings", icon: Settings },
+    ],
+  },
 ];
 
-export default function AdminSidebar() {
+type AdminSidebarProps = {
+  open?: boolean;
+  onClose?: () => void;
+};
+
+export default function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
 
   function isActive(href: string) {
-    if (href === "/admin") {
-      return pathname === "/admin";
-    }
-
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return href === "/admin"
+      ? pathname === "/admin"
+      : pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
-    <aside className="admin-sidebar">
-      <div className="admin-sidebar-brand">
-        <h2>Odisha Sathi</h2>
-        <p>Admin Panel</p>
-      </div>
+    <>
+      <button
+        type="button"
+        aria-label="Close admin menu"
+        className={`admin-sidebar-backdrop ${open ? "is-open" : ""}`}
+        onClick={onClose}
+      />
+      <aside className={`admin-sidebar ${open ? "is-open" : ""}`} aria-label="Admin navigation">
+        <div className="admin-sidebar-brand">
+          <div>
+            <h2>Odisha Sathi</h2>
+            <p>Admin Panel</p>
+          </div>
+          <button type="button" className="admin-sidebar-close" onClick={onClose} aria-label="Close menu">
+            <X size={22} />
+          </button>
+        </div>
 
-      <nav className="admin-sidebar-nav">
-        {menuItems.map((item) => {
-          const active = isActive(item.href);
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`admin-sidebar-link ${
-                active ? "admin-sidebar-link-active" : ""
-              }`}
-            >
-              {item.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </aside>
+        <nav className="admin-sidebar-nav">
+          {menuGroups.map((group) => (
+            <div className="admin-sidebar-group" key={group.label}>
+              <p className="admin-sidebar-group-label">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onClose}
+                    className={`admin-sidebar-link ${isActive(item.href) ? "admin-sidebar-link-active" : ""}`}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </>
   );
 }

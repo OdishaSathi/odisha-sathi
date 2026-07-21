@@ -1,0 +1,17 @@
+ODISHA SATHI — PROTECTED GA4 DASHBOARD
+
+1. Extract this package into the project root and replace included files.
+2. The six GA4/GCP Production variables already added in Vercel are sufficient.
+3. Run: npm install
+4. Run: npm run build
+5. Commit and push the included source files.
+6. Redeploy Production in Vercel, then open /admin/analytics.
+
+RECOMMENDED ADMIN RESTRICTION
+Add this Production variable in Vercel after confirming your Firebase login email:
+ADMIN_ALLOWED_EMAILS=your-real-admin-email@example.com
+
+Use comma-separated addresses only if more than one administrator is approved.
+Never prefix server-only variables with NEXT_PUBLIC_.
+
+No public layout, homepage, footer, search, sitemap or indexing appearance was changed.

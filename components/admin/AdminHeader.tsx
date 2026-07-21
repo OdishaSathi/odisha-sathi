@@ -2,85 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ExternalLink, LogOut, Menu } from "lucide-react";
 
-const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  "/admin": {
-    title: "Dashboard",
-    subtitle: "Overview of website content",
-  },
-  "/admin/jobs": {
-    title: "Jobs",
-    subtitle: "Saved posts and quick job update entry",
-  },
-  "/admin/results": {
-    title: "Results",
-    subtitle: "Saved results and result update entry",
-  },
-  "/admin/admissions": {
-    title: "Admissions",
-    subtitle: "Saved admissions and admission update entry",
-  },
-  "/admin/admit-cards": {
-    title: "Admit Cards & Exams",
-    subtitle: "Saved admit card and exam updates",
-  },
-  "/admin/schemes": {
-    title: "Schemes",
-    subtitle: "Saved schemes and scheme update entry",
-  },
-  "/admin/important-information": {
-    title: "Important Information",
-    subtitle: "Homepage important tiles and information detail pages",
-  },
-  "/admin/tools": {
-    title: "Tools",
-    subtitle: "Saved tool links and new tool entry",
-  },
-  "/admin/categories": {
-    title: "Sub Categories",
-    subtitle: "Safe subcategory planning and overview",
-  },
-  "/admin/settings": {
-    title: "Settings",
-    subtitle: "Website, social, homepage and sharing defaults",
-  },
+const pageTitles: Record<string, string> = {
+  "/admin": "Dashboard",
+  "/admin/analytics": "Visitor Analytics",
+  "/admin/jobs": "Jobs",
+  "/admin/results": "Results",
+  "/admin/admissions": "Admissions",
+  "/admin/admit-cards": "Admit Cards & Exams",
+  "/admin/schemes": "Schemes",
+  "/admin/important-information": "Important Information",
+  "/admin/tools": "Tools",
+  "/admin/categories": "Sub Categories",
+  "/admin/settings": "Settings",
 };
 
-function getPageTitle(pathname: string) {
-  const exactMatch = pageTitles[pathname];
-
-  if (exactMatch) return exactMatch;
-
-  const sectionPath = Object.keys(pageTitles)
-    .filter((item) => item !== "/admin")
-    .find((item) => pathname.startsWith(`${item}/`));
-
-  return sectionPath ? pageTitles[sectionPath] : pageTitles["/admin"];
+function getTitle(pathname: string) {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  return pageTitles[Object.keys(pageTitles).find((path) => path !== "/admin" && pathname.startsWith(`${path}/`)) || "/admin"];
 }
 
-export default function AdminHeader() {
-  const pathname = usePathname();
-  const pageInfo = getPageTitle(pathname || "/admin");
+type Props = {
+  email?: string | null;
+  loggingOut?: boolean;
+  onMenu: () => void;
+  onLogout: () => void;
+};
 
-  const today = new Date().toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+export default function AdminHeader({ email, loggingOut, onMenu, onLogout }: Props) {
+  const pathname = usePathname();
 
   return (
     <header className="admin-header">
+      <button type="button" className="admin-menu-button" onClick={onMenu} aria-label="Open admin menu">
+        <Menu size={22} />
+      </button>
       <div className="admin-header-text">
-        <h2>{pageInfo.title}</h2>
-        <p>{pageInfo.subtitle}</p>
+        <h1>{getTitle(pathname || "/admin")}</h1>
+        <p>{email || "Administrator"}</p>
       </div>
-
       <div className="admin-header-actions">
-        <span>{today}</span>
-
-        <Link href="/" target="_blank" className="admin-view-site-btn">
-          View Website
+        <Link href="/" target="_blank" title="Open public website">
+          <ExternalLink size={18} /><span>View Website</span>
         </Link>
+        <button type="button" onClick={onLogout} disabled={loggingOut} title="Log out">
+          <LogOut size={18} /><span>{loggingOut ? "Logging out" : "Logout"}</span>
+        </button>
       </div>
     </header>
   );
