@@ -60,7 +60,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="section-heading"><div><h2>Visitor analytics</h2><p>Google Analytics connection status</p></div><Link href="/admin/analytics">Open Analytics</Link></div>
           <div className="analytics-placeholder">
-            <BarChart3 size={30}/><div><strong>Visitor tracking is not connected yet</strong><p>Connect GA4 to display active visitors, today, 7-day and 30-day totals securely.</p></div><Link href="/admin/analytics">Start setup</Link>
+            <BarChart3 size={30}/><div><strong>GA4 visitor dashboard</strong><p>View active visitors, today, 7-day and 30-day totals, popular pages and devices.</p></div><Link href="/admin/analytics">View report</Link>
           </div>
         </section>
 
