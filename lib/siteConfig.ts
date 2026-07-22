@@ -7,7 +7,7 @@ export const siteConfig = {
   disclaimer:
     "Odisha Sathi is not a government website. We share information for public awareness and users should verify details from the official notification or official website before applying or taking any action.",
   contact: {
-    email: "",
+    email: "contact.odishasathi@gmail.com",
     address: "Odisha",
     whatsappChannel: "https://whatsapp.com/channel/0029Va9mvn72P59nNU9nEJ3I",
   },

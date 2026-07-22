@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import PublicContactDetails from "@/components/PublicContactDetails";
 import { siteConfig } from "@/lib/siteConfig";
 
 export const metadata: Metadata = {
@@ -27,8 +28,8 @@ export default function ContactPage() {
           <h2>Contact Purpose</h2>
           <p>
             You can contact Odisha Sathi for correction requests, update
-            requests, content feedback, technical issues, and general website
-            communication.
+            requests, content feedback, technical issues, privacy questions and
+            general website communication.
           </p>
 
           <div className="trust-info-grid">
@@ -58,27 +59,14 @@ export default function ContactPage() {
           </div>
 
           <h2>Contact Details</h2>
-          <p>
-            Location: {siteConfig.contact.address || "Odisha"}
-          </p>
-          {siteConfig.contact.email ? (
-            <p>
-              Email: <a href={`mailto:${siteConfig.contact.email}`}>{siteConfig.contact.email}</a>
-            </p>
-          ) : (
-            <p>
-              A dedicated contact email can be added from Admin Settings later.
-              Until then, use the correction request guidance and available
-              Odisha Sathi social/contact links.
-            </p>
-          )}
+          <PublicContactDetails />
 
           <h2>Before Contacting</h2>
           <ul>
             <li>Share the exact page URL or post title.</li>
             <li>Explain what needs to be corrected or updated.</li>
             <li>Attach or mention the official source if available.</li>
-            <li>Do not share unnecessary personal documents or sensitive data.</li>
+            <li>Do not share passwords, OTPs, banking details or unnecessary personal documents.</li>
           </ul>
         </article>
       </section>
