@@ -6,6 +6,7 @@ import PostCard from "@/components/PostCard";
 import { getFirebase, isFirebaseConfigured } from "@/lib/firebase";
 import { samplePosts } from "@/lib/samplePosts";
 import { Post } from "@/lib/types";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 function normalizePost(id: string, data: any): Post {
   const createdAt = data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt ?? "";
@@ -82,6 +83,9 @@ export default function CategoryPosts({ category }: { category: string }) {
         const snapshot = await getDocs(collection(db, "posts"));
 
         const firebasePosts = snapshot.docs
+          .filter((item) =>
+            isPublicListingPost(item.data(), item.id)
+          )
           .map((item) => normalizePost(item.id, item.data()))
           .filter(isPublished)
           .filter((post) => categoryKey(post.category) === wantedCategory);

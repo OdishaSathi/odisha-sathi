@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 type LatestPost = {
   id: string;
@@ -85,18 +86,28 @@ async function loadLatestCollection(name: string, categoryOverride: string) {
   try {
     const snapshot = await getDocs(collection(db, name));
 
-    return snapshot.docs.map((docItem): LatestPost => {
-      const data = docItem.data();
+    return snapshot.docs
+      .filter((docItem) =>
+        isPublicListingPost(
+          {
+            ...docItem.data(),
+            category: categoryOverride || docItem.data().category,
+          },
+          docItem.id
+        )
+      )
+      .map((docItem): LatestPost => {
+        const data = docItem.data();
 
-      return {
-        id: docItem.id,
-        title: data.title || data.schemeName || "",
-        slug: data.slug || "",
-        category: normalizeCategory(categoryOverride || data.category || ""),
-        schemeName: data.schemeName || data.title || "",
-        createdAt: data.createdAt || null,
-      };
-    });
+        return {
+          id: docItem.id,
+          title: data.title || data.schemeName || "",
+          slug: data.slug || "",
+          category: normalizeCategory(categoryOverride || data.category || ""),
+          schemeName: data.schemeName || data.title || "",
+          createdAt: data.createdAt || null,
+        };
+      });
   } catch (error) {
     console.warn(`Could not load ${name}`, error);
     return [];

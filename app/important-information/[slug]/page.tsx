@@ -9,6 +9,7 @@ import {
   getImportantInfoYouTubeId,
   type ImportantInfoPost,
 } from "@/lib/importantInformation";
+import { isPublicDetailPost } from "@/lib/publicPostQuality";
 
 type ImportantInfoPageProps = {
   params: Promise<{
@@ -87,7 +88,13 @@ async function getRelatedPosts(keywords: string[]) {
       const data = docItem.data();
       const category = normalizeText(data.category);
 
-      if (!category || category === "tools") return;
+      if (
+        !category ||
+        category === "tools" ||
+        !isPublicDetailPost(data, docItem.id)
+      ) {
+        return;
+      }
 
       const searchText = normalizeText([
         data.title,
@@ -228,10 +235,12 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                 </section>
               ) : null}
 
-              <section className="important-section">
-                <SectionHeader title="Details" />
-                <div className="important-description">{post.details || "Details will be updated soon."}</div>
-              </section>
+              {post.details?.trim() ? (
+                <section className="important-section">
+                  <SectionHeader title="Details" />
+                  <div className="important-description">{post.details}</div>
+                </section>
+              ) : null}
 
               {(post.detailSections || []).map((section, index) => (
                 <section className="important-section" key={`${section.title}-${index}`}>
@@ -289,9 +298,9 @@ export default async function ImportantInformationDetailPage({ params }: Importa
             </section>
 
             <aside className="important-side-column">
-              <div className="important-side-card">
-                <h3>Quick Panel</h3>
-                {post.quickInfoRows && post.quickInfoRows.length > 0 ? (
+              {post.quickInfoRows && post.quickInfoRows.length > 0 ? (
+                <div className="important-side-card">
+                  <h3>Quick Panel</h3>
                   <div className="important-quick-list">
                     {post.quickInfoRows.map((row, index) => (
                       <div key={`${row.label}-${index}`}>
@@ -300,25 +309,21 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="important-muted">Quick information will be updated soon.</p>
-                )}
-              </div>
-
-              <div className="important-side-card">
-                <div className="important-side-title-row">
-                  <h3>Relevant Posts</h3>
                 </div>
-                {relatedPosts.length > 0 ? (
+              ) : null}
+
+              {relatedPosts.length > 0 ? (
+                <div className="important-side-card">
+                  <div className="important-side-title-row">
+                    <h3>Relevant Posts</h3>
+                  </div>
                   <div className="important-related-list">
                     {relatedPosts.map((item) => (
                       <Link key={item.id} href={item.href}>{item.title}</Link>
                     ))}
                   </div>
-                ) : (
-                  <p className="important-muted">Relevant posts will appear here when matching keywords are found.</p>
-                )}
-              </div>
+                </div>
+              ) : null}
 
               <div className="important-side-card">
                 <h3>Quick Access</h3>

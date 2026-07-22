@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 type ToolPost = {
   id: string;
@@ -39,6 +40,9 @@ export default function ToolCategoryPage() {
         const snapshot = await getDocs(collection(db, "posts"));
 
         const list: ToolPost[] = snapshot.docs
+          .filter((docItem) =>
+            isPublicListingPost(docItem.data(), docItem.id)
+          )
           .map((docItem) => {
             const data = docItem.data();
 
@@ -54,7 +58,9 @@ export default function ToolCategoryPage() {
           })
           .filter(
             (item) =>
-              item.category === "tools" && item.toolCategory === toolCategory
+              item.category === "tools" &&
+              item.toolCategory === toolCategory &&
+              Boolean(item.toolUrl?.trim())
           )
           .sort((a, b) => {
             const aTime = a.createdAt?.seconds || 0;

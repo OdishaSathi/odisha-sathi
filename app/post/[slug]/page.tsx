@@ -8,6 +8,7 @@ import {
   getJobShareThumbnail,
   isJobPostData,
 } from "@/lib/jobShare";
+import { isPublicDetailPost } from "@/lib/publicPostQuality";
 
 type PostPageProps = {
   params: Promise<{
@@ -68,14 +69,6 @@ function cleanText(value: any, maxLength = 160) {
   return `${text.slice(0, maxLength - 3)}...`;
 }
 
-function isPublicPost(data: any) {
-  const status = String(data?.status || "published").toLowerCase();
-  return (
-    data?.published !== false &&
-    !["draft", "archived", "hidden", "private"].includes(status)
-  );
-}
-
 async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
   const pageSlug = decodeURIComponent(slug);
 
@@ -92,13 +85,16 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
       if (!slugSnapshot.empty) {
         const postDoc = slugSnapshot.docs[0];
         const data = postDoc.data();
+        const postData = {
+          ...data,
+          category: item.category || data.category,
+        };
 
-        if (!isPublicPost(data)) continue;
+        if (!isPublicDetailPost(postData, postDoc.id)) continue;
 
         return {
           id: postDoc.id,
-          ...data,
-          category: item.category || data.category,
+          ...postData,
         };
       }
 
@@ -106,13 +102,16 @@ async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
 
       if (directDoc.exists()) {
         const data = directDoc.data();
+        const postData = {
+          ...data,
+          category: item.category || data.category,
+        };
 
-        if (!isPublicPost(data)) continue;
+        if (!isPublicDetailPost(postData, directDoc.id)) continue;
 
         return {
           id: directDoc.id,
-          ...data,
-          category: item.category || data.category,
+          ...postData,
         };
       }
     } catch (error) {
@@ -202,6 +201,23 @@ export async function generateMetadata({
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const isReminderShare = resolvedSearchParams.reminder === "1";
   const post = await getPostForMetadata(slug);
+  const canonicalUrl = `/post/${encodeURIComponent(slug)}`;
+
+  if (!post) {
+    return {
+      title: "Post unavailable",
+      description:
+        "This Odisha Sathi post is unavailable or is being reviewed before publication.",
+      alternates: {
+        canonical: canonicalUrl,
+      },
+      robots: {
+        index: false,
+        follow: false,
+      },
+    };
+  }
+
   const isJobPost = isJobPostData(post);
   const jobShareSummary = isJobPost ? buildJobShareSummary(post) : null;
 
@@ -224,7 +240,6 @@ export async function generateMetadata({
     ? `${normalShareTitle} • ${post?.category || "Latest Update"}`
     : decoratedMetadata.description;
   const imageUrl = buildOgImageUrl(post);
-  const canonicalUrl = `/post/${encodeURIComponent(slug)}`;
 
   return {
     metadataBase: new URL("https://odishasathi.in"),

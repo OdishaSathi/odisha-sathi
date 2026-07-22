@@ -67,6 +67,9 @@ export type CommonPostDetailData = {
   description?: string;
   notificationNumber?: string;
   previewImageUrl?: string;
+  organization?: string;
+  department?: string;
+  postName?: string;
 
   shareTitle?: string;
   shareDescription?: string;
@@ -118,6 +121,44 @@ function getShareCategory(category?: string) {
     return "Scholarship";
   }
   return getCategoryLabel(category).replace(/^Latest\s+/i, "");
+}
+
+function getUniqueLabels(values: Array<string | undefined>) {
+  const seen = new Set<string>();
+
+  return values.reduce<string[]>((items, value) => {
+    const label = value?.replace(/\s+/g, " ").trim();
+    const key = label?.toLowerCase();
+
+    if (!label || !key || seen.has(key)) return items;
+
+    seen.add(key);
+    items.push(label);
+    return items;
+  }, []);
+}
+
+function getRelatedSectionTitle(category?: string) {
+  const value = String(category || "").trim().toLowerCase();
+
+  if (value === "jobs" || value === "job") return "Related Jobs";
+  if (value === "results" || value === "result") return "Related Results";
+  if (value === "admissions" || value === "admission") {
+    return "Related Admissions";
+  }
+  if (value.includes("admit") || value === "exams" || value === "exam") {
+    return "Related Admit Cards & Exams";
+  }
+  if (
+    value === "schemes" ||
+    value === "scheme" ||
+    value === "scholarships" ||
+    value === "scholarship"
+  ) {
+    return "Related Schemes";
+  }
+
+  return "Related Updates";
 }
 
 function cleanDateRows(rows?: ImportantDateRow[]): ImportantDateRow[] {
@@ -351,15 +392,9 @@ function cleanContentSections(sections?: DetailContentSection[]): DetailContentS
 }
 
 function DetailDescription({ description }: { description?: string }) {
-  if (!description?.trim()) {
-    return (
-      <div className="post-detail-description muted">
-        Details will be updated soon.
-      </div>
-    );
-  }
-
-  return <div className="post-detail-description">{description}</div>;
+  return description?.trim() ? (
+    <div className="post-detail-description">{description}</div>
+  ) : null;
 }
 
 export default function PostDetailLayout({
@@ -394,18 +429,29 @@ export default function PostDetailLayout({
 
   const shareUrl = post.postUrl?.trim() || "";
 
+  const isJobDetail = post.category === "jobs";
+
   const departmentName =
     findInfoValue(quickInfoSections, ["organization", "department"]) ||
-    "Department / Organization";
+    post.organization?.trim() ||
+    post.department?.trim() ||
+    "Odisha Sathi";
 
-  const postNames =
-    post.subCategories?.join(", ") ||
-    quickInfoSections.map((section) => section.title).filter(Boolean).join(", ") ||
-    post.title;
+  const jobPostNames = getUniqueLabels([
+    ...quickInfoSections
+      .map((section) => section.title)
+      .filter((title) => !/^post details(?:\s+\d+)?$/i.test(title)),
+    post.postName,
+  ]);
+
+  const postNames = isJobDetail
+    ? jobPostNames.join(", ") || post.title
+    : post.postName?.trim() || post.title;
 
   const relatedPosts = (post.relatedPosts || []).slice(0, 5);
+  const relatedSectionTitle = getRelatedSectionTitle(post.category);
+  const displaySubCategories = getUniqueLabels(post.subCategories || []);
   const contentSections = cleanContentSections(post.contentSections);
-  const isJobDetail = post.category === "jobs";
   const whatsappShareText = isJobDetail
     ? buildPostShareMessage({
         title: shareTitle,
@@ -561,9 +607,9 @@ export default function PostDetailLayout({
               ) : null}
             </div>
 
-            {post.subCategories && post.subCategories.length > 0 ? (
+            {displaySubCategories.length > 0 ? (
               <div className="post-detail-chip-row">
-                {post.subCategories.map((item) => (
+                {displaySubCategories.map((item) => (
                   <span key={item} className="post-detail-chip">
                     {item}
                   </span>
@@ -591,7 +637,7 @@ export default function PostDetailLayout({
                 uploadedImageUrl={post.previewImageUrl || ""}
                 youtubeBannerUrl={youtubeBannerUrl}
                 youtubeUrl={firstVideo?.url || ""}
-                categoryLabel={categoryLabel}
+                categoryLabel={shareCategory}
                 departmentName={departmentName}
                 postNames={postNames}
               />
@@ -769,13 +815,13 @@ Telegram
             </section>
 
             <aside className="post-detail-sidebar">
-              <div className="post-detail-side-card">
-                <div className="side-card-title-row">
-                  <h3>Related Jobs</h3>
-                  <Link href={backHref}>View More</Link>
-                </div>
+              {relatedPosts.length > 0 ? (
+                <div className="post-detail-side-card">
+                  <div className="side-card-title-row">
+                    <h3>{relatedSectionTitle}</h3>
+                    <Link href={backHref}>View More</Link>
+                  </div>
 
-                {relatedPosts.length > 0 ? (
                   <div className="post-detail-related-list">
                     {relatedPosts.map((item, index) => {
                       const href =
@@ -789,13 +835,8 @@ Telegram
                       );
                     })}
                   </div>
-                ) : (
-                  <p className="post-detail-side-muted">
-                    Related jobs will be shown here after connecting related post
-                    data.
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : null}
 
               <div className="post-detail-side-card">
                 <h3>Quick Access</h3>
@@ -853,6 +894,8 @@ function DefaultPostBanner({
   departmentName: string;
   postNames: string;
 }) {
+  const tags = getDefaultBannerTags(categoryLabel);
+
   return (
     <div className="default-post-banner">
       <div className="default-banner-logo">
@@ -867,15 +910,65 @@ function DefaultPostBanner({
         <h3>{postNames}</h3>
 
         <div className="default-banner-tags">
-          <span>Post Details</span>
-          <span>Eligibility</span>
-          <span>Age Criteria</span>
-          <span>Important Dates</span>
-          <span>Apply Procedure</span>
+          {tags.map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
         </div>
       </div>
     </div>
   );
+}
+
+function getDefaultBannerTags(categoryLabel: string) {
+  const category = categoryLabel.toLowerCase();
+
+  if (category.includes("result")) {
+    return [
+      "Result Details",
+      "How to Check",
+      "Important Date",
+      "Official Link",
+      "Next Steps",
+    ];
+  }
+
+  if (category.includes("admission")) {
+    return [
+      "Course Details",
+      "Eligibility",
+      "Important Dates",
+      "Documents",
+      "Apply Procedure",
+    ];
+  }
+
+  if (category.includes("admit") || category.includes("exam")) {
+    return [
+      "Exam Details",
+      "Exam Date",
+      "Download Steps",
+      "Instructions",
+      "Official Link",
+    ];
+  }
+
+  if (category.includes("scheme") || category.includes("scholar")) {
+    return [
+      "Scheme Details",
+      "Eligibility",
+      "Benefits",
+      "Important Dates",
+      "Apply Procedure",
+    ];
+  }
+
+  return [
+    "Post Details",
+    "Eligibility",
+    "Age Criteria",
+    "Important Dates",
+    "Apply Procedure",
+  ];
 }
 
 function PostBanner({

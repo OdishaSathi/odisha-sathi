@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 import { buildLastDateReminderShareText } from "@/lib/reminderShare";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -326,6 +327,9 @@ export default function JobsPage() {
         const snapshot = await getDocs(collection(db, "posts"));
 
         const jobList: JobPost[] = snapshot.docs
+          .filter((docItem) =>
+            isPublicListingPost(docItem.data(), docItem.id)
+          )
           .map((docItem) => {
             const data = docItem.data();
 

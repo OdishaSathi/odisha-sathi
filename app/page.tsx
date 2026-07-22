@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 import { buildLastDateReminderShareText } from "@/lib/reminderShare";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 const LATEST_TILE_LIMIT = 12;
 const JOB_SECTION_LIMIT = 18;
@@ -791,6 +792,22 @@ function createPostItem(
   };
 }
 
+function createPublicPostItems(
+  documents: Array<{ id: string; data: () => any }>,
+  categoryOverride?: string
+) {
+  return documents
+    .filter((docItem) =>
+      isPublicListingPost(
+        { ...docItem.data(), category: categoryOverride || docItem.data().category },
+        docItem.id
+      )
+    )
+    .map((docItem) =>
+      createPostItem(docItem.id, docItem.data(), categoryOverride)
+    );
+}
+
 function getDedupedPosts(items: PostItem[]) {
   return Array.from(
     new Map(
@@ -1084,52 +1101,46 @@ export default function HomePage() {
           getDocs(collection(db, "importantInformation")),
         ]);
 
-        const postItems: PostItem[] = postsSnapshot.docs.map((docItem) =>
-          createPostItem(docItem.id, docItem.data())
-        );
+        const postItems: PostItem[] = createPublicPostItems(postsSnapshot.docs);
 
-        const jobCollectionItems: PostItem[] = jobsSnapshot.docs.map((docItem) =>
-          createPostItem(docItem.id, docItem.data(), "jobs")
+        const jobCollectionItems: PostItem[] = createPublicPostItems(
+          jobsSnapshot.docs,
+          "jobs"
         );
 
         const admissionCollectionItems: PostItem[] =
-          admissionsSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "admissions")
+          createPublicPostItems(
+            admissionsSnapshot.docs,
+            "admissions"
           );
 
         const admitCardItems: PostItem[] = [
-          ...admitCardsSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "admit-cards")
+          ...createPublicPostItems(admitCardsSnapshot.docs, "admit-cards"),
+          ...createPublicPostItems(
+            admitCardsHyphenSnapshot.docs,
+            "admit-cards"
           ),
-          ...admitCardsHyphenSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "admit-cards")
-          ),
-          ...admitCardsLowerSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "admit-cards")
+          ...createPublicPostItems(
+            admitCardsLowerSnapshot.docs,
+            "admit-cards"
           ),
         ];
 
         const resultItems: PostItem[] = [
-          ...resultsSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "results")
-          ),
-          ...resultSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "results")
-          ),
+          ...createPublicPostItems(resultsSnapshot.docs, "results"),
+          ...createPublicPostItems(resultSnapshot.docs, "results"),
         ];
 
         const schemeCollectionItems: PostItem[] = [
-          ...schemesSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "schemes")
+          ...createPublicPostItems(schemesSnapshot.docs, "schemes"),
+          ...createPublicPostItems(schemeSnapshot.docs, "schemes"),
+          ...createPublicPostItems(
+            governmentSchemesSnapshot.docs,
+            "schemes"
           ),
-          ...schemeSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "schemes")
-          ),
-          ...governmentSchemesSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "schemes")
-          ),
-          ...governmentSchemesHyphenSnapshot.docs.map((docItem) =>
-            createPostItem(docItem.id, docItem.data(), "schemes")
+          ...createPublicPostItems(
+            governmentSchemesHyphenSnapshot.docs,
+            "schemes"
           ),
         ];
 

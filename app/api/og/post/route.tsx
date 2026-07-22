@@ -28,6 +28,43 @@ function getAutoFontSize(
   return sizes.veryLong;
 }
 
+function getCategoryDisplayName(value: string | null) {
+  const category = cleanText(value, "Job", 45).toLowerCase();
+
+  if (category.includes("admit") || category.includes("exam")) {
+    return "Admit Card & Exam";
+  }
+  if (category.includes("admission")) return "Admission";
+  if (category.includes("result")) return "Result";
+  if (category.includes("scheme")) return "Government Scheme";
+  if (category.includes("scholar")) return "Scholarship";
+  if (category.includes("job")) return "Job";
+
+  return cleanText(value, "Latest", 35)
+    .replace(/^latest\s+/i, "")
+    .replace(/\s+update$/i, "")
+    .replace(/[-_]+/g, " ");
+}
+
+function getBannerTags(category: string) {
+  const value = category.toLowerCase();
+
+  if (value.includes("result")) {
+    return ["Result Details", "How to Check", "Important Date", "Official Link"];
+  }
+  if (value.includes("admission")) {
+    return ["Course Details", "Eligibility", "Important Dates", "Apply Procedure"];
+  }
+  if (value.includes("admit") || value.includes("exam")) {
+    return ["Exam Details", "Exam Date", "Download Steps", "Official Link"];
+  }
+  if (value.includes("scheme") || value.includes("scholar")) {
+    return ["Scheme Details", "Eligibility", "Benefits", "Apply Procedure"];
+  }
+
+  return ["Post Details", "Eligibility", "Age Criteria", "Apply Procedure"];
+}
+
 function TagBox({ label, color }: { label: string; color: string }) {
   return (
     <div
@@ -53,13 +90,18 @@ function TagBox({ label, color }: { label: string; color: string }) {
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
 
-  const category = cleanText(searchParams.get("category"), "Job", 35);
+  const category = getCategoryDisplayName(searchParams.get("category"));
   const department = cleanText(
     searchParams.get("department"),
-    "Department / Organization",
+    "Odisha Sathi",
     85
   );
-  const posts = cleanText(searchParams.get("posts"), "Post Details", 100);
+  const posts = cleanText(
+    searchParams.get("posts") || searchParams.get("title"),
+    "Latest Update",
+    100
+  );
+  const bannerTags = getBannerTags(category);
 
   const headerText = `Odisha Sathi ${category} Update`;
 
@@ -226,11 +268,17 @@ export async function GET(request: Request) {
                 maxWidth: "1080px",
               }}
             >
-              <TagBox label="Post Details" color="#1d4ed8" />
-              <TagBox label="Eligibility" color="#16a34a" />
-              <TagBox label="Age Criteria" color="#db2777" />
-              <TagBox label="Important Dates" color="#dc2626" />
-              <TagBox label="Apply Procedure" color="#7c3aed" />
+              {bannerTags.map((label, index) => (
+                <TagBox
+                  key={label}
+                  label={label}
+                  color={
+                    ["#1d4ed8", "#16a34a", "#db2777", "#7c3aed"][
+                      index % 4
+                    ]
+                  }
+                />
+              ))}
             </div>
           </div>
 

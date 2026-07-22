@@ -90,34 +90,22 @@ export default function SocialLinks({ className = "", iconOnly = false }: Social
   }, []);
 
   const modeClass = iconOnly ? "social-link-row-icons-only" : "";
-  const resolvedSocialItems = socialItems.map((item) => ({
-    ...item,
-    href: publicLinks[item.key as keyof typeof publicLinks],
-  }));
+  const resolvedSocialItems = socialItems
+    .map((item) => ({
+      ...item,
+      href: publicLinks[item.key as keyof typeof publicLinks],
+    }))
+    .filter((item) => isUsableSocialLink(item.href));
 
   return (
     <div className={`social-link-row ${modeClass} ${className}`.trim()}>
       {resolvedSocialItems.map((item) => {
-        const isActive = isUsableSocialLink(item.href);
         const content = (
           <>
             <span className="social-icon">{item.icon}</span>
             {!iconOnly ? <span>{item.label}</span> : <span className="sr-only">{item.label}</span>}
           </>
         );
-
-        if (!isActive) {
-          return (
-            <span
-              key={item.key}
-              className={`social-link social-${item.key} social-link-disabled`}
-              title={`${item.label} link will be added soon`}
-              aria-label={`${item.label} link will be added soon`}
-            >
-              {content}
-            </span>
-          );
-        }
 
         return (
           <a

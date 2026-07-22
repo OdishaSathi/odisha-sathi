@@ -15,6 +15,7 @@ import {
 } from "@/lib/jobDetails";
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import { buildJobShareSummary, isJobPostData } from "@/lib/jobShare";
+import { isPublicDetailPost } from "@/lib/publicPostQuality";
 import PostDetailLayout, {
   CommonPostDetailData,
   ImportantDateRow,
@@ -374,7 +375,14 @@ function buildRelatedPosts(
     const sameId = item.id === currentPost.id;
     const sameSlug = item.slug && item.slug === currentPost.slug;
 
-    if (sameId || sameSlug || !item.title?.trim()) return false;
+    if (
+      sameId ||
+      sameSlug ||
+      !item.title?.trim() ||
+      !isPublicDetailPost(item, item.id)
+    ) {
+      return false;
+    }
 
     const itemCategory = normalizeText(item.category);
 
@@ -478,6 +486,9 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     shortDescription: post.shortDescription || post.excerpt || "",
     description: post.description || post.content || "",
     notificationNumber: post.notificationNumber || "",
+    organization: post.organization || "",
+    department: post.department || "",
+    postName: post.postName || "",
 
     previewImageUrl:
       post.previewImageUrl ||
@@ -549,19 +560,29 @@ export default function PublicPostDetailsPage() {
         const allPosts: PostData[] = loadedCollections.flatMap((loaded) => {
           if (!loaded) return [];
 
-          return loaded.snapshot.docs.map((docItem) => {
+          return loaded.snapshot.docs.flatMap((docItem) => {
             const data = docItem.data();
             const normalizedImageUrl = normalizePostImageUrl(data);
+            const normalizedCategory = normalizePostCategory(
+              data.category,
+              loaded.category
+            );
 
-            return {
+            if (
+              !isPublicDetailPost(
+                { ...data, category: normalizedCategory },
+                docItem.id
+              )
+            ) {
+              return [];
+            }
+
+            return [{
               id: docItem.id,
               title: data.title || data.schemeName || "",
               slug: data.slug || "",
 
-              category: normalizePostCategory(
-                data.category,
-                loaded.category
-              ),
+              category: normalizedCategory,
               subCategory:
                 data.subCategory ||
                 data.subcategory ||
@@ -636,7 +657,7 @@ export default function PublicPostDetailsPage() {
               published: data.published !== false,
               createdAt: data.createdAt || null,
               updatedAt: data.updatedAt || null,
-            };
+            }];
           });
         });
 

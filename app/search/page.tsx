@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 type ImportantDate = {
   label?: string;
@@ -323,10 +324,14 @@ export default function SearchPage() {
           },
         ];
 
-        const allPosts: SearchPost[] = postsSnapshot.docs.map((docItem) => {
-          const data = docItem.data();
+        const allPosts: SearchPost[] = postsSnapshot.docs
+          .filter((docItem) =>
+            isPublicListingPost(docItem.data(), docItem.id)
+          )
+          .map((docItem) => {
+            const data = docItem.data();
 
-          return {
+            return {
             id: docItem.id,
             title: data.title || data.toolName || "",
             slug: data.slug || "",
@@ -362,8 +367,8 @@ export default function SearchPage() {
             endDate: data.endDate || "",
             importantDates: data.importantDates || [],
             createdAt: data.createdAt || null,
-          };
-        });
+            };
+          });
 
         const filteredPosts = allPosts.filter(
           (post) =>
@@ -373,8 +378,14 @@ export default function SearchPage() {
             post.category !== ""
         );
 
-        const allAdmitCards: SearchPost[] = admitCardsSnapshot.docs.map(
-          (docItem) => {
+        const allAdmitCards: SearchPost[] = admitCardsSnapshot.docs
+          .filter((docItem) =>
+            isPublicListingPost(
+              { ...docItem.data(), category: "admit-cards" },
+              docItem.id
+            )
+          )
+          .map((docItem) => {
             const data = docItem.data();
 
             return {
@@ -408,13 +419,19 @@ export default function SearchPage() {
               importantDates: data.importantDates || [],
               createdAt: data.createdAt || null,
             };
-          }
-        );
+          });
 
-        const allResults: SearchPost[] = resultsSnapshot.docs.map((docItem) => {
-          const data = docItem.data();
+        const allResults: SearchPost[] = resultsSnapshot.docs
+          .filter((docItem) =>
+            isPublicListingPost(
+              { ...docItem.data(), category: "results" },
+              docItem.id
+            )
+          )
+          .map((docItem) => {
+            const data = docItem.data();
 
-          return {
+            return {
             id: docItem.id,
             title: data.title || "",
             slug: data.slug || "",
@@ -437,8 +454,8 @@ export default function SearchPage() {
             endDate: data.endDate || "",
             importantDates: data.importantDates || [],
             createdAt: data.createdAt || null,
-          };
-        });
+            };
+          });
 
         const combinedPosts = [
           ...fixedToolCategories,

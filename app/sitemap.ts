@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 import { collection, getDocs } from "firebase/firestore";
 import { dbServer } from "@/lib/firebaseServer";
 import { siteConfig } from "@/lib/siteConfig";
+import {
+  isPublicDetailPost,
+  isPublishedPublicPost,
+} from "@/lib/publicPostQuality";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -74,15 +78,6 @@ function isTestPost(data: any, id: string) {
   return /(^|[\s_-])test([\s_-]|$)/.test(value);
 }
 
-function isPublicPost(data: any) {
-  const status = normalizeText(data.status || "published");
-
-  return (
-    data.published !== false &&
-    !["draft", "archived", "hidden", "private"].includes(status)
-  );
-}
-
 async function loadSitemapCollection(collectionName: string) {
   try {
     const snapshot = await getDocs(collection(dbServer, collectionName));
@@ -115,7 +110,7 @@ async function getPublicPostRoutes(): Promise<MetadataRoute.Sitemap> {
       .map((docItem) => {
         const data = docItem.data();
 
-        if (!isPublicPost(data)) return null;
+        if (!isPublicDetailPost(data, docItem.id)) return null;
         if (isTestPost(data, docItem.id)) return null;
 
         const route = getPostRoute(data, docItem.id);
@@ -144,7 +139,7 @@ async function getImportantInformationRoutes(): Promise<MetadataRoute.Sitemap> {
       .map((docItem) => {
         const data = docItem.data();
 
-        if (!isPublicPost(data)) return null;
+        if (!isPublishedPublicPost(data)) return null;
 
         const slug = data.slug || docItem.id;
 

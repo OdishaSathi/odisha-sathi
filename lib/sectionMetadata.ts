@@ -40,6 +40,13 @@ function getCategoryLabel(category: SectionCategory) {
   return "Scheme Update";
 }
 
+function getOgCategoryLabel(category: SectionCategory) {
+  if (category === "results") return "Result";
+  if (category === "admissions") return "Admission";
+  if (category === "admit-cards") return "Admit Card & Exam";
+  return "Government Scheme";
+}
+
 function getDepartmentByCategory(category: SectionCategory, data: any) {
   if (category === "results") {
     return cleanText(data.organization, "Odisha Sathi");
@@ -58,21 +65,21 @@ function getDepartmentByCategory(category: SectionCategory, data: any) {
 
 function getMainTitleByCategory(category: SectionCategory, data: any) {
   if (category === "results") {
-    return cleanText(data.examName || data.title, getCategoryLabel(category));
+    return cleanText(data.title || data.examName, getCategoryLabel(category));
   }
 
   if (category === "admit-cards") {
-    return cleanText(data.examName || data.title, getCategoryLabel(category));
+    return cleanText(data.title || data.examName, getCategoryLabel(category));
   }
 
   if (category === "admissions") {
     return cleanText(
-      data.admissionCategory || data.title,
+      data.title || data.courseName || data.admissionCategory,
       getCategoryLabel(category)
     );
   }
 
-  return cleanText(data.schemeName || data.title, getCategoryLabel(category));
+  return cleanText(data.title || data.schemeName, getCategoryLabel(category));
 }
 
 function getPageTitleByCategory(category: SectionCategory, data: any) {
@@ -114,10 +121,12 @@ function getCustomImage(data: any) {
 
 function getDefaultOgImage(category: SectionCategory, data: any) {
   const imageUrl = new URL("/api/og/post", SITE_URL);
+  const mainTitle = getMainTitleByCategory(category, data);
 
-  imageUrl.searchParams.set("title", getMainTitleByCategory(category, data));
+  imageUrl.searchParams.set("title", mainTitle);
+  imageUrl.searchParams.set("posts", mainTitle);
   imageUrl.searchParams.set("department", getDepartmentByCategory(category, data));
-  imageUrl.searchParams.set("category", getCategoryLabel(category));
+  imageUrl.searchParams.set("category", getOgCategoryLabel(category));
 
   return imageUrl.toString();
 }
@@ -185,6 +194,11 @@ export async function generateSectionPostMetadata({
     const fallbackDescription = `Latest ${getCategoryLabel(
       category
     ).toLowerCase()} updates on Odisha Sathi.`;
+    const fallbackImage = `${SITE_URL}/api/og/post?category=${encodeURIComponent(
+      getOgCategoryLabel(category)
+    )}&department=${encodeURIComponent("Odisha Sathi")}&posts=${encodeURIComponent(
+      getCategoryLabel(category)
+    )}`;
 
     return {
       title: fallbackTitle,
@@ -196,9 +210,7 @@ export async function generateSectionPostMetadata({
         siteName: "Odisha Sathi",
         images: [
           {
-            url: `${SITE_URL}/api/og/post?title=${encodeURIComponent(
-              getCategoryLabel(category)
-            )}&department=${encodeURIComponent("Odisha Sathi")}`,
+            url: fallbackImage,
             width: 1200,
             height: 630,
             alt: fallbackTitle,
@@ -210,11 +222,7 @@ export async function generateSectionPostMetadata({
         card: "summary_large_image",
         title: fallbackTitle,
         description: fallbackDescription,
-        images: [
-          `${SITE_URL}/api/og/post?title=${encodeURIComponent(
-            getCategoryLabel(category)
-          )}&department=${encodeURIComponent("Odisha Sathi")}`,
-        ],
+        images: [fallbackImage],
       },
     };
   }
