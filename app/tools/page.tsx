@@ -91,7 +91,7 @@ async function loadLatestCollection(name: string, categoryOverride: string) {
         isPublicListingPost(
           {
             ...docItem.data(),
-            category: categoryOverride || docItem.data().category,
+            category: docItem.data().category || categoryOverride,
           },
           docItem.id
         )
@@ -254,8 +254,8 @@ export default function ToolsPage() {
             <div className="os-tools-note-card">
               <h2>Online Tools</h2>
               <p>
-                Use these tools for quick PDF and image work. More tools can be
-                added from the admin panel later.
+                Use these tools for PDF compression, conversion, image resizing
+                and everyday document preparation.
               </p>
             </div>
           </aside>

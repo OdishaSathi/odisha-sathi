@@ -799,7 +799,7 @@ function createPublicPostItems(
   return documents
     .filter((docItem) =>
       isPublicListingPost(
-        { ...docItem.data(), category: categoryOverride || docItem.data().category },
+        { ...docItem.data(), category: docItem.data().category || categoryOverride },
         docItem.id
       )
     )
@@ -899,21 +899,19 @@ function ImportantInfoRow({ item }: { item: ImportantInformationItem }) {
 }
 
 function ImportantInformationHighlights({ items }: { items: ImportantInformationItem[] }) {
+  if (items.length === 0) return null;
+
   return (
     <section className="os-important-info-section">
       <div className="os-board-section-head os-important-info-head">
         <h2>Important Information</h2>
       </div>
 
-      {items.length === 0 ? (
-        <p className="os-board-empty">Important information will be updated soon.</p>
-      ) : (
-        <div className="os-important-info-grid">
-          {items.slice(0, IMPORTANT_INFO_TILE_LIMIT).map((item, index) => (
-            <ImportantInfoTile key={`important-tile-${item.id}`} item={item} index={index} />
-          ))}
-        </div>
-      )}
+      <div className="os-important-info-grid">
+        {items.slice(0, IMPORTANT_INFO_TILE_LIMIT).map((item, index) => (
+          <ImportantInfoTile key={`important-tile-${item.id}`} item={item} index={index} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -927,6 +925,8 @@ function AllImportantInformationStack({
   visibleCount: number;
   onViewMore: () => void;
 }) {
+  if (items.length === 0) return null;
+
   const visibleItems = items.slice(0, visibleCount);
 
   return (
@@ -935,25 +935,19 @@ function AllImportantInformationStack({
         <h2>All Important Information</h2>
       </div>
 
-      {items.length === 0 ? (
-        <p className="os-home-empty">No important information available.</p>
-      ) : (
-        <>
-          <div className="os-all-important-info-list">
-            {visibleItems.map((item) => (
-              <ImportantInfoRow key={`important-row-${item.id}`} item={item} />
-            ))}
-          </div>
+      <div className="os-all-important-info-list">
+        {visibleItems.map((item) => (
+          <ImportantInfoRow key={`important-row-${item.id}`} item={item} />
+        ))}
+      </div>
 
-          {visibleCount < items.length ? (
-            <div className="os-important-view-more-wrap">
-              <button type="button" onClick={onViewMore}>
-                View More
-              </button>
-            </div>
-          ) : null}
-        </>
-      )}
+      {visibleCount < items.length ? (
+        <div className="os-important-view-more-wrap">
+          <button type="button" onClick={onViewMore}>
+            View More
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

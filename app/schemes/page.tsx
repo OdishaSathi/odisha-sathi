@@ -6,6 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 import { buildLastDateReminderShareText } from "@/lib/reminderShare";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 const POSTS_PER_PAGE = 30;
 const LATEST_STACK_COUNT = 8;
@@ -301,9 +302,19 @@ async function loadSchemeCollection(collectionName: string) {
   try {
     const snapshot = await getDocs(collection(db, collectionName));
 
-    return snapshot.docs.map((docItem) =>
-      mapSchemeDocument(docItem, collectionName)
-    );
+    return snapshot.docs
+      .filter((docItem) => {
+        const data = docItem.data();
+
+        return isPublicListingPost(
+          {
+            ...data,
+            category: data.category || collectionName,
+          },
+          docItem.id
+        );
+      })
+      .map((docItem) => mapSchemeDocument(docItem, collectionName));
   } catch (error) {
     console.warn(`Could not load ${collectionName}`, error);
     return [];

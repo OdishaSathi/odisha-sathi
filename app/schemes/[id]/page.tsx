@@ -7,6 +7,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
 import ReminderShareButtons from "@/components/public/ReminderShareButtons";
 import { buildLastDateReminderShareText } from "@/lib/reminderShare";
+import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 const SCHEME_COLLECTIONS = [
   "posts",
@@ -375,7 +376,9 @@ function getShortDescription(item: SchemePost) {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (!cleanText) return "Scheme details will be available inside this update.";
+  if (!cleanText) {
+    return "Review eligibility, benefits, important dates and official links for this scheme.";
+  }
 
   if (cleanText.length <= 150) return cleanText;
 
@@ -682,6 +685,18 @@ export default function SchemeCategoryPage() {
 
           snapshot.docs.forEach((docItem) => {
             const data = docItem.data();
+
+            if (
+              !isPublicListingPost(
+                {
+                  ...data,
+                  category: data.category || collectionName,
+                },
+                docItem.id
+              )
+            ) {
+              return;
+            }
 
             allSchemes.push({
               id: docItem.id,
