@@ -85,6 +85,7 @@ function getCategoryLabel(category?: string) {
   if (category === "results") return "Result";
   if (category === "admissions") return "Admission";
   if (category === "admit-cards") return "Admit Card";
+  if (category === "citizen-services") return "Citizen Service";
   if (category === "schemes") return "Scheme";
   if (category === "pdf-tools") return "PDF Tools";
   if (category === "image-tools") return "Image Tools";
@@ -124,6 +125,10 @@ function getPostLink(post: SearchPost) {
   if (post.category === "tools") {
     if (post.toolCategory === "image-tools") return "/tools/image-tools";
     return "/tools/pdf-tools";
+  }
+
+  if (post.category === "citizen-services") {
+    return `/citizen-services/${post.slug || post.id}`;
   }
 
   return `/post/${post.slug || post.id}`;
@@ -303,26 +308,7 @@ export default function SearchPage() {
             getDocs(collection(db, "results")),
           ]);
 
-        const fixedToolCategories: SearchPost[] = [
-          {
-            id: "pdf-tools",
-            title: "PDF Tools",
-            category: "pdf-tools",
-            href: "/tools/pdf-tools",
-            description:
-              "Compress PDF, merge PDF, split PDF, convert PDF and other PDF tools.",
-            createdAt: null,
-          },
-          {
-            id: "image-tools",
-            title: "Image Tools",
-            category: "image-tools",
-            href: "/tools/image-tools",
-            description:
-              "Resize image, crop image, compress image and other image tools.",
-            createdAt: null,
-          },
-        ];
+        const fixedToolCategories: SearchPost[] = [];
 
         const allPosts: SearchPost[] = postsSnapshot.docs
           .filter((docItem) =>
@@ -333,9 +319,26 @@ export default function SearchPage() {
 
             return {
             id: docItem.id,
-            title: data.title || data.toolName || "",
+            title: data.title || data.schemeName || data.toolName || "",
             slug: data.slug || "",
-            category: data.category || "",
+            category:
+              ["schemes", "scheme", "scholarships", "scholarship"].includes(
+                data.category
+              ) &&
+              [
+                data.title,
+                data.schemeName,
+                data.description,
+                data.subCategory,
+                ...(Array.isArray(data.subCategories)
+                  ? data.subCategories
+                  : []),
+              ]
+                .join(" ")
+                .toLowerCase()
+                .includes("scholar")
+                ? "admissions"
+                : data.category || "",
             content: data.content || data.description || "",
             schemeName: data.schemeName || data.title || "",
             department: data.department || "",
@@ -373,6 +376,10 @@ export default function SearchPage() {
         const filteredPosts = allPosts.filter(
           (post) =>
             post.category !== "scheme-category" &&
+            post.category !== "schemes" &&
+            post.category !== "tools" &&
+            post.category !== "pdf-tools" &&
+            post.category !== "image-tools" &&
             post.category !== "admit-cards" &&
             post.category !== "results" &&
             post.category !== ""
@@ -547,15 +554,14 @@ export default function SearchPage() {
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
               <Link href="/admit-cards">Admit Cards & Exams</Link>
-              <Link href="/schemes">Schemes</Link>
-              <Link href="/tools">Tools</Link>
+              <Link href="/citizen-services">Citizen Services</Link>
             </section>
 
             <section className="os-side-card os-side-note">
               <h2>Search Tips</h2>
               <p>
-                Try searching with exam name, job name, admission name, scheme
-                name, PDF tools or image tools.
+                Try searching with an exam, job, admission or citizen service
+                name.
               </p>
             </section>
           </aside>

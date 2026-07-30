@@ -1,9 +1,9 @@
 export const siteConfig = {
   siteName: "Odisha Sathi",
   siteUrl: "https://odishasathi.in",
-  tagline: "Jobs, Results, Admissions, Admit Cards & Exams & Schemes",
+  tagline: "Jobs, Results, Admissions, Scholarships, Exams & Citizen Services",
   description:
-    "Odisha Sathi provides latest updates on Odisha jobs, results, admissions, admit cards & exams, government schemes, useful tools and online services.",
+    "Odisha Sathi provides latest updates on Odisha jobs, results, admissions, admit cards, exams, important information and citizen services.",
   disclaimer:
     "Odisha Sathi is not a government website. We share information for public awareness and users should verify details from the official notification or official website before applying or taking any action.",
   contact: {
@@ -24,19 +24,17 @@ export const siteConfig = {
     { label: "Home", href: "/" },
     { label: "Jobs", href: "/jobs" },
     { label: "Results", href: "/results" },
-    { label: "Admissions", href: "/admissions" },
+    { label: "Admissions & Scholarships", href: "/admissions" },
     { label: "Exams", href: "/admit-cards" },
-    { label: "Schemes", href: "/schemes" },
-    { label: "Tools", href: "/tools" },
+    { label: "Citizen Services", href: "/citizen-services" },
   ],
 
   footerMainLinks: [
     { label: "Latest Jobs", href: "/jobs" },
-    { label: "Admissions", href: "/admissions" },
+    { label: "Admissions & Scholarships", href: "/admissions" },
     { label: "Admit Cards & Exams", href: "/admit-cards" },
     { label: "Results", href: "/results" },
-    { label: "Government Schemes", href: "/schemes" },
-    { label: "Tools", href: "/tools" },
+    { label: "Citizen Services", href: "/citizen-services" },
   ],
 
   footerTrustLinks: [
@@ -52,9 +50,8 @@ export const siteConfig = {
   homeCategories: [
     { label: "Jobs", href: "/jobs" },
     { label: "Results", href: "/results" },
-    { label: "Admissions", href: "/admissions" },
+    { label: "Admissions & Scholarships", href: "/admissions" },
     { label: "Admit Cards & Exams", href: "/admit-cards" },
-    { label: "Schemes", href: "/schemes" },
-    { label: "Tools", href: "/tools" },
+    { label: "Citizen Services", href: "/citizen-services" },
   ],
 };

@@ -11,6 +11,21 @@ import {
   getActiveAdminSubCategories,
   mergeSubCategoryOptions,
 } from "@/lib/adminSubCategories";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import CommonDocumentsEditor from "@/components/admin/CommonDocumentsEditor";
+import type { RequiredDocumentRow } from "@/lib/jobDetails";
+import {
+  cleanJobDocuments,
+  normalizeJobDocuments,
+} from "@/lib/jobDetails";
+import {
+  FlexibleDataTable,
+  FlexibleDetailSection,
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
 
 const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "+2 Admission", value: "plus-two-admission" },
@@ -18,6 +33,10 @@ const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "Diploma Admission", value: "diploma-admission" },
   { label: "ITI Admission", value: "iti-admission" },
   { label: "B.Ed / Teacher Training", value: "bed-teacher-training" },
+  { label: "Scholarships", value: "scholarships" },
+  { label: "Pre-Matric Scholarship", value: "pre-matric-scholarship" },
+  { label: "Post-Matric Scholarship", value: "post-matric-scholarship" },
+  { label: "Higher Education Scholarship", value: "higher-education-scholarship" },
 ];
 
 const OTHER_ADMISSION_OPTION = { label: "Other Admissions", value: "other-admissions" };
@@ -41,8 +60,10 @@ type AdmissionForm = {
   title: string;
   admissionCategory: string;
   subCategory: string;
+  subCategories: string[];
   customAdmissionCategory: string;
   department: string;
+  courseName: string;
   applicationStartDate: string;
   applicationStartDateDisplay: string;
   lastDate: string;
@@ -51,6 +72,13 @@ type AdmissionForm = {
   meritListDateDisplay: string;
   selectionDates: DateRow[];
   description: string;
+  notificationNumber: string;
+  eligibility: string;
+  fees: string;
+  applicationProcess: string;
+  documentsRequired: RequiredDocumentRow[];
+  contentSections: FlexibleDetailSection[];
+  dataTables: FlexibleDataTable[];
   applicationLink: string;
   notificationLink: string;
   dateExtensionPdfLink: string;
@@ -66,8 +94,10 @@ const emptyForm: AdmissionForm = {
   title: "",
   admissionCategory: "+2 Admission",
   subCategory: "plus-two-admission",
+  subCategories: ["plus-two-admission"],
   customAdmissionCategory: "",
   department: "",
+  courseName: "",
   applicationStartDate: "",
   applicationStartDateDisplay: "",
   lastDate: "",
@@ -76,6 +106,13 @@ const emptyForm: AdmissionForm = {
   meritListDateDisplay: "",
   selectionDates: [],
   description: "",
+  notificationNumber: "",
+  eligibility: "",
+  fees: "",
+  applicationProcess: "",
+  documentsRequired: [],
+  contentSections: [],
+  dataTables: [],
   applicationLink: "",
   notificationLink: "",
   dateExtensionPdfLink: "",
@@ -149,20 +186,28 @@ function getDateDisplayValue(exactDate: string, displayText: string) {
   return displayText.trim() || exactDate;
 }
 
-function resolveAdmissionCategory(form: AdmissionForm) {
-  if (form.subCategory === "other-admissions" && form.customAdmissionCategory.trim()) {
-    const label = form.customAdmissionCategory.trim();
+function resolveAdmissionCategories(form: AdmissionForm) {
+  const selected = admissionCategoryOptions.filter((item) =>
+    form.subCategories.includes(item.value)
+  );
+  const resolved = selected.map((item) => ({ ...item }));
 
-    return {
-      label,
-      slug: makeSlug(label),
-    };
+  if (
+    form.subCategories.includes("other-admissions") &&
+    form.customAdmissionCategory.trim()
+  ) {
+    const label = form.customAdmissionCategory.trim();
+    const otherIndex = resolved.findIndex(
+      (item) => item.value === "other-admissions"
+    );
+    const custom = { label, value: makeSlug(label) };
+    if (otherIndex >= 0) resolved.splice(otherIndex, 1, custom);
+    else resolved.push(custom);
   }
 
-  return {
-    label: form.admissionCategory,
-    slug: form.subCategory,
-  };
+  return resolved.length > 0
+    ? resolved
+    : [{ label: form.admissionCategory, value: form.subCategory }];
 }
 
 function cleanDateRows(rows: DateRow[]) {
@@ -186,7 +231,8 @@ function cleanLinkRows(rows: LinkRow[]) {
 function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
   const selectionDates = cleanDateRows(form.selectionDates);
   const extraLinks = cleanLinkRows(form.extraLinks);
-  const resolvedCategory = resolveAdmissionCategory(form);
+  const resolvedCategories = resolveAdmissionCategories(form);
+  const resolvedCategory = resolvedCategories[0];
 
   const importantDates = [
     {
@@ -232,14 +278,18 @@ function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
     slug: oldSlug || makeSlug(form.title),
     category: "admissions",
     type: "admissions",
-    subCategory: resolvedCategory.slug,
-    subCategories: [resolvedCategory.label, resolvedCategory.slug],
+    subCategory: resolvedCategory.value,
+    subCategories: resolvedCategories.flatMap((item) => [
+      item.label,
+      item.value,
+    ]),
     admissionCategory: resolvedCategory.label,
-    admissionCategories: [resolvedCategory.label],
+    admissionCategories: resolvedCategories.map((item) => item.label),
     categoryName: resolvedCategory.label,
-    categorySlug: resolvedCategory.slug,
-    subCategorySlug: resolvedCategory.slug,
+    categorySlug: resolvedCategory.value,
+    subCategorySlug: resolvedCategory.value,
     department: form.department.trim(),
+    courseName: form.courseName.trim(),
     applicationStartDate: form.applicationStartDate,
     applicationStartDateDisplay: form.applicationStartDateDisplay.trim(),
     startDateDisplay: getDateDisplayValue(
@@ -253,6 +303,16 @@ function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
     selectionDates,
     description: form.description.trim(),
     content: form.description.trim(),
+    notificationNumber: form.notificationNumber.trim(),
+    eligibility: form.eligibility.trim(),
+    fees: form.fees.trim(),
+    applicationProcess: form.applicationProcess.trim(),
+    howToApply: form.applicationProcess.trim(),
+    documentsRequired: cleanJobDocuments(form.documentsRequired),
+    contentSections: cleanFlexibleDetailSections(form.contentSections),
+    detailSections: cleanFlexibleDetailSections(form.contentSections),
+    dataTables: cleanFlexibleDataTables(form.dataTables),
+    customTables: cleanFlexibleDataTables(form.dataTables),
     applicationLink: form.applicationLink.trim(),
     notificationLink: form.notificationLink.trim(),
     dateExtensionPdfLink: form.dateExtensionPdfLink.trim(),
@@ -261,6 +321,8 @@ function buildAdmissionPayload(form: AdmissionForm, oldSlug?: string) {
     youtubeUrl: form.youtubeUrl.trim(),
     youtubeUrls: form.youtubeUrls.map((item) => item.trim()).filter(Boolean).slice(0, 2),
     sharingImageUrl: form.sharingImageUrl.trim(),
+    previewImageUrl: form.sharingImageUrl.trim(),
+    imageUrl: form.sharingImageUrl.trim(),
     status: form.status,
     published: true,
     importantDates,
@@ -331,6 +393,17 @@ export default function EditAdmissionPage() {
         const savedAdmissionCategory = data.admissionCategory || "";
         const savedSubCategory =
           data.subCategory || getSubCategoryFromLabel(savedAdmissionCategory);
+        const savedCategoryValues = admissionOptions
+          .filter((option) =>
+            (Array.isArray(data.subCategories)
+              ? data.subCategories
+              : [savedSubCategory]
+            ).some(
+              (item: string) =>
+                item === option.value || item === option.label
+            )
+          )
+          .map((option) => option.value);
         const isKnownCategory = admissionOptions.some(
           (item) => item.value === savedSubCategory
         );
@@ -352,8 +425,13 @@ export default function EditAdmissionPage() {
               ? customAdmissionCategory
               : data.admissionCategory || admissionOptions.find((item) => item.value === finalSubCategory)?.label || getLabelFromSubCategory(finalSubCategory),
           subCategory: finalSubCategory,
+          subCategories:
+            savedCategoryValues.length > 0
+              ? savedCategoryValues
+              : [finalSubCategory],
           customAdmissionCategory,
           department: data.department || "",
+          courseName: data.courseName || data.programmeName || "",
           applicationStartDate: data.applicationStartDate || "",
           applicationStartDateDisplay:
             data.applicationStartDateDisplay || data.startDateDisplay || "",
@@ -365,6 +443,19 @@ export default function EditAdmissionPage() {
             ? data.selectionDates
             : [],
           description: data.description || data.content || "",
+          notificationNumber:
+            data.notificationNumber || data.notificationNo || "",
+          eligibility: data.eligibility || "",
+          fees: data.fees || data.feeStructure || "",
+          applicationProcess:
+            data.applicationProcess || data.howToApply || "",
+          documentsRequired: normalizeJobDocuments(data),
+          contentSections: normalizeFlexibleDetailSections(
+            data.contentSections || data.detailSections
+          ),
+          dataTables: normalizeFlexibleDataTables(
+            data.dataTables || data.customTables
+          ),
           applicationLink: data.applicationLink || "",
           notificationLink: data.notificationLink || "",
           dateExtensionPdfLink: data.dateExtensionPdfLink || "",
@@ -374,7 +465,11 @@ export default function EditAdmissionPage() {
           youtubeUrls: Array.isArray(data.youtubeUrls)
             ? data.youtubeUrls
             : [],
-          sharingImageUrl: data.sharingImageUrl || "",
+          sharingImageUrl:
+            data.sharingImageUrl ||
+            data.previewImageUrl ||
+            data.imageUrl ||
+            "",
           status: data.status === "closed" ? "closed" : "active",
         });
       } catch (error) {
@@ -398,22 +493,25 @@ export default function EditAdmissionPage() {
     }));
   }
 
-  function handleCategoryChange(value: string) {
-    const selectedCategory = admissionOptions.find(
-      (item) => item.value === value
-    );
+  function toggleCategory(value: string) {
+    setForm((previous) => {
+      const nextValues = previous.subCategories.includes(value)
+        ? previous.subCategories.filter((item) => item !== value)
+        : [...previous.subCategories, value];
+      const primary =
+        admissionOptions.find((item) => item.value === nextValues[0]) ||
+        admissionOptions[0];
 
-    if (!selectedCategory) return;
-
-    setForm((previous) => ({
-      ...previous,
-      admissionCategory: selectedCategory.label,
-      subCategory: selectedCategory.value,
-      customAdmissionCategory:
-        selectedCategory.value === "other-admissions"
+      return {
+        ...previous,
+        admissionCategory: primary?.label || "",
+        subCategory: primary?.value || "",
+        subCategories: nextValues,
+        customAdmissionCategory: nextValues.includes("other-admissions")
           ? previous.customAdmissionCategory
           : "",
-    }));
+      };
+    });
   }
 
   function addSelectionDate() {
@@ -485,7 +583,12 @@ export default function EditAdmissionPage() {
       return;
     }
 
-    if (form.subCategory === "other-admissions" && !form.customAdmissionCategory.trim()) {
+    if (form.subCategories.length === 0) {
+      alert("Please select at least one admission or scholarship subcategory.");
+      return;
+    }
+
+    if (form.subCategories.includes("other-admissions") && !form.customAdmissionCategory.trim()) {
       alert("Please enter the new admission category name.");
       return;
     }
@@ -563,22 +666,25 @@ export default function EditAdmissionPage() {
                 />
               </div>
 
-              <div>
-                <label style={labelStyle}>Admission Category</label>
-                <select
-                  value={form.subCategory}
-                  onChange={(event) => handleCategoryChange(event.target.value)}
-                  style={inputStyle}
-                >
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>
+                  Admission / Scholarship Subcategories (select one or more)
+                </label>
+                <div className="admin-checkbox-grid">
                   {admissionOptions.map((item) => (
-                    <option key={item.value} value={item.value}>
+                    <label className="admin-checkbox-card" key={item.value}>
+                      <input
+                        type="checkbox"
+                        checked={form.subCategories.includes(item.value)}
+                        onChange={() => toggleCategory(item.value)}
+                      />
                       {item.label}
-                    </option>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
-              {form.subCategory === "other-admissions" ? (
+              {form.subCategories.includes("other-admissions") ? (
                 <div>
                   <label style={labelStyle}>New Admission Category Name</label>
                   <input
@@ -600,6 +706,18 @@ export default function EditAdmissionPage() {
                   value={form.department}
                   onChange={(event) =>
                     handleChange("department", event.target.value)
+                  }
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Course / Programme Name</label>
+                <input
+                  type="text"
+                  value={form.courseName}
+                  onChange={(event) =>
+                    handleChange("courseName", event.target.value)
                   }
                   style={inputStyle}
                 />
@@ -630,6 +748,19 @@ export default function EditAdmissionPage() {
                     handleChange("description", event.target.value)
                   }
                   rows={5}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Notification / Reference Number</label>
+                <input
+                  type="text"
+                  value={form.notificationNumber}
+                  onChange={(event) =>
+                    handleChange("notificationNumber", event.target.value)
+                  }
+                  placeholder="Optional"
                   style={inputStyle}
                 />
               </div>
@@ -978,6 +1109,62 @@ export default function EditAdmissionPage() {
               </div>
             </div>
           </section>
+
+          <FlexibleDetailsEditor
+            detailSections={form.contentSections}
+            dataTables={form.dataTables}
+            onDetailSectionsChange={(contentSections) =>
+              handleChange("contentSections", contentSections)
+            }
+            onDataTablesChange={(dataTables) =>
+              handleChange("dataTables", dataTables)
+            }
+            sectionLabel="Optional Admission Details and Data Tables"
+          />
+
+          <section style={cardStyle}>
+            <h2 style={sectionTitleStyle}>Eligibility, Fees and Application Process</h2>
+            <div style={gridStyle}>
+              <div>
+                <label style={labelStyle}>Eligibility</label>
+                <textarea
+                  value={form.eligibility}
+                  onChange={(event) =>
+                    handleChange("eligibility", event.target.value)
+                  }
+                  rows={6}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Fees</label>
+                <textarea
+                  value={form.fees}
+                  onChange={(event) => handleChange("fees", event.target.value)}
+                  rows={6}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: "14px" }}>
+              <label style={labelStyle}>Application Process / How to Apply</label>
+              <textarea
+                value={form.applicationProcess}
+                onChange={(event) =>
+                  handleChange("applicationProcess", event.target.value)
+                }
+                rows={7}
+                style={inputStyle}
+              />
+            </div>
+          </section>
+
+          <CommonDocumentsEditor
+            documents={form.documentsRequired}
+            onChange={(documentsRequired) =>
+              handleChange("documentsRequired", documentsRequired)
+            }
+          />
 
           <button
             type="submit"

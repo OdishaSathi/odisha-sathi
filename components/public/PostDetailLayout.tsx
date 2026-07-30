@@ -9,6 +9,7 @@ import type {
   JobInfoPanel,
   RequiredDocumentRow,
 } from "@/lib/jobDetails";
+import type { FlexibleDataTable } from "@/lib/flexibleDetails";
 
 export type ImportantDateRow = {
   id?: string;
@@ -51,6 +52,7 @@ export type DetailContentSection = {
   id?: string;
   title: string;
   content?: string;
+  imageUrls?: string[];
 };
 
 type TableOfContentsItem = {
@@ -95,6 +97,7 @@ export type CommonPostDetailData = {
 
   relatedPosts?: RelatedPostRow[];
   contentSections?: DetailContentSection[];
+  dataTables?: FlexibleDataTable[];
 };
 
 type PostDetailLayoutProps = {
@@ -144,7 +147,7 @@ function getRelatedSectionTitle(category?: string) {
   if (value === "jobs" || value === "job") return "Related Jobs";
   if (value === "results" || value === "result") return "Related Results";
   if (value === "admissions" || value === "admission") {
-    return "Related Admissions";
+    return "Related Admissions & Scholarships";
   }
   if (value.includes("admit") || value === "exams" || value === "exam") {
     return "Related Admit Cards & Exams";
@@ -387,8 +390,14 @@ function cleanContentSections(sections?: DetailContentSection[]): DetailContentS
       id: section.id?.trim() || normalizeAnchorId(section.title, `section-${index + 1}`),
       title: section.title?.trim() || `Section ${index + 1}`,
       content: section.content?.trim() || "",
+      imageUrls: (section.imageUrls || [])
+        .map((item) => item.trim())
+        .filter(Boolean),
     }))
-    .filter((section) => section.title && section.content);
+    .filter(
+      (section) =>
+        section.title && (section.content || section.imageUrls.length > 0)
+    );
 }
 
 function DetailDescription({ description }: { description?: string }) {
@@ -403,11 +412,9 @@ export default function PostDetailLayout({
 }: PostDetailLayoutProps) {
   const [isDesktop, setIsDesktop] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [nativeShareAvailable, setNativeShareAvailable] = useState(false);
 
   useEffect(() => {
     setIsDesktop(!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent));
-    setNativeShareAvailable(typeof navigator.share === "function");
   }, []);
 
   const categoryLabel = getCategoryLabel(post.category);
@@ -452,6 +459,9 @@ export default function PostDetailLayout({
   const relatedSectionTitle = getRelatedSectionTitle(post.category);
   const displaySubCategories = getUniqueLabels(post.subCategories || []);
   const contentSections = cleanContentSections(post.contentSections);
+  const dataTables = (post.dataTables || []).filter(
+    (table) => table.title.trim() || table.imageUrl.trim() || table.rows.length > 0
+  );
   const whatsappShareText = isJobDetail
     ? buildPostShareMessage({
         title: shareTitle,
@@ -490,20 +500,6 @@ export default function PostDetailLayout({
     window.setTimeout(() => setLinkCopied(false), 1800);
   };
 
-  const shareWithAnotherApp = async () => {
-    if (!nativeShareAvailable || !shareUrl) return;
-    try {
-      await navigator.share({
-        title: shareTitle,
-        text: whatsappShareText,
-        url: shareUrl,
-      });
-    } catch (error) {
-      if ((error as DOMException)?.name !== "AbortError") {
-        console.warn("Native post sharing was unavailable", error);
-      }
-    }
-  };
   const jobDetails = isJobDetail ? post.jobDetails || [] : [];
   const hasVacancyDetails = jobDetails.some((panel) =>
     panel.vacancyCategories.some(
@@ -536,6 +532,44 @@ export default function PostDetailLayout({
   const youtubeBannerUrl = firstVideoId
     ? `https://i.ytimg.com/vi/${firstVideoId}/hqdefault.jpg`
     : "";
+  const findDate = (words: string[]) =>
+    importantDates.find((row) => {
+      const label = `${row.label || ""} ${row.type || ""}`.toLowerCase();
+      return words.some((word) => label.includes(word));
+    })?.value || "";
+  const bannerDetails = isJobDetail
+    ? [
+        findInfoValue(quickInfoSections, ["vacancy"])
+          ? `Vacancy: ${findInfoValue(quickInfoSections, ["vacancy"])}`
+          : "",
+        findDate(["last", "closing", "deadline"])
+          ? `Last Date: ${findDate(["last", "closing", "deadline"])}`
+          : "",
+      ]
+    : post.category === "admissions"
+    ? [
+        postNames ? `Course: ${postNames}` : "",
+        findDate(["start", "opening"])
+          ? `Start Date: ${findDate(["start", "opening"])}`
+          : "",
+        findDate(["last", "closing", "deadline"])
+          ? `Last Date: ${findDate(["last", "closing", "deadline"])}`
+          : "",
+      ]
+    : post.category === "results"
+    ? [
+        post.status ? `Status: ${post.status}` : "Result / Merit List Update",
+        findDate(["result", "merit", "declared"])
+          ? `Date: ${findDate(["result", "merit", "declared"])}`
+          : "",
+      ]
+    : post.category === "admit-cards"
+    ? [
+        post.status ? `Status: ${post.status}` : "",
+        findDate(["exam"]) ? `Exam Date: ${findDate(["exam"])}` : "",
+        findDate(["admit"]) ? `Admit Card: ${findDate(["admit"])}` : "",
+      ]
+    : [];
 
   const tableOfContents: TableOfContentsItem[] = isJobDetail
     ? [
@@ -562,6 +596,10 @@ export default function PostDetailLayout({
         ...contentSections.map((section) => ({
           id: section.id || normalizeAnchorId(section.title, "content-section"),
           title: section.title,
+        })),
+        ...dataTables.map((table, index) => ({
+          id: normalizeAnchorId(table.title, `data-table-${index + 1}`),
+          title: table.title || `Data Table ${index + 1}`,
         })),
         importantDates.length > 0
           ? { id: "important-dates", title: "Important Dates" }
@@ -640,6 +678,7 @@ export default function PostDetailLayout({
                 categoryLabel={shareCategory}
                 departmentName={departmentName}
                 postNames={postNames}
+                details={bannerDetails}
               />
 
               {tableOfContents.length > 1 ? (
@@ -674,14 +713,24 @@ export default function PostDetailLayout({
                 </>
               ) : null}
 
-              {isJobDetail
-                ? contentSections.map((section) => (
+              {!isJobDetail ? (
+                <JobDocumentsSection documents={documentsRequired} />
+              ) : null}
+
+              {contentSections.map((section) => (
                     <DetailTextSection
                       key={section.id || section.title}
                       section={section}
                     />
-                  ))
-                : null}
+                  ))}
+
+              {dataTables.map((table, index) => (
+                    <FlexibleDataTableSection
+                      key={table.id || index}
+                      table={table}
+                      index={index}
+                    />
+                  ))}
 
               {importantDates.length > 0 ? (
                 <section className="post-detail-section" id="important-dates">
@@ -722,19 +771,10 @@ export default function PostDetailLayout({
                 </section>
               ) : null}
 
-              {!isJobDetail
-                ? contentSections.map((section) => (
-                    <DetailTextSection
-                      key={section.id || section.title}
-                      section={section}
-                    />
-                  ))
-                : null}
-
               <VideoGuideSection videos={videos} title={post.title} />
 
               <section className="post-detail-share-section" id="share-this-post">
-                <p>Share this post to Your Friends and relatives</p>
+                <p>Share this post</p>
 
                 <div className="post-detail-share-actions">
                   <span className="share-pointer" aria-hidden="true">
@@ -782,20 +822,6 @@ Telegram
                     </span>
                     Facebook
                   </a>
-
-                  {nativeShareAvailable ? (
-                    <button
-                      type="button"
-                      className="share-btn more-share"
-                      onClick={shareWithAnotherApp}
-                      title="Share using another installed app"
-                    >
-                      <span className="share-icon" aria-hidden="true">
-                        <MoreShareIcon />
-                      </span>
-                      More
-                    </button>
-                  ) : null}
 
                   <button
                     type="button"
@@ -845,9 +871,8 @@ Telegram
                   <Link href="/jobs">Latest Jobs</Link>
                   <Link href="/admit-cards">Admit Cards</Link>
                   <Link href="/results">Results</Link>
-                  <Link href="/admissions">Admissions</Link>
-                  <Link href="/schemes">Schemes</Link>
-                  <Link href="/tools">Tools</Link>
+                  <Link href="/admissions">Admissions & Scholarships</Link>
+                  <Link href="/citizen-services">Citizen Services</Link>
                 </div>
               </div>
             </aside>
@@ -880,21 +905,91 @@ function DetailTextSection({ section }: { section: DetailContentSection }) {
   return (
     <section className="post-detail-section" id={section.id}>
       <SectionHeader title={section.title} />
-      <div className="post-detail-description">{section.content}</div>
+      {(section.imageUrls || []).length > 0 ? (
+        <div className="post-detail-section-images">
+          {(section.imageUrls || []).map((imageUrl, index) => (
+            <img
+              key={`${imageUrl}-${index}`}
+              src={imageUrl}
+              alt={`${section.title} image ${index + 1}`}
+            />
+          ))}
+        </div>
+      ) : null}
+      {section.content ? (
+        <div className="post-detail-description">{section.content}</div>
+      ) : null}
+    </section>
+  );
+}
+
+function FlexibleDataTableSection({
+  table,
+  index,
+}: {
+  table: FlexibleDataTable;
+  index: number;
+}) {
+  const title = table.title.trim() || `Data Table ${index + 1}`;
+  const id = normalizeAnchorId(title, `data-table-${index + 1}`);
+  const visibleRows = table.rows.filter((row) =>
+    row.cells.some((cell) => cell.trim())
+  );
+
+  if (!table.imageUrl.trim() && visibleRows.length === 0) return null;
+
+  return (
+    <section className="post-detail-section" id={id}>
+      <SectionHeader title={title} />
+
+      {table.imageUrl.trim() ? (
+        <div className="post-detail-table-image">
+          <img src={table.imageUrl.trim()} alt={`${title} reference`} />
+        </div>
+      ) : null}
+
+      {visibleRows.length > 0 ? (
+        <div className="job-detail-table-scroll standalone-table">
+          <table className="job-detail-data-table flexible-data-table">
+            <thead>
+              <tr>
+                {table.columns.map((column, columnIndex) => (
+                  <th key={columnIndex}>
+                    {column.trim() || `Column ${columnIndex + 1}`}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((row) => (
+                <tr key={row.id}>
+                  {table.columns.map((_, cellIndex) => (
+                    <td key={cellIndex}>{row.cells[cellIndex] || "—"}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </section>
   );
 }
 
 function DefaultPostBanner({
+  title,
   categoryLabel,
   departmentName,
   postNames,
+  details,
 }: {
+  title: string;
   categoryLabel: string;
   departmentName: string;
   postNames: string;
+  details: string[];
 }) {
-  const tags = getDefaultBannerTags(categoryLabel);
+  const tags = details.filter(Boolean).slice(0, 4);
 
   return (
     <div className="default-post-banner">
@@ -906,14 +1001,20 @@ function DefaultPostBanner({
         <p className="default-banner-kicker">
           Odisha Sathi {categoryLabel} Update
         </p>
-        <h2>{departmentName}</h2>
-        <h3>{postNames}</h3>
+        <h2>{title}</h2>
+        <h3>
+          {[departmentName, postNames]
+            .filter((item, index, values) => item && values.indexOf(item) === index)
+            .join(" • ")}
+        </h3>
 
-        <div className="default-banner-tags">
-          {tags.map((tag) => (
-            <span key={tag}>{tag}</span>
-          ))}
-        </div>
+        {tags.length > 0 ? (
+          <div className="default-banner-tags">
+            {tags.map((tag) => (
+              <span key={tag}>{tag}</span>
+            ))}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -979,6 +1080,7 @@ function PostBanner({
   categoryLabel,
   departmentName,
   postNames,
+  details,
 }: {
   title: string;
   uploadedImageUrl: string;
@@ -987,6 +1089,7 @@ function PostBanner({
   categoryLabel: string;
   departmentName: string;
   postNames: string;
+  details: string[];
 }) {
   const [uploadedImageFailed, setUploadedImageFailed] = useState(false);
 
@@ -1024,8 +1127,10 @@ function PostBanner({
   return (
     <DefaultPostBanner
       categoryLabel={categoryLabel}
+      title={title}
       departmentName={departmentName}
       postNames={postNames}
+      details={details}
     />
   );
 }
@@ -1288,11 +1393,24 @@ function JobDocumentsSection({
     <section className="post-detail-section" id="documents-required">
       <SectionHeader title="Documents Required" />
 
-      <ul className="job-detail-document-list common-documents">
-        {visibleDocuments.map((document) => (
-          <li key={document.id}>{document.name}</li>
-        ))}
-      </ul>
+      <div className="job-detail-table-scroll standalone-table">
+        <table className="job-detail-data-table documents-table">
+          <thead>
+            <tr>
+              <th>Sl. No.</th>
+              <th>Document Required</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleDocuments.map((document, index) => (
+              <tr key={document.id}>
+                <td>{index + 1}</td>
+                <td>{document.name}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
@@ -1368,7 +1486,7 @@ function TelegramIcon() {
 function CopyLinkIcon() {
   return (
     <svg viewBox="0 0 24 24" role="img" focusable="false">
-      <path d="M10.6 13.4a1 1 0 0 0 1.4 0l3.4-3.4a3 3 0 1 0-4.2-4.2L9.8 7.2a1 1 0 1 0 1.4 1.4l1.4-1.4a1 1 0 1 1 1.4 1.4L10.6 12a1 1 0 0 0 0 1.4Zm2.8-2.8a1 1 0 0 0-1.4 0L8.6 14a1 1 0 1 1-1.4-1.4l1.4-1.4a1 1 0 1 0-1.4-1.4l-1.4 1.4A3 3 0 1 0 10 15.4l3.4-3.4a1 1 0 0 0 0-1.4Z" />
+      <path d="M8 7a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-1v-2h1a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-7a1 1 0 0 0-1 1v1H8V7Zm-2 2h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3Zm0 2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1H6Z" />
     </svg>
   );
 }
@@ -1381,13 +1499,6 @@ function FacebookIcon() {
   );
 }
 
-function MoreShareIcon() {
-  return (
-    <svg viewBox="0 0 24 24" role="img" focusable="false">
-      <path d="M18 16a3 3 0 0 0-2.39 1.2l-6.7-3.35a3.2 3.2 0 0 0 0-1.7l6.7-3.35A3 3 0 1 0 15 7a2.7 2.7 0 0 0 .09.7L8.4 11.05a3 3 0 1 0 0 3.9l6.69 3.35A2.7 2.7 0 0 0 15 19a3 3 0 1 0 3-3Z" />
-    </svg>
-  );
-}
 function SectionHeader({ title }: { title: string }) {
   return (
     <div className="post-detail-section-header">
@@ -1784,6 +1895,24 @@ function PostDetailStyles() {
         white-space: pre-line;
       }
 
+      .post-detail-section-images,
+      .post-detail-table-image {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .post-detail-section-images img,
+      .post-detail-table-image img {
+        display: block;
+        width: 100%;
+        max-height: 560px;
+        object-fit: contain;
+        border: 1px solid #e2e8f0;
+        border-radius: 13px;
+        background: #f8fafc;
+      }
+
       .post-detail-description.muted {
         color: #64748b;
       }
@@ -1885,6 +2014,7 @@ function PostDetailStyles() {
         font-size: 13.5px;
         line-height: 1.4;
         text-align: center;
+        overflow-wrap: anywhere;
       }
 
       .job-detail-data-table tr:last-child th,
@@ -1993,29 +2123,44 @@ function PostDetailStyles() {
 
       .post-detail-date-list {
         display: grid;
-        gap: 10px;
-        padding: 14px;
+        gap: 0;
+        padding: 9px 12px;
       }
 
       .post-detail-date-row {
         display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
         align-items: center;
-        padding: 13px 14px;
-        border-radius: 13px;
-        border: 1px solid #e5e7eb;
-        border-left: 5px solid #94a3b8;
+        padding: 9px 10px;
+        border: 0;
+        border-bottom: 1px solid #e5e7eb;
+        border-left: 4px solid #94a3b8;
         background: #f8fafc;
+      }
+
+      .post-detail-date-row:first-child {
+        border-radius: 9px 9px 0 0;
+      }
+
+      .post-detail-date-row:last-child {
+        border-bottom: 0;
+        border-radius: 0 0 9px 9px;
+      }
+
+      .post-detail-date-row:only-child {
+        border-radius: 9px;
       }
 
       .post-detail-date-row span {
         color: #475569;
+        font-size: 13.5px;
         font-weight: 850;
       }
 
       .post-detail-date-row strong {
         color: #0f172a;
+        font-size: 13.5px;
         font-weight: 900;
         text-align: right;
       }
@@ -2037,35 +2182,49 @@ function PostDetailStyles() {
 
       .post-detail-link-list {
         display: grid;
-        gap: 10px;
-        padding: 14px;
+        gap: 0;
+        padding: 9px 12px;
       }
 
       .post-detail-link-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 14px;
+        gap: 10px;
         text-decoration: none;
         background: #f8fafc;
-        border: 1px solid #e5e7eb;
-        border-radius: 13px;
-        padding: 13px 14px;
+        border: 0;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 9px 10px;
         color: #0b63ce;
+        font-size: 13.5px;
         font-weight: 900;
         transition: 0.18s ease;
+      }
+
+      .post-detail-link-row:first-child {
+        border-radius: 9px 9px 0 0;
+      }
+
+      .post-detail-link-row:last-child {
+        border-bottom: 0;
+        border-radius: 0 0 9px 9px;
+      }
+
+      .post-detail-link-row:only-child {
+        border-radius: 9px;
       }
 
       .post-detail-link-row strong {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 34px;
-        padding: 7px 12px;
+        min-height: 28px;
+        padding: 5px 10px;
         border-radius: 999px;
         background: #0b63ce;
         color: #ffffff;
-        font-size: 13px;
+        font-size: 12px;
         white-space: nowrap;
       }
 
@@ -2147,16 +2306,16 @@ function PostDetailStyles() {
 
       .post-detail-share-section {
         margin-top: 22px;
-        padding: 16px;
-        border-radius: 18px;
+        padding: 12px 13px;
+        border-radius: 13px;
         background: linear-gradient(135deg, #f0fdf4, #eff6ff);
         border: 1px solid #dbeafe;
       }
 
       .post-detail-share-section p {
-        margin: 0 0 13px;
+        margin: 0 0 9px;
         color: #0f172a;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: 950;
       }
 
@@ -2164,17 +2323,17 @@ function PostDetailStyles() {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 8px;
       }
 
       .share-pointer {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 36px;
+        width: 30px;
         height: 36px;
         color: #e85d04;
-        font-size: 28px;
+        font-size: 23px;
         font-weight: 950;
         animation: pointShare 0.9s ease-in-out infinite alternate;
       }
@@ -2191,13 +2350,19 @@ function PostDetailStyles() {
       .share-btn {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        min-height: 42px;
-        padding: 9px 15px;
+        justify-content: center;
+        gap: 0;
+        width: 38px;
+        height: 38px;
+        min-height: 38px;
+        flex: 0 0 38px;
+        padding: 0;
         border-radius: 999px;
         color: #ffffff;
         text-decoration: none;
         font-weight: 950;
+        font-size: 0;
+        box-shadow: 0 5px 13px rgba(15, 23, 42, 0.15);
       }
 
       .share-btn.whatsapp {
@@ -2219,13 +2384,6 @@ function PostDetailStyles() {
         font: inherit;
       }
 
-      .share-btn.more-share {
-        border: 0;
-        background: #7c3aed;
-        cursor: pointer;
-        font: inherit;
-      }
-
       .share-btn.whatsapp:hover {
         background: #128c7e;
       }
@@ -2242,52 +2400,35 @@ function PostDetailStyles() {
         background: #1e293b;
       }
 
-      .share-btn.more-share:hover {
-        background: #6d28d9;
-      }
-
       .share-btn.copy-link:disabled {
         cursor: not-allowed;
         opacity: 0.55;
       }
 
       .share-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  background: #ffffff;
-  flex: 0 0 27px;
-}
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 0;
+        background: transparent;
+        flex: 0 0 22px;
+      }
 
-.share-icon svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-  fill: currentColor;
-}
+      .share-icon svg {
+        width: 19px;
+        height: 19px;
+        display: block;
+        fill: currentColor;
+      }
 
-.share-btn.whatsapp .share-icon {
-  color: #25d366;
-}
-
-.share-btn.telegram .share-icon {
-  color: #229ed9;
-}
-
-.share-btn.facebook .share-icon {
-  color: #1877f2;
-}
-
-.share-btn.copy-link .share-icon {
-  color: #334155;
-}
-
-.share-btn.more-share .share-icon {
-  color: #7c3aed;
-}
+      .share-btn.whatsapp .share-icon,
+      .share-btn.telegram .share-icon,
+      .share-btn.facebook .share-icon,
+      .share-btn.copy-link .share-icon {
+        color: #ffffff;
+      }
 
       .post-detail-sidebar {
         display: grid;
@@ -2373,7 +2514,8 @@ function PostDetailStyles() {
 
         .post-detail-grid {
           grid-template-columns: 1fr;
-          padding: 14px;
+          gap: 14px;
+          padding: 12px;
         }
 
         .post-detail-sidebar {
@@ -2388,6 +2530,27 @@ function PostDetailStyles() {
           border-radius: 16px;
         }
 
+        .post-detail-toc {
+          margin-bottom: 14px;
+          border-radius: 14px;
+        }
+
+        .post-detail-toc-title {
+          padding: 10px 12px;
+          font-size: 16px;
+        }
+
+        .post-detail-toc-list {
+          gap: 7px;
+          padding: 10px;
+        }
+
+        .post-detail-toc-list a {
+          min-height: 30px;
+          padding: 6px 9px;
+          font-size: 12.5px;
+        }
+
         .post-detail-image-box,
         .default-post-banner,
         .post-detail-section,
@@ -2395,16 +2558,36 @@ function PostDetailStyles() {
           border-radius: 14px;
         }
 
-        .post-detail-date-row {
-          grid-template-columns: 1fr;
-          align-items: start;
+        .post-detail-image-box,
+        .default-post-banner {
+          margin-bottom: 14px;
         }
 
-        .post-detail-date-row strong {
-          text-align: left;
+        .post-detail-section {
+          margin-top: 14px;
         }
 
-        .post-detail-link-row,
+        .post-detail-section-header {
+          padding: 10px 12px;
+        }
+
+        .post-detail-section-header h2 {
+          font-size: 16px;
+          line-height: 1.28;
+        }
+
+        .post-detail-description {
+          padding: 11px 12px;
+          font-size: 14px;
+          line-height: 1.58;
+        }
+
+        .post-detail-section-images,
+        .post-detail-table-image {
+          gap: 9px;
+          padding: 10px;
+        }
+
         .video-guide-footer {
           align-items: flex-start;
           flex-direction: column;
@@ -2414,70 +2597,275 @@ function PostDetailStyles() {
           grid-template-columns: 1fr;
         }
 
+        .post-detail-info-table span,
+        .post-detail-info-table strong {
+          padding: 7px 11px;
+          font-size: 13.5px;
+          line-height: 1.35;
+        }
+
         .post-detail-info-table span {
           border-right: 0;
-          border-bottom: 1px solid #eef2f7;
+          border-bottom: 0;
+          color: #475569;
+          font-size: 12.5px;
+        }
+
+        .post-detail-info-table strong {
+          padding-top: 0;
+          color: #0f172a;
+          font-size: 14px;
+        }
+
+        .job-detail-stack-list {
+          gap: 10px;
+          padding: 10px;
+        }
+
+        .job-detail-stack-list.compact {
+          gap: 8px;
+        }
+
+        .job-detail-data-block,
+        .job-detail-text-block {
+          border-radius: 10px;
+        }
+
+        .job-detail-data-block > h3,
+        .job-detail-text-block > h3 {
+          padding: 8px 10px;
+          font-size: 13.5px;
+          line-height: 1.28;
+        }
+
+        .job-detail-text-block p,
+        .job-detail-total-vacancy {
+          padding: 8px 10px;
+          font-size: 13.5px;
+          line-height: 1.55;
+        }
+
+        .job-detail-summary-grid {
+          gap: 7px;
+          padding: 8px;
+        }
+
+        .job-detail-summary-grid > div {
+          gap: 3px;
+          padding: 7px 8px;
+          border-radius: 8px;
+        }
+
+        .job-detail-summary-grid span {
+          font-size: 11.5px;
+          line-height: 1.25;
+        }
+
+        .job-detail-summary-grid strong {
+          font-size: 13px;
+          line-height: 1.35;
+        }
+
+        .job-detail-table-scroll.standalone-table {
+          padding: 9px;
         }
 
         .job-detail-data-table {
-          min-width: 620px;
+          min-width: 0;
+          table-layout: fixed;
+        }
+
+        .job-detail-data-table th,
+        .job-detail-data-table td {
+          padding: 6px 5px;
+          font-size: 12px;
+          line-height: 1.32;
         }
       }
 
       @media (max-width: 520px) {
         .post-detail-container {
-          width: min(100% - 18px, 1180px);
+          width: min(100% - 14px, 1180px);
         }
 
         .post-detail-header h1 {
-          font-size: 25px;
+          font-size: 23px;
         }
 
         .post-detail-short-description {
-          font-size: 15px;
+          font-size: 14px;
+          line-height: 1.55;
         }
 
         .post-detail-grid {
-          gap: 16px;
-          padding: 12px;
+          gap: 12px;
+          padding: 9px;
         }
 
-        .post-detail-date-list,
-        .post-detail-link-list,
-        .video-guide-list {
-          padding: 12px;
+        .post-detail-badge-row,
+        .post-detail-chip-row {
+          gap: 6px;
+          margin-top: 9px;
+        }
+
+        .post-detail-category-badge,
+        .post-detail-status-badge,
+        .post-detail-chip {
+          min-height: 26px;
+          padding: 4px 9px;
+          font-size: 12px;
+        }
+
+        .post-detail-toc {
+          margin-bottom: 12px;
+        }
+
+        .post-detail-toc-title {
+          padding: 9px 10px;
+          font-size: 15px;
+        }
+
+        .post-detail-toc-list {
+          gap: 6px;
+          padding: 9px;
+        }
+
+        .post-detail-toc-list a {
+          min-height: 28px;
+          padding: 5px 8px;
+          font-size: 12px;
         }
 
         .post-detail-description {
+          font-size: 13.5px;
+          line-height: 1.52;
+          padding: 9px 10px;
+        }
+
+        .post-detail-section {
+          margin-top: 12px;
+          border-radius: 11px;
+        }
+
+        .post-detail-section-header {
+          padding: 8px 10px;
+        }
+
+        .post-detail-section-header h2 {
           font-size: 15px;
-          padding: 13px;
         }
 
         .job-detail-stack-list {
-          padding: 10px;
+          gap: 8px;
+          padding: 8px;
         }
 
         .job-detail-summary-grid,
         .job-detail-document-list {
           grid-template-columns: 1fr;
-          padding: 10px;
+          padding: 8px;
         }
 
         .job-detail-data-block > h3,
         .job-detail-text-block > h3 {
-          padding: 10px 11px;
-          font-size: 14px;
+          padding: 7px 9px;
+          font-size: 13px;
         }
 
         .job-detail-text-block p,
         .job-detail-total-vacancy {
-          padding: 10px 11px;
+          padding: 7px 9px;
+          font-size: 13px;
+          line-height: 1.48;
         }
 
-        .post-detail-link-row strong,
-        .video-guide-footer a,
-        .share-btn {
+        .post-detail-info-table span,
+        .post-detail-info-table strong {
+          padding-left: 9px;
+          padding-right: 9px;
+        }
+
+        .post-detail-info-table span {
+          padding-top: 6px;
+          padding-bottom: 3px;
+          font-size: 12px;
+        }
+
+        .post-detail-info-table strong {
+          padding-bottom: 7px;
+          font-size: 13px;
+        }
+
+        .job-detail-summary-grid {
+          gap: 6px;
+        }
+
+        .job-detail-summary-grid > div {
+          padding: 6px 7px;
+        }
+
+        .job-detail-table-scroll.standalone-table {
+          padding: 7px;
+        }
+
+        .job-detail-data-table th,
+        .job-detail-data-table td {
+          padding: 5px 4px;
+          font-size: 11px;
+          line-height: 1.28;
+        }
+
+        .video-guide-footer a {
           width: 100%;
+        }
+
+        .post-detail-section-images,
+        .post-detail-table-image,
+        .video-guide-list {
+          gap: 8px;
+          padding: 8px;
+        }
+
+        .post-detail-date-list,
+        .post-detail-link-list {
+          padding: 7px;
+        }
+
+        .post-detail-date-row,
+        .post-detail-link-row {
+          padding: 7px 8px;
+          font-size: 12.5px;
+        }
+
+        .post-detail-date-row span,
+        .post-detail-date-row strong {
+          font-size: 12.5px;
+          line-height: 1.35;
+        }
+
+        .post-detail-link-row strong {
+          min-height: 24px;
+          padding: 4px 8px;
+          font-size: 11px;
+        }
+
+        .post-detail-share-section {
+          padding: 11px;
+        }
+
+        .post-detail-share-actions {
+          gap: 7px;
+        }
+
+        .share-pointer {
+          display: none;
+        }
+
+        .share-btn {
+          width: 36px;
+          height: 36px;
+          min-height: 36px;
+          flex-basis: 36px;
         }
 
         .default-post-banner {

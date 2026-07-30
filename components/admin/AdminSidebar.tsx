@@ -13,7 +13,6 @@ import {
   Settings,
   ShieldCheck,
   Tags,
-  Wrench,
   X,
 } from "lucide-react";
 
@@ -23,6 +22,7 @@ const menuGroups = [
     items: [
       { label: "Dashboard", href: "/admin", icon: Home },
       { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Homepage Posts", href: "/admin/homepage-posts", icon: LayoutGrid },
     ],
   },
   {
@@ -30,16 +30,15 @@ const menuGroups = [
     items: [
       { label: "Jobs", href: "/admin/jobs", icon: BriefcaseBusiness },
       { label: "Results", href: "/admin/results", icon: FileText },
-      { label: "Admissions", href: "/admin/admissions", icon: GraduationCap },
+      { label: "Admissions & Scholarships", href: "/admin/admissions", icon: GraduationCap },
       { label: "Admit Cards & Exams", href: "/admin/admit-cards", icon: ShieldCheck },
-      { label: "Schemes", href: "/admin/schemes", icon: LayoutGrid },
+      { label: "Citizen Services", href: "/admin/citizen-services", icon: LayoutGrid },
       { label: "Important Info", href: "/admin/important-information", icon: Info },
     ],
   },
   {
     label: "Manage",
     items: [
-      { label: "Tools", href: "/admin/tools", icon: Wrench },
       { label: "Sub Categories", href: "/admin/categories", icon: Tags },
       { label: "Settings", href: "/admin/settings", icon: Settings },
     ],

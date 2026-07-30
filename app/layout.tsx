@@ -7,11 +7,11 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 export const metadata: Metadata = {
   metadataBase: new URL("https://odishasathi.in"),
   title: {
-    default: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Schemes",
+    default: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Citizen Services",
     template: "%s | Odisha Sathi",
   },
   description:
-    "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, scholarships, government schemes, useful tools and online services.",
+    "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, important information and citizen services.",
   applicationName: "Odisha Sathi",
   authors: [{ name: "Odisha Sathi" }],
   creator: "Odisha Sathi",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     "Odisha results",
     "Odisha admissions",
     "Odisha scholarships",
-    "Odisha govt schemes",
+    "Odisha citizen services",
     "Odisha Sathi",
     "online works",
   ],
@@ -39,12 +39,12 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: "https://odishasathi.in",
     siteName: "Odisha Sathi",
-    title: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Schemes",
+    title: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Citizen Services",
     description:
-      "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, scholarships, government schemes, useful tools and online services.",
+      "Odisha Sathi provides latest Odisha jobs, exams, results, admissions, important information and citizen services.",
     images: [
       {
-        url: "/api/og/post?category=Update&department=Odisha%20Sathi&posts=Jobs%2C%20Admissions%2C%20Results%2C%20Schemes",
+        url: "/api/og/post?category=Update&department=Odisha%20Sathi&posts=Jobs%2C%20Admissions%2C%20Results%2C%20Citizen%20Services",
         width: 1200,
         height: 630,
         alt: "Odisha Sathi",
@@ -53,11 +53,11 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Schemes",
+    title: "Odisha Sathi – Odisha Jobs, Exams, Results, Admissions & Citizen Services",
     description:
-      "Latest Odisha jobs, exams, results, admissions, scholarships, government schemes and useful tools.",
+      "Latest Odisha jobs, exams, results, admissions, important information and citizen services.",
     images: [
-      "/api/og/post?category=Update&department=Odisha%20Sathi&posts=Jobs%2C%20Admissions%2C%20Results%2C%20Schemes",
+      "/api/og/post?category=Update&department=Odisha%20Sathi&posts=Jobs%2C%20Admissions%2C%20Results%2C%20Citizen%20Services",
     ],
   },
   icons: {

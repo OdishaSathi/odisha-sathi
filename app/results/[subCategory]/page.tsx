@@ -512,8 +512,7 @@ export default function ResultSubCategoryPage() {
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
               <Link href="/admit-cards">Admit Cards & Exams</Link>
-              <Link href="/schemes">Schemes</Link>
-              <Link href="/tools">Tools</Link>
+              <Link href="/citizen-services">Citizen Services</Link>
             </section>
           </aside>
         </section>

@@ -10,7 +10,7 @@ const CATEGORY_INFO: Record<string, CategoryInfo> = {
   jobs: {
     label: "Latest Jobs",
     heading: "ODISHA SATHI JOB UPDATE",
-    subtitle: "Jobs • Exams • Results • Admissions • Schemes",
+    subtitle: "Jobs • Exams • Results • Admissions • Citizen Services",
     startColor: "#1d4ed8",
     endColor: "#0f172a",
   },
@@ -43,7 +43,7 @@ const CATEGORY_INFO: Record<string, CategoryInfo> = {
     endColor: "#083344",
   },
   schemes: {
-    label: "Govt Schemes",
+    label: "Citizen Services",
     heading: "ODISHA SATHI GOVT SCHEME UPDATE",
     subtitle: "Scheme • Eligibility • Apply Link",
     startColor: "#be123c",
@@ -62,6 +62,13 @@ const CATEGORY_INFO: Record<string, CategoryInfo> = {
     subtitle: "Important Info • Guide • Reference Posts",
     startColor: "#dc2626",
     endColor: "#7f1d1d",
+  },
+  "citizen-services": {
+    label: "Citizen Services",
+    heading: "ODISHA SATHI CITIZEN SERVICE",
+    subtitle: "Service • Documents • Eligibility • Apply Process",
+    startColor: "#0f766e",
+    endColor: "#042f2e",
   },
 };
 

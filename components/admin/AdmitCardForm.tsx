@@ -8,6 +8,18 @@ import {
   getActiveAdminSubCategories,
   mergeSubCategoryOptions,
 } from "@/lib/adminSubCategories";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import CommonDocumentsEditor from "@/components/admin/CommonDocumentsEditor";
+import {
+  cleanJobDocuments,
+  normalizeJobDocuments,
+} from "@/lib/jobDetails";
+import {
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
 
 type AdmitCardFormProps = {
   initialData?: AdmitCard | null;
@@ -65,6 +77,13 @@ const emptyForm: AdmitCard = {
   examDateDisplay: "",
   importantDates: [],
   description: "",
+  notificationNumber: "",
+  previewImageUrl: "",
+  examMode: "",
+  downloadProcess: "",
+  documentsRequired: [],
+  contentSections: [],
+  dataTables: [],
   youtubeUrl: "",
   youtubeUrls: [],
   status: "Released",
@@ -116,6 +135,17 @@ export default function AdmitCardForm({
       setFormData({
         ...emptyForm,
         ...initialData,
+        subCategories:
+          initialData.subCategories?.length
+            ? initialData.subCategories
+            : [initialData.subCategory || "odisha-admit-cards"],
+        contentSections: normalizeFlexibleDetailSections(
+          initialData.contentSections || initialData.detailSections
+        ),
+        dataTables: normalizeFlexibleDataTables(
+          initialData.dataTables || initialData.customTables
+        ),
+        documentsRequired: normalizeJobDocuments(initialData),
         links: savedLinks.length > 0 ? savedLinks : emptyLinks,
       });
     } else {
@@ -138,20 +168,34 @@ export default function AdmitCardForm({
     });
   };
 
-  const updateAdmitCategory = (value: string) => {
-    const selected = admitCategoryOptions.find((item) => item.value === value);
+  const selectedAdmitCategoryValues = admitCategoryOptions
+    .filter((option) =>
+      (formData.subCategories || []).some(
+        (item) => item === option.value || item === option.label
+      )
+    )
+    .map((option) => option.value);
+
+  const toggleAdmitCategory = (value: string) => {
+    const nextValues = selectedAdmitCategoryValues.includes(value)
+      ? selectedAdmitCategoryValues.filter((item) => item !== value)
+      : [...selectedAdmitCategoryValues, value];
+    const selected = admitCategoryOptions.filter((item) =>
+      nextValues.includes(item.value)
+    );
+    const primary = selected[0] || ADMIT_CARD_BASE_CATEGORY_OPTIONS[0];
 
     setFormData((prev) => ({
       ...prev,
-      subCategory: value,
-      subCategories: selected ? [selected.label, selected.value] : [value],
-      admitCardCategory: selected?.label || value,
-      admitCardCategories: selected ? [selected.label] : [value],
-      examCategory: selected?.label || value,
-      examCategories: selected ? [selected.label] : [value],
-      categoryName: selected?.label || value,
-      categorySlug: value,
-      subCategorySlug: value,
+      subCategory: primary.value,
+      subCategories: selected.flatMap((item) => [item.label, item.value]),
+      admitCardCategory: primary.label,
+      admitCardCategories: selected.map((item) => item.label),
+      examCategory: primary.label,
+      examCategories: selected.map((item) => item.label),
+      categoryName: primary.label,
+      categorySlug: primary.value,
+      subCategorySlug: primary.value,
     }));
   };
 
@@ -245,10 +289,14 @@ export default function AdmitCardForm({
             .slice(0, 2)
         : [];
 
-      const selectedCategory =
-        admitCategoryOptions.find(
-          (item) => item.value === (formData.subCategory || "")
-        ) || ADMIT_CARD_BASE_CATEGORY_OPTIONS[0];
+      const selectedCategories = admitCategoryOptions.filter((item) =>
+        selectedAdmitCategoryValues.includes(item.value)
+      );
+      if (selectedCategories.length === 0) {
+        alert("Please select at least one Admit Card & Exam subcategory.");
+        return;
+      }
+      const selectedCategory = selectedCategories[0];
       const selectedUpdateType = formData.updateType === "exam" ? "exam" : "admit-card";
       const cleanedLinks = formData.links
         .map((link) => ({
@@ -259,14 +307,34 @@ export default function AdmitCardForm({
 
       await onSubmit({
         ...formData,
+        notificationNumber: (formData.notificationNumber || "").trim(),
+        previewImageUrl: (formData.previewImageUrl || "").trim(),
+        imageUrl: (formData.previewImageUrl || "").trim(),
+        examMode: (formData.examMode || "").trim(),
+        contentSections: cleanFlexibleDetailSections(
+          formData.contentSections || []
+        ),
+        detailSections: cleanFlexibleDetailSections(
+          formData.contentSections || []
+        ),
+        dataTables: cleanFlexibleDataTables(formData.dataTables || []),
+        customTables: cleanFlexibleDataTables(formData.dataTables || []),
+        downloadProcess: (formData.downloadProcess || "").trim(),
+        applicationProcess: (formData.downloadProcess || "").trim(),
+        documentsRequired: cleanJobDocuments(
+          formData.documentsRequired || []
+        ),
         updateType: selectedUpdateType,
         updateTypeLabel: selectedUpdateType === "exam" ? "Exam" : "Admit Card",
         subCategory: selectedCategory.value,
-        subCategories: [selectedCategory.label, selectedCategory.value],
+        subCategories: selectedCategories.flatMap((item) => [
+          item.label,
+          item.value,
+        ]),
         admitCardCategory: selectedCategory.label,
-        admitCardCategories: [selectedCategory.label],
+        admitCardCategories: selectedCategories.map((item) => item.label),
         examCategory: selectedCategory.label,
-        examCategories: [selectedCategory.label],
+        examCategories: selectedCategories.map((item) => item.label),
         categoryName: selectedCategory.label,
         categorySlug: selectedCategory.value,
         subCategorySlug: selectedCategory.value,
@@ -355,6 +423,40 @@ export default function AdmitCardForm({
         </div>
 
         <div className="admin-form-group">
+          <label>Notification / Reference Number</label>
+          <input
+            type="text"
+            value={formData.notificationNumber || ""}
+            onChange={(event) =>
+              updateField("notificationNumber", event.target.value)
+            }
+            placeholder="Optional"
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>Exam Mode</label>
+          <input
+            type="text"
+            value={formData.examMode || ""}
+            onChange={(event) => updateField("examMode", event.target.value)}
+            placeholder="Online / Offline / Computer Based Test"
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>Preview Image URL</label>
+          <input
+            type="url"
+            value={formData.previewImageUrl || ""}
+            onChange={(event) =>
+              updateField("previewImageUrl", event.target.value)
+            }
+            placeholder="Optional image URL"
+          />
+        </div>
+
+        <div className="admin-form-group">
           <label>Update Type</label>
           <select
             value={formData.updateType || "admit-card"}
@@ -367,18 +469,20 @@ export default function AdmitCardForm({
           </select>
         </div>
 
-        <div className="admin-form-group">
-          <label>Subcategory</label>
-          <select
-            value={formData.subCategory || "odisha-admit-cards"}
-            onChange={(event) => updateAdmitCategory(event.target.value)}
-          >
+        <div className="admin-form-group" style={{ gridColumn: "1 / -1" }}>
+          <label>Subcategories (select one or more)</label>
+          <div className="admin-checkbox-grid">
             {admitCategoryOptions.map((item) => (
-              <option key={item.value} value={item.value}>
+              <label className="admin-checkbox-card" key={item.value}>
+                <input
+                  type="checkbox"
+                  checked={selectedAdmitCategoryValues.includes(item.value)}
+                  onChange={() => toggleAdmitCategory(item.value)}
+                />
                 {item.label}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
 
         <div className="admin-form-group">
@@ -470,6 +574,25 @@ export default function AdmitCardForm({
         />
       </div>
 
+      <div className="admin-form-group">
+        <label>Admit Card Download / Exam Process</label>
+        <textarea
+          value={formData.downloadProcess || ""}
+          onChange={(event) =>
+            updateField("downloadProcess", event.target.value)
+          }
+          placeholder="Write the download or checking process step by step."
+          rows={6}
+        />
+      </div>
+
+      <CommonDocumentsEditor
+        documents={formData.documentsRequired || []}
+        onChange={(documentsRequired) =>
+          setFormData((previous) => ({ ...previous, documentsRequired }))
+        }
+      />
+
       <div className="admin-section-box">
         <div className="admin-section-title-row">
           <h3>Important Links</h3>
@@ -506,6 +629,18 @@ export default function AdmitCardForm({
           </div>
         ))}
       </div>
+
+      <FlexibleDetailsEditor
+        detailSections={formData.contentSections || []}
+        dataTables={formData.dataTables || []}
+        onDetailSectionsChange={(contentSections) =>
+          setFormData((previous) => ({ ...previous, contentSections }))
+        }
+        onDataTablesChange={(dataTables) =>
+          setFormData((previous) => ({ ...previous, dataTables }))
+        }
+        sectionLabel="Optional Exam / Admit Card Details and Data Tables"
+      />
 
       <div className="admin-form-actions">
         <button type="submit" className="admin-submit-btn" disabled={isSaving}>

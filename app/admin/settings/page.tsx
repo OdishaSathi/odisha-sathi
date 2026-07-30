@@ -31,7 +31,7 @@ type SettingsForm = {
   topImportantTiles: number;
   latestPostsCount: number;
   showLastDateReminder: boolean;
-  showLatestSchemes: boolean;
+  showLatestCitizenServices: boolean;
   defaultSeoTitle: string;
   defaultSeoDescription: string;
   defaultKeywords: string;
@@ -41,7 +41,7 @@ type SettingsForm = {
 
 const defaultSettings: SettingsForm = {
   siteName: "Odisha Sathi",
-  tagline: "Jobs, Results, Admissions, Admit Cards & Exams & Schemes",
+  tagline: "Jobs, Results, Admissions, Admit Cards, Exams & Citizen Services",
   siteUrl: "https://odishasathi.in",
   logoUrl: "",
   faviconUrl: "",
@@ -57,20 +57,19 @@ const defaultSettings: SettingsForm = {
   topImportantTiles: 8,
   latestPostsCount: 10,
   showLastDateReminder: true,
-  showLatestSchemes: true,
+  showLatestCitizenServices: true,
   defaultSeoTitle: "Odisha Sathi",
   defaultSeoDescription:
-    "Latest Odisha jobs, admissions, admit cards, exams, results, scholarships and government scheme updates.",
+    "Latest Odisha jobs, admissions, admit cards, exams, results, important information and citizen services.",
   defaultKeywords:
-    "Odisha jobs, Odisha result, Odisha admission, Odisha admit card, Odisha schemes",
+    "Odisha jobs, Odisha result, Odisha admission, Odisha admit card, Odisha citizen services",
   defaultShareImageUrl: "",
   quickAccessLinks: [
     { label: "Latest Jobs", href: "/jobs", order: 1, enabled: true },
     { label: "Admissions", href: "/admissions", order: 2, enabled: true },
     { label: "Admit Cards & Exams", href: "/admit-cards", order: 3, enabled: true },
     { label: "Results", href: "/results", order: 4, enabled: true },
-    { label: "Schemes", href: "/schemes", order: 5, enabled: true },
-    { label: "Tools", href: "/tools", order: 6, enabled: true },
+    { label: "Citizen Services", href: "/citizen-services", order: 5, enabled: true },
   ],
 };
 
@@ -386,24 +385,20 @@ export default function AdminSettingsPage() {
           </h2>
           <div style={gridStyle}>
             <label>
-              <span style={labelStyle}>Top Important Tiles</span>
-              <input type="number" min={1} max={8} style={inputStyle} value={form.topImportantTiles} onChange={(event) => updateField("topImportantTiles", Number(event.target.value))} />
-            </label>
-            <label>
               <span style={labelStyle}>Latest Posts Count</span>
               <input type="number" min={1} max={20} style={inputStyle} value={form.latestPostsCount} onChange={(event) => updateField("latestPostsCount", Number(event.target.value))} />
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "#374151" }}>
               <input type="checkbox" checked={form.showImportantInformation} onChange={(event) => updateField("showImportantInformation", event.target.checked)} />
-              Show Important Information section later
+              Show Important Updates ticker
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "#374151" }}>
               <input type="checkbox" checked={form.showLastDateReminder} onChange={(event) => updateField("showLastDateReminder", event.target.checked)} />
               Show Last Date Reminder later
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "#374151" }}>
-              <input type="checkbox" checked={form.showLatestSchemes} onChange={(event) => updateField("showLatestSchemes", event.target.checked)} />
-              Show Latest Schemes panel later
+              <input type="checkbox" checked={form.showLatestCitizenServices} onChange={(event) => updateField("showLatestCitizenServices", event.target.checked)} />
+              Show Citizen Services panel
             </label>
           </div>
         </section>

@@ -80,6 +80,9 @@ type PostItem = {
   downloadEndDate?: string;
   hallTicketReleaseDate?: string;
   importantDates?: ImportantDate[];
+  homeLatestSelected?: boolean;
+  homeLatestHidden?: boolean;
+  homeLatestOrder?: number;
   createdAt?: any;
 };
 
@@ -560,7 +563,7 @@ function getCategoryLabel(item: PostItem) {
   if (item.category === "results") return "Results";
   if (item.category === "admissions") return "Admissions";
   if (item.category === "admit-cards") return "Admit Cards & Exams";
-  if (item.category === "schemes") return "Schemes";
+  if (item.category === "citizen-services") return "Citizen Services";
   return "Update";
 }
 
@@ -578,6 +581,9 @@ function getTileDepartment(item: PostItem) {
 }
 
 function getLink(item: PostItem) {
+  if (item.category === "citizen-services") {
+    return `/citizen-services/${item.slug || item.id}`;
+  }
   return `/post/${item.slug || item.id}`;
 }
 
@@ -591,7 +597,7 @@ function isAllowedLatestPost(item: PostItem) {
     "results",
     "admissions",
     "admit-cards",
-    "schemes",
+    "citizen-services",
   ].includes(item.category);
 }
 
@@ -691,6 +697,14 @@ function normalizePostCategory(category?: string) {
     return "schemes";
   }
 
+  if (
+    cleanCategory === "citizen-services" ||
+    cleanCategory === "citizen services" ||
+    compactCategory === "citizenservices"
+  ) {
+    return "citizen-services";
+  }
+
   return category || "";
 }
 
@@ -699,7 +713,22 @@ function createPostItem(
   data: any,
   categoryOverride?: string
 ): PostItem {
-  const category = normalizePostCategory(categoryOverride || data.category || "");
+  let category = normalizePostCategory(categoryOverride || data.category || "");
+  if (
+    category === "schemes" &&
+    [
+      data.title,
+      data.schemeName,
+      data.description,
+      data.subCategory,
+      ...(Array.isArray(data.subCategories) ? data.subCategories : []),
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes("scholar")
+  ) {
+    category = "admissions";
+  }
 
   return {
     id,
@@ -788,6 +817,9 @@ function createPostItem(
     importantDates: Array.isArray(data.importantDates)
       ? data.importantDates
       : [],
+    homeLatestSelected: Boolean(data.homeLatestSelected),
+    homeLatestHidden: Boolean(data.homeLatestHidden),
+    homeLatestOrder: Number(data.homeLatestOrder || 999),
     createdAt: data.createdAt || null,
   };
 }
@@ -911,6 +943,34 @@ function ImportantInformationHighlights({ items }: { items: ImportantInformation
         {items.slice(0, IMPORTANT_INFO_TILE_LIMIT).map((item, index) => (
           <ImportantInfoTile key={`important-tile-${item.id}`} item={item} index={index} />
         ))}
+      </div>
+    </section>
+  );
+}
+
+function ImportantUpdatesTicker({
+  items,
+}: {
+  items: ImportantInformationItem[];
+}) {
+  if (items.length === 0) return null;
+  const tickerItems = [...items, ...items];
+
+  return (
+    <section className="os-important-ticker" aria-label="Important Updates">
+      <strong>Important Updates</strong>
+      <div className="os-important-ticker-window">
+        <div className="os-important-ticker-track">
+          {tickerItems.map((item, index) => (
+            <Link
+              href={getImportantInfoLink(item)}
+              key={`${item.id}-${index}`}
+            >
+              <span>●</span>
+              {item.title || "Important Information"}
+            </Link>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -1050,8 +1110,7 @@ const quickAccessLinks = [
   { label: "Admit Cards & Exams", href: "/admit-cards" },
   { label: "Results", href: "/results" },
   { label: "Admissions", href: "/admissions" },
-  { label: "Schemes", href: "/schemes" },
-  { label: "Tools", href: "/tools" },
+  { label: "Citizen Services", href: "/citizen-services" },
 ];
 
 export default function HomePage() {
@@ -1182,17 +1241,44 @@ export default function HomePage() {
           .filter((item) => item.category === "results")
           .sort((a, b) => getTimeValue(b) - getTimeValue(a));
 
+        const citizenServices = allItems
+          .filter((item) => item.category === "citizen-services")
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+
         const allAllowedPosts = [
           ...jobs,
           ...admitCards,
           ...results,
           ...admissions,
-          ...schemes,
+          ...citizenServices,
         ].filter(isAllowedLatestPost);
 
-        const latestTiles = [...allAllowedPosts]
-          .sort((a, b) => getTimeValue(b) - getTimeValue(a))
-          .slice(0, LATEST_TILE_LIMIT);
+        const manuallySelected = allAllowedPosts
+          .filter((item) => item.homeLatestSelected && !item.homeLatestHidden)
+          .sort(
+            (a, b) =>
+              Number(a.homeLatestOrder || 999) -
+                Number(b.homeLatestOrder || 999) ||
+              getTimeValue(b) - getTimeValue(a)
+          );
+        const selectedKeys = new Set(
+          manuallySelected.map(
+            (item) => `${item.category}-${item.slug || item.id}`
+          )
+        );
+        const automaticPosts = allAllowedPosts
+          .filter(
+            (item) =>
+              !item.homeLatestHidden &&
+              !selectedKeys.has(
+                `${item.category}-${item.slug || item.id}`
+              )
+          )
+          .sort((a, b) => getTimeValue(b) - getTimeValue(a));
+        const latestTiles = [...manuallySelected, ...automaticPosts].slice(
+          0,
+          LATEST_TILE_LIMIT
+        );
 
         const reminders = [...allAllowedPosts]
           .filter(isLastDateReminderPost)
@@ -1206,7 +1292,7 @@ export default function HomePage() {
           admitCards,
           results,
           admissions,
-          schemes,
+          schemes: citizenServices,
           reminders,
         });
 
@@ -1241,7 +1327,7 @@ export default function HomePage() {
         <section className="os-board-top">
           <div>
             <p className="os-board-kicker">Odisha Sathi Updates</p>
-            <h1>jobs, results, admissions, admit cards & exams and schemes</h1>
+            <h1>jobs, results, admissions, admit cards, exams and citizen services</h1>
           </div>
         </section>
 
@@ -1249,7 +1335,7 @@ export default function HomePage() {
           <div className="os-board-loading">Loading latest updates...</div>
         ) : (
           <>
-            <ImportantInformationHighlights items={homeData.importantFeatured} />
+            <ImportantUpdatesTicker items={homeData.importantAll.slice(0, 12)} />
 
             <section className="os-board-latest">
               <div className="os-board-section-head os-board-latest-head">
@@ -1368,33 +1454,20 @@ export default function HomePage() {
 
               <section className="os-home-scheme-panel os-home-bottom-schemes">
                 <div className="os-home-panel-head">
-                  <h2>Latest Schemes</h2>
-                  <Link href="/schemes">View All</Link>
+                  <h2>Citizen Services</h2>
+                  <Link href="/citizen-services">View All</Link>
                 </div>
 
                 {homeData.schemes.length === 0 ? (
-                  <p className="os-home-empty">No latest schemes available.</p>
+                  <p className="os-home-empty">No Citizen Services available.</p>
                 ) : (
-                  <>
-                    <div className="os-home-scheme-list">
-                      {homeData.schemes.slice(0, visibleSchemeCount).map((item) => (
-                        <SchemeRow key={`scheme-${item.id}`} item={item} />
+                  <div className="os-home-scheme-list">
+                    {homeData.schemes
+                      .slice(0, 8)
+                      .map((item) => (
+                        <SchemeRow key={`service-${item.id}`} item={item} />
                       ))}
-                    </div>
-
-                    {visibleSchemeCount < homeData.schemes.length ? (
-                      <div className="os-important-view-more-wrap">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setVisibleSchemeCount((oldValue) => oldValue + SCHEME_PAGE_SIZE)
-                          }
-                        >
-                          View More
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
+                  </div>
                 )}
               </section>
             </section>
@@ -1468,6 +1541,66 @@ export default function HomePage() {
           overflow: hidden;
           background: #ffffff;
           margin-bottom: 18px;
+        }
+
+        .os-important-ticker {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          align-items: center;
+          min-height: 46px;
+          margin-bottom: 16px;
+          overflow: hidden;
+          border: 1px solid #fecaca;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .os-important-ticker > strong {
+          align-self: stretch;
+          display: flex;
+          align-items: center;
+          padding: 0 14px;
+          background: #dc2626;
+          color: #ffffff;
+          font-size: 13px;
+          white-space: nowrap;
+          z-index: 2;
+        }
+
+        .os-important-ticker-window {
+          overflow: hidden;
+        }
+
+        .os-important-ticker-track {
+          display: flex;
+          width: max-content;
+          animation: important-ticker-scroll 38s linear infinite;
+        }
+
+        .os-important-ticker:hover .os-important-ticker-track {
+          animation-play-state: paused;
+        }
+
+        .os-important-ticker-track a {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 22px;
+          color: #1d4ed8;
+          font-size: 13px;
+          font-weight: 850;
+          text-decoration: none;
+          white-space: nowrap;
+        }
+
+        .os-important-ticker-track a span {
+          color: #dc2626;
+          font-size: 10px;
+        }
+
+        @keyframes important-ticker-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
         }
 
         .os-important-info-section,

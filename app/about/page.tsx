@@ -5,7 +5,7 @@ import { siteConfig } from "@/lib/siteConfig";
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about Odisha Sathi, an informational platform sharing Odisha jobs, admissions, admit cards, exams, results, schemes and useful online updates.",
+    "Learn about Odisha Sathi, an informational platform sharing Odisha jobs, admissions, admit cards, exams, results, citizen services and useful public updates.",
   alternates: { canonical: "/about" },
 };
 
@@ -17,7 +17,7 @@ export default function AboutPage() {
           <h1>About Odisha Sathi</h1>
           <p>
             A public information platform for jobs, admissions, admit cards,
-            exams, results, schemes and useful online updates.
+            exams, results, citizen services and useful online updates.
           </p>
         </div>
       </section>
@@ -38,8 +38,8 @@ export default function AboutPage() {
             <li>Admissions and exam-related notices</li>
             <li>Admit cards, exam dates, syllabus and exam pattern updates</li>
             <li>Results, merit lists and selection list updates</li>
-            <li>Government schemes and scholarship information</li>
-            <li>Useful online tools and service information</li>
+            <li>Citizen services, certificates and public-service guidance</li>
+            <li>Important public notices and useful service information</li>
           </ul>
 
           <h2>Important Notice</h2>

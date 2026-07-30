@@ -5,7 +5,7 @@ const helpfulLinks = [
   { label: "Admissions", href: "/admissions" },
   { label: "Admit Cards & Exams", href: "/admit-cards" },
   { label: "Results", href: "/results" },
-  { label: "Schemes", href: "/schemes" },
+  { label: "Citizen Services", href: "/citizen-services" },
   { label: "Search", href: "/search" },
 ];
 
@@ -24,8 +24,8 @@ export default function NotFound() {
           <h2>Find the update you need</h2>
           <p>
             Use the links below to open important Odisha Sathi sections, or use
-            search to find a specific job, admission, result, scheme, admit card
-            or exam update.
+            search to find a specific job, admission, result, citizen service,
+            admit card or exam update.
           </p>
           <div className="trust-action-row">
             {helpfulLinks.map((item) => (

@@ -16,6 +16,11 @@ import {
 import { normalizeCompatiblePostLinks } from "@/lib/postLinkCompatibility";
 import { buildJobShareSummary, isJobPostData } from "@/lib/jobShare";
 import { isPublicDetailPost } from "@/lib/publicPostQuality";
+import {
+  FlexibleDataTable,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
 import PostDetailLayout, {
   CommonPostDetailData,
   ImportantDateRow,
@@ -80,12 +85,28 @@ type PostData = {
   department?: string;
   postName?: string;
   totalVacancy?: string;
+  applicationMode?: string;
+  modeOfApplication?: string;
   feeStructure?: string;
   applicationFee?: string;
   qualification?: string;
   ageLimit?: string;
   salary?: string;
   payScale?: string;
+  courseName?: string;
+  eligibility?: string;
+  fees?: string;
+  applicationProcess?: string;
+  howToApply?: string;
+  resultCheckingProcess?: string;
+  downloadProcess?: string;
+  examMode?: string;
+  updateTypeLabel?: string;
+  resultDateDisplay?: string;
+  admitCardDateDisplay?: string;
+  examDateDisplay?: string;
+  startDateDisplay?: string;
+  lastDateDisplay?: string;
 
   relatedPosts?: RelatedPostRow[];
 
@@ -93,6 +114,7 @@ type PostData = {
   examPattern?: string;
   selectionProcedure?: string;
   contentSections?: DetailContentSection[];
+  dataTables?: FlexibleDataTable[];
 
   status?: string;
   published?: boolean;
@@ -139,7 +161,7 @@ function normalizePostCategory(value?: string, fallback?: string) {
     category === "scholarship" ||
     category === "scholarships"
   ) {
-    return "schemes";
+    return "admissions";
   }
 
   return value || fallback || "";
@@ -160,7 +182,9 @@ function getBackLink(category?: string) {
   if (category === "results") return "/results";
   if (category === "admissions") return "/admissions";
   if (category === "admit-cards") return "/admit-cards";
-  if (category === "schemes") return "/schemes";
+  if (category === "schemes" || category === "scholarships") {
+    return "/admissions";
+  }
   if (category === "exams") return "/exams";
   if (category === "scholarships") return "/scholarships";
   return "/";
@@ -313,6 +337,10 @@ function panelToRows(panel: JobInfoPanel): InfoRow[] {
       value: panel.totalVacancy || "",
     },
     {
+      label: "Mode of Application",
+      value: panel.applicationMode || "",
+    },
+    {
       label: "Qualification",
       value: panel.qualification || "",
     },
@@ -324,6 +352,43 @@ function panelToRows(panel: JobInfoPanel): InfoRow[] {
 }
 
 function buildInfoSections(post: PostData): InfoSection[] {
+  if (post.category === "admissions") {
+    return [{
+      title: post.courseName?.trim() || "Admission Details",
+      rows: [
+        { label: "Institute / Department", value: post.department || post.organization || "" },
+        { label: "Course / Programme", value: post.courseName || post.postName || "" },
+        { label: "Eligibility", value: post.eligibility || post.qualification || "" },
+        { label: "Fees", value: post.fees || post.feeStructure || "" },
+      ],
+    }];
+  }
+
+  if (post.category === "results") {
+    return [{
+      title: post.postName?.trim() || "Result Details",
+      rows: [
+        { label: "Organization", value: post.organization || post.department || "" },
+        { label: "Exam / Result", value: post.postName || "" },
+        { label: "Result Status", value: post.status || "" },
+        { label: "Result Date", value: post.resultDateDisplay || "" },
+      ],
+    }];
+  }
+
+  if (post.category === "admit-cards") {
+    return [{
+      title: post.postName?.trim() || "Exam Details",
+      rows: [
+        { label: "Organization", value: post.organization || post.department || "" },
+        { label: "Exam Name", value: post.postName || "" },
+        { label: "Update Type", value: post.updateTypeLabel || "" },
+        { label: "Exam Mode", value: post.examMode || "" },
+        { label: "Status", value: post.status || "" },
+      ],
+    }];
+  }
+
   if (post.category !== "jobs") return [];
 
   if (post.jobInfoPanels && post.jobInfoPanels.length > 0) {
@@ -433,6 +498,36 @@ function buildRelatedPosts(
 
 function buildContentSections(post: PostData): DetailContentSection[] {
   const sections: DetailContentSection[] = [];
+  const addTextSection = (id: string, title: string, content?: string) => {
+    if (!content?.trim()) return;
+    sections.push({ id, title, content: content.trim() });
+  };
+
+  if (post.category === "admissions") {
+    addTextSection("eligibility", "Eligibility", post.eligibility);
+    addTextSection("fees", "Fees", post.fees || post.feeStructure);
+    addTextSection(
+      "application-process",
+      "Application Process",
+      post.applicationProcess || post.howToApply
+    );
+  }
+
+  if (post.category === "results") {
+    addTextSection(
+      "how-to-check-result",
+      "How to Check Result",
+      post.resultCheckingProcess || post.applicationProcess
+    );
+  }
+
+  if (post.category === "admit-cards") {
+    addTextSection(
+      "download-process",
+      "Admit Card Download / Exam Process",
+      post.downloadProcess || post.applicationProcess
+    );
+  }
 
   if (post.examPattern?.trim()) {
     sections.push({
@@ -459,12 +554,16 @@ function buildContentSections(post: PostData): DetailContentSection[] {
   }
 
   if (Array.isArray(post.contentSections)) {
-    post.contentSections.forEach((section) => {
-      if (section?.title?.trim() && section?.content?.trim()) {
+    normalizeFlexibleDetailSections(post.contentSections).forEach((section) => {
+      if (
+        section?.title?.trim() &&
+        (section?.content?.trim() || section.imageUrls.length > 0)
+      ) {
         sections.push({
           id: section.id || "",
           title: section.title.trim(),
           content: section.content.trim(),
+          imageUrls: section.imageUrls,
         });
       }
     });
@@ -526,6 +625,7 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
     documentsRequired: post.documentsRequired || [],
     relatedPosts: post.relatedPosts || [],
     contentSections: buildContentSections(post),
+    dataTables: post.dataTables || [],
 
     status: post.status || "",
   };
@@ -638,6 +738,9 @@ export default function PublicPostDetailsPage() {
                 data.schemeName ||
                 "",
               totalVacancy: data.totalVacancy || "",
+              applicationMode:
+                data.applicationMode || data.modeOfApplication || "",
+              modeOfApplication: data.modeOfApplication || "",
               feeStructure:
                 data.feeStructure || data.applicationFee || data.fees || "",
               applicationFee: data.applicationFee || "",
@@ -645,13 +748,38 @@ export default function PublicPostDetailsPage() {
               ageLimit: data.ageLimit || "",
               salary: data.salary || "",
               payScale: data.payScale || "",
+              courseName: data.courseName || data.programmeName || "",
+              eligibility: data.eligibility || "",
+              fees: data.fees || data.feeStructure || "",
+              applicationProcess:
+                data.applicationProcess || data.howToApply || "",
+              howToApply: data.howToApply || "",
+              resultCheckingProcess:
+                data.resultCheckingProcess || data.checkingProcess || "",
+              downloadProcess: data.downloadProcess || "",
+              examMode: data.examMode || "",
+              updateTypeLabel: data.updateTypeLabel || "",
+              resultDateDisplay:
+                data.resultDateDisplay || data.resultDate || "",
+              admitCardDateDisplay:
+                data.admitCardDateDisplay || data.admitCardDate || "",
+              examDateDisplay: data.examDateDisplay || data.examDate || "",
+              startDateDisplay:
+                data.startDateDisplay ||
+                data.applicationStartDateDisplay ||
+                data.applicationStartDate ||
+                "",
+              lastDateDisplay: data.lastDateDisplay || data.lastDate || "",
 
               syllabus: data.syllabus || "",
               examPattern: data.examPattern || "",
               selectionProcedure: data.selectionProcedure || "",
               contentSections: Array.isArray(data.contentSections)
-                ? data.contentSections
-                : [],
+                ? normalizeFlexibleDetailSections(data.contentSections)
+                : normalizeFlexibleDetailSections(data.detailSections),
+              dataTables: normalizeFlexibleDataTables(
+                data.dataTables || data.customTables
+              ),
 
               status: data.status || "published",
               published: data.published !== false,

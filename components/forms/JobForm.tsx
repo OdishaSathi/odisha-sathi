@@ -8,6 +8,13 @@ import PostDynamicTables from "@/components/admin/PostDynamicTables";
 import JobMediaEditor from "@/components/forms/JobMediaEditor";
 import JobCommonDetailsEditor from "@/components/forms/JobCommonDetailsEditor";
 import JobPostDetailsEditor from "@/components/forms/JobPostDetailsEditor";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import {
+  FlexibleDataTable,
+  FlexibleDetailSection,
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
 import {
   JobFeeRow,
   JobInfoPanel,
@@ -71,6 +78,8 @@ export function JobForm({ onSaved }: { onSaved?: () => void } = {}) {
   const [syllabus, setSyllabus] = useState("");
   const [examPattern, setExamPattern] = useState("");
   const [selectionProcedure, setSelectionProcedure] = useState("");
+  const [detailSections, setDetailSections] = useState<FlexibleDetailSection[]>([]);
+  const [dataTables, setDataTables] = useState<FlexibleDataTable[]>([]);
 
   const [jobInfoPanels, setJobInfoPanels] = useState<JobInfoPanel[]>([
     createJobInfoPanel(),
@@ -144,6 +153,8 @@ const [youtubeUrl3, setYoutubeUrl3] = useState("");
     setSyllabus("");
     setExamPattern("");
     setSelectionProcedure("");
+    setDetailSections([]);
+    setDataTables([]);
     setJobInfoPanels([createJobInfoPanel()]);
     setFeeStructureRows([]);
     setDocumentsRequired(createDefaultJobDocuments());
@@ -183,6 +194,8 @@ setYoutubeUrl3("");
       const cleanedPanels = cleanJobInfoPanels(jobInfoPanels);
       const cleanedFeeRows = cleanJobFeeRows(feeStructureRows);
       const cleanedDocuments = cleanJobDocuments(documentsRequired);
+      const cleanedDetailSections = cleanFlexibleDetailSections(detailSections);
+      const cleanedDataTables = cleanFlexibleDataTables(dataTables);
 
       const firstPanel = cleanedPanels[0];
       const resolvedImageUrl = previewImageUrl.trim();
@@ -210,6 +223,10 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         syllabus: syllabus.trim(),
         examPattern: examPattern.trim(),
         selectionProcedure: selectionProcedure.trim(),
+        contentSections: cleanedDetailSections,
+        detailSections: cleanedDetailSections,
+        dataTables: cleanedDataTables,
+        customTables: cleanedDataTables,
 
         jobInfoPanels: cleanedPanels,
         feeStructureRows: cleanedFeeRows,
@@ -221,6 +238,8 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         department: firstPanel?.organization || "",
         postName: firstPanel?.postName || "",
         totalVacancy: firstPanel?.totalVacancy || "",
+        applicationMode: firstPanel?.applicationMode || "",
+        modeOfApplication: firstPanel?.applicationMode || "",
         qualification: firstPanel?.qualification || "",
         ageLimit: firstPanel?.ageLimit || "",
         salary: firstPanel?.salary || "",
@@ -433,6 +452,14 @@ youtubeUrls: cleanedYoutubeUrls,
           </label>
         </div>
       </details>
+
+      <FlexibleDetailsEditor
+        detailSections={detailSections}
+        dataTables={dataTables}
+        onDetailSectionsChange={setDetailSections}
+        onDataTablesChange={setDataTables}
+        sectionLabel="Optional Job Details and Data Tables"
+      />
 
       <JobMediaEditor
         imageUrl={previewImageUrl}

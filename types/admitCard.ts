@@ -35,6 +35,17 @@ export type AdmitCard = {
   examDateDisplay?: string;
   importantDates?: AdmitCardDateRow[];
   description: string;
+  notificationNumber?: string;
+  previewImageUrl?: string;
+  imageUrl?: string;
+  examMode?: string;
+  downloadProcess?: string;
+  applicationProcess?: string;
+  documentsRequired?: import("@/lib/jobDetails").RequiredDocumentRow[];
+  contentSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  detailSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  dataTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
+  customTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
   youtubeUrl?: string;
   youtubeUrls?: string[];
   status: AdmitCardStatus;

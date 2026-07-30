@@ -409,15 +409,20 @@ export default function AdmissionsPage() {
       try {
         setLoading(true);
 
-        const snapshot = await getDocs(collection(db, "posts"));
+        const snapshots = await Promise.all(
+          ["posts", "schemes", "scheme"].map((collectionName) =>
+            getDocs(collection(db, collectionName))
+          )
+        );
 
-        const admissionList: AdmissionPost[] = snapshot.docs
+        const admissionList: AdmissionPost[] = snapshots
+          .flatMap((snapshot) => snapshot.docs)
           .map((docItem) => {
             const data = docItem.data();
 
             return {
               id: docItem.id,
-              title: data.title || "",
+              title: data.title || data.schemeName || "",
               slug: data.slug || "",
               content: data.content || data.description || "",
               category: data.category || "",
@@ -479,7 +484,21 @@ export default function AdmissionsPage() {
               createdAt: data.createdAt || null,
             };
           })
-          .filter((item) => item.category === "admissions")
+          .filter((item) => {
+            if (item.category === "admissions") return true;
+            if (!["schemes", "scheme", "scholarships", "scholarship"].includes(item.category)) {
+              return false;
+            }
+            return [
+              item.title,
+              item.content,
+              item.subCategory,
+              ...(item.subCategories || []),
+            ]
+              .join(" ")
+              .toLowerCase()
+              .includes("scholar");
+          })
           .sort((a, b) => getTimeValue(b) - getTimeValue(a));
 
         const discoveredCategories = Array.from(
@@ -510,8 +529,8 @@ export default function AdmissionsPage() {
       <div className="os-list-container">
         <section className="os-list-top">
           <h1>
-            ODISHA SATHI ADMISSIONS  (Find all the admission updates in this
-            page)
+            ODISHA SATHI ADMISSIONS & SCHOLARSHIPS (Find all admission and
+            scholarship updates on this page)
           </h1>
         </section>
 
@@ -600,8 +619,7 @@ export default function AdmissionsPage() {
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
               <Link href="/admit-cards">Admit Cards & Exams</Link>
-              <Link href="/schemes">Schemes</Link>
-              <Link href="/tools">Tools</Link>
+              <Link href="/citizen-services">Citizen Services</Link>
             </section>
 
             <section className="os-side-card os-reminder-card">

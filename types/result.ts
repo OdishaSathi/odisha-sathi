@@ -29,6 +29,16 @@ export type ResultPost = {
   resultDateDisplay?: string;
   importantDates?: ResultDateRow[];
   description: string;
+  notificationNumber?: string;
+  previewImageUrl?: string;
+  imageUrl?: string;
+  resultCheckingProcess?: string;
+  applicationProcess?: string;
+  documentsRequired?: import("@/lib/jobDetails").RequiredDocumentRow[];
+  contentSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  detailSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  dataTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
+  customTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
   youtubeUrl?: string;
   youtubeUrls?: string[];
   status: ResultStatus;

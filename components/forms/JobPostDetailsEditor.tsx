@@ -41,6 +41,7 @@ export default function JobPostDetailsEditor({
       | "organization"
       | "postName"
       | "totalVacancy"
+      | "applicationMode"
       | "qualification"
       | "ageLimit"
       | "ageCutoffDate"
@@ -161,6 +162,29 @@ export default function JobPostDetailsEditor({
                       }
                       placeholder="Example: 74"
                     />
+                  </label>
+
+                  <label>
+                    Mode of Application
+                    <select
+                      value={panel.applicationMode}
+                      onChange={(event) =>
+                        updateBasicField(
+                          panel.id,
+                          "applicationMode",
+                          event.target.value
+                        )
+                      }
+                    >
+                      <option value="">Select when required</option>
+                      <option value="Online">Online</option>
+                      <option value="Offline">Offline</option>
+                      <option value="Online / Offline">Online / Offline</option>
+                      <option value="Walk-in">Walk-in</option>
+                      <option value="Through CSC / Jan Seva Kendra">
+                        Through CSC / Jan Seva Kendra
+                      </option>
+                    </select>
                   </label>
 
                   <label>

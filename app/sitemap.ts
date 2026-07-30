@@ -16,8 +16,7 @@ const STATIC_ROUTES = [
   "/results",
   "/admissions",
   "/admit-cards",
-  "/schemes",
-  "/tools",
+  "/citizen-services",
   "/about",
   "/contact",
   "/privacy-policy",
@@ -36,10 +35,6 @@ const PUBLIC_POST_COLLECTIONS = [
   "admitcards",
   "results",
   "result",
-  "schemes",
-  "scheme",
-  "governmentSchemes",
-  "government-schemes",
 ];
 
 function getBaseUrl() {
@@ -68,7 +63,17 @@ function getPostRoute(data: any, id: string) {
   const encodedSlug = encodeURIComponent(slug);
   const category = normalizeText(data.category);
 
-  if (category === "tools" || category === "scheme-category") return null;
+  if (
+    category === "tools" ||
+    category === "schemes" ||
+    category === "scheme-category" ||
+    category === "pdf-tools" ||
+    category === "image-tools"
+  ) return null;
+
+  if (category === "citizen-services") {
+    return `/citizen-services/${encodedSlug}`;
+  }
 
   return `/post/${encodedSlug}`;
 }

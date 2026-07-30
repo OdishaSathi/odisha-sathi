@@ -45,10 +45,10 @@ type SubCategoryForm = {
 
 const parentSections = [
   { key: "jobs", label: "Jobs" },
-  { key: "admissions", label: "Admissions" },
+  { key: "admissions", label: "Admissions & Scholarships" },
   { key: "admit-cards", label: "Admit Cards & Exams" },
   { key: "results", label: "Results" },
-  { key: "schemes", label: "Schemes" },
+  { key: "citizen-services", label: "Citizen Services" },
 ];
 
 const defaultForm: SubCategoryForm = {
@@ -187,11 +187,6 @@ export default function AdminCategoriesPage() {
 
           const singleSubCategory = cleanText(post.subCategory);
           if (singleSubCategory) names.add(singleSubCategory);
-
-          if (section.key === "schemes") {
-            const schemeCategory = cleanText(post.schemeCategory);
-            if (schemeCategory) names.add(schemeCategory);
-          }
 
           names.forEach((name) => {
             counter.set(name, (counter.get(name) || 0) + 1);

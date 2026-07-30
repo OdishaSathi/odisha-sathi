@@ -11,9 +11,9 @@ const pageTitles: Record<string, string> = {
   "/admin/results": "Results",
   "/admin/admissions": "Admissions",
   "/admin/admit-cards": "Admit Cards & Exams",
-  "/admin/schemes": "Schemes",
+  "/admin/citizen-services": "Citizen Services",
+  "/admin/homepage-posts": "Homepage Latest Posts",
   "/admin/important-information": "Important Information",
-  "/admin/tools": "Tools",
   "/admin/categories": "Sub Categories",
   "/admin/settings": "Settings",
 };

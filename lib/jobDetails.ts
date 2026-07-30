@@ -34,6 +34,7 @@ export type JobInfoPanel = {
   organization: string;
   postName: string;
   totalVacancy: string;
+  applicationMode: string;
   qualification: string;
   ageLimit: string;
   ageCutoffDate: string;
@@ -128,6 +129,7 @@ export function createJobInfoPanel(): JobInfoPanel {
     organization: "",
     postName: "",
     totalVacancy: "",
+    applicationMode: "",
     qualification: "",
     ageLimit: "",
     ageCutoffDate: "",
@@ -330,6 +332,12 @@ function normalizePanel(item: any, fallback: any = {}): JobInfoPanel {
     ),
     postName: cleanString(item?.postName || fallback.postName),
     totalVacancy: cleanString(item?.totalVacancy || fallback.totalVacancy),
+    applicationMode: cleanString(
+      item?.applicationMode ||
+        item?.modeOfApplication ||
+        item?.applyMode ||
+        fallback.applicationMode
+    ),
     qualification: cleanString(
       item?.qualification || item?.educationalQualification || fallback.qualification
     ),
@@ -356,6 +364,8 @@ export function normalizeJobInfoPanels(data: any): JobInfoPanel[] {
     organization: data?.organization || data?.department || "",
     postName: data?.postName || "",
     totalVacancy: data?.totalVacancy || "",
+    applicationMode:
+      data?.applicationMode || data?.modeOfApplication || data?.applyMode || "",
     qualification: data?.qualification || "",
     ageLimit: data?.ageLimit || "",
     ageCutoffDate: data?.ageCutoffDate || "",
@@ -383,6 +393,7 @@ export function isJobInfoPanelFilled(panel: JobInfoPanel) {
     panel.organization.trim() ||
       panel.postName.trim() ||
       panel.totalVacancy.trim() ||
+      panel.applicationMode.trim() ||
       panel.qualification.trim() ||
       panel.ageLimit.trim() ||
       panel.ageCutoffDate.trim() ||
@@ -398,6 +409,7 @@ export function cleanJobInfoPanels(panels: JobInfoPanel[]) {
     organization: panel.organization.trim(),
     postName: panel.postName.trim(),
     totalVacancy: panel.totalVacancy.trim(),
+    applicationMode: panel.applicationMode.trim(),
     qualification: panel.qualification.trim(),
     ageLimit: panel.ageLimit.trim(),
     ageCutoffDate: panel.ageCutoffDate.trim(),

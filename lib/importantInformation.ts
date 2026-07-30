@@ -12,30 +12,41 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getDefaultCategoryPreviewImage } from "@/lib/defaultImages";
+import {
+  FlexibleDataTable,
+  FlexibleDetailSection,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
+import type {
+  ImportantDateRow,
+  ImportantLinkRow,
+} from "@/lib/postOptions";
 
 export type ImportantInfoRow = {
   label: string;
   value: string;
 };
 
-export type ImportantInfoSection = {
-  title: string;
-  content: string;
-};
+export type ImportantInfoSection = FlexibleDetailSection;
 
 export type ImportantInfoPost = {
   id?: string;
   title: string;
   slug: string;
   shortDescription?: string;
+  notificationNumber?: string;
   details?: string;
   detailSections?: ImportantInfoSection[];
+  dataTables?: FlexibleDataTable[];
   imageUrls?: string[];
+  previewImageUrl?: string;
   youtubeUrl?: string;
   youtubeUrls?: string[];
   referenceKeywords?: string[];
   quickInfoRows?: ImportantInfoRow[];
+  importantDates?: ImportantDateRow[];
+  importantLinks?: ImportantLinkRow[];
   shareTitle?: string;
   shareDescription?: string;
   shareImageUrl?: string;
@@ -91,6 +102,7 @@ export function getFirstImportantInfoYouTubeThumbnail(post?: Partial<ImportantIn
 
 export function getImportantInfoDisplayImage(post?: Partial<ImportantInfoPost> | null) {
   const customImage =
+    post?.previewImageUrl?.trim() ||
     post?.shareImageUrl?.trim() ||
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
@@ -101,10 +113,12 @@ export function getImportantInfoDisplayImage(post?: Partial<ImportantInfoPost> |
 
   if (youtubeThumbnail) return youtubeThumbnail;
 
-  return getDefaultCategoryPreviewImage(
-    "important-information",
-    post?.title || post?.shortDescription || "Important Information"
-  );
+  const params = new URLSearchParams({
+    category: "Important Information",
+    department: post?.title || "Important Information",
+    posts: post?.shortDescription || "Important Update",
+  });
+  return `/api/og/post?${params.toString()}`;
 }
 
 export function getImportantInfoOgImage(
@@ -112,6 +126,7 @@ export function getImportantInfoOgImage(
   siteUrl = "https://odishasathi.in"
 ) {
   const customImage =
+    post?.previewImageUrl?.trim() ||
     post?.shareImageUrl?.trim() ||
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
@@ -124,10 +139,13 @@ export function getImportantInfoOgImage(
 
   const imageUrl = new URL("/api/og/post", siteUrl);
   imageUrl.searchParams.set("category", "Important Information");
-  imageUrl.searchParams.set("department", "Odisha Sathi");
+  imageUrl.searchParams.set(
+    "department",
+    post?.title || "Important Information"
+  );
   imageUrl.searchParams.set(
     "posts",
-    post?.title || post?.shortDescription || "Important Information"
+    post?.shortDescription || "Important Update"
   );
 
   return imageUrl.toString();
@@ -175,13 +193,29 @@ export function cleanImportantInfoPost(data: any, id?: string): ImportantInfoPos
         .filter((item: ImportantInfoRow) => item.label || item.value)
     : [];
 
-  const detailSections = Array.isArray(data.detailSections)
-    ? data.detailSections
-        .map((item: any) => ({
-          title: String(item?.title || "").trim(),
-          content: String(item?.content || "").trim(),
+  const detailSections = normalizeFlexibleDetailSections(data.detailSections);
+  const dataTables = normalizeFlexibleDataTables(
+    data.dataTables || data.customTables
+  );
+  const importantDates = Array.isArray(data.importantDates)
+    ? data.importantDates
+        .map((item: any, index: number) => ({
+          id: String(item?.id || `date_${index}`),
+          type: String(item?.type || item?.label || "Custom").trim(),
+          label: String(item?.label || item?.type || "").trim(),
+          value: String(item?.value || "").trim(),
         }))
-        .filter((item: ImportantInfoSection) => item.title || item.content)
+        .filter((item: ImportantDateRow) => item.value)
+    : [];
+  const importantLinks = Array.isArray(data.importantLinks || data.links)
+    ? (data.importantLinks || data.links)
+        .map((item: any, index: number) => ({
+          id: String(item?.id || `link_${index}`),
+          type: String(item?.type || item?.label || "Custom").trim(),
+          label: String(item?.label || item?.type || "").trim(),
+          url: String(item?.url || "").trim(),
+        }))
+        .filter((item: ImportantLinkRow) => item.url)
     : [];
 
   return {
@@ -189,13 +223,22 @@ export function cleanImportantInfoPost(data: any, id?: string): ImportantInfoPos
     title: String(data.title || "").trim(),
     slug: String(data.slug || "").trim(),
     shortDescription: String(data.shortDescription || "").trim(),
+    notificationNumber: String(
+      data.notificationNumber || data.notificationNo || ""
+    ).trim(),
     details: String(data.details || data.description || "").trim(),
     detailSections,
+    dataTables,
     imageUrls,
+    previewImageUrl: String(
+      data.previewImageUrl || data.imageUrl || data.bannerImageUrl || ""
+    ).trim(),
     youtubeUrl: String(data.youtubeUrl || "").trim(),
     youtubeUrls,
     referenceKeywords,
     quickInfoRows,
+    importantDates,
+    importantLinks,
     shareTitle: String(data.shareTitle || "").trim(),
     shareDescription: String(data.shareDescription || "").trim(),
     shareImageUrl: String(data.shareImageUrl || "").trim(),

@@ -11,7 +11,7 @@ export default function SocialFollowPromo({ compact = false }: { compact?: boole
         <h2>Get fast updates on WhatsApp, Telegram, YouTube, Facebook & Instagram</h2>
         <p>
           Follow our official social pages for latest jobs, admissions, admit cards,
-          exams, results, schemes and important public updates.
+          exams, results, citizen services and important public updates.
         </p>
       </div>
       <SocialLinks className="social-follow-links" />

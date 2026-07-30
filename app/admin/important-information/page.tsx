@@ -1,9 +1,26 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import PostDynamicTables from "@/components/admin/PostDynamicTables";
+import ImageUploadField from "@/components/admin/ImageUploadField";
+import {
+  FlexibleDataTable,
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+  createFlexibleDetailSection,
+} from "@/lib/flexibleDetails";
+import {
+  ImportantDateRow,
+  ImportantLinkRow,
+  cleanImportantDates,
+  cleanImportantLinks,
+  createEmptyDateRow,
+  createEmptyLinkRow,
+} from "@/lib/postOptions";
 import {
   createImportantInformationPost,
   deleteImportantInformationPost,
@@ -22,13 +39,18 @@ type ImportantInfoFormState = {
   title: string;
   slug: string;
   shortDescription: string;
+  notificationNumber: string;
   details: string;
   detailSections: ImportantInfoSection[];
+  dataTables: FlexibleDataTable[];
+  previewImageUrl: string;
   imageUrlsText: string;
   youtubeUrl: string;
   youtubeUrlsText: string;
   referenceKeywordsText: string;
   quickInfoRows: ImportantInfoRow[];
+  importantDates: ImportantDateRow[];
+  importantLinks: ImportantLinkRow[];
   shareTitle: string;
   shareDescription: string;
   shareImageUrl: string;
@@ -41,13 +63,18 @@ const emptyForm: ImportantInfoFormState = {
   title: "",
   slug: "",
   shortDescription: "",
+  notificationNumber: "",
   details: "",
-  detailSections: [{ title: "Details", content: "" }],
+  detailSections: [createFlexibleDetailSection("Details")],
+  dataTables: [],
+  previewImageUrl: "",
   imageUrlsText: "",
   youtubeUrl: "",
   youtubeUrlsText: "",
   referenceKeywordsText: "",
   quickInfoRows: [{ label: "", value: "" }],
+  importantDates: [createEmptyDateRow()],
+  importantLinks: [createEmptyLinkRow()],
   shareTitle: "",
   shareDescription: "",
   shareImageUrl: "",
@@ -86,11 +113,14 @@ function toFormState(post: ImportantInfoPost): ImportantInfoFormState {
     title: post.title || "",
     slug: post.slug || "",
     shortDescription: post.shortDescription || "",
+    notificationNumber: post.notificationNumber || "",
     details: post.details || "",
     detailSections:
       post.detailSections && post.detailSections.length > 0
         ? post.detailSections
-        : [{ title: "Details", content: "" }],
+        : [createFlexibleDetailSection("Details")],
+    dataTables: post.dataTables || [],
+    previewImageUrl: post.previewImageUrl || "",
     imageUrlsText: (post.imageUrls || []).join("\n"),
     youtubeUrl: post.youtubeUrl || "",
     youtubeUrlsText: (post.youtubeUrls || []).join("\n"),
@@ -99,6 +129,14 @@ function toFormState(post: ImportantInfoPost): ImportantInfoFormState {
       post.quickInfoRows && post.quickInfoRows.length > 0
         ? post.quickInfoRows
         : [{ label: "", value: "" }],
+    importantDates:
+      post.importantDates && post.importantDates.length > 0
+        ? post.importantDates
+        : [createEmptyDateRow()],
+    importantLinks:
+      post.importantLinks && post.importantLinks.length > 0
+        ? post.importantLinks
+        : [createEmptyLinkRow()],
     shareTitle: post.shareTitle || "",
     shareDescription: post.shareDescription || "",
     shareImageUrl: post.shareImageUrl || "",
@@ -113,12 +151,8 @@ function preparePayload(form: ImportantInfoFormState): ImportantInfoPost {
   const youtubeUrls = normalizeStringList(form.youtubeUrlsText);
   const referenceKeywords = normalizeStringList(form.referenceKeywordsText);
 
-  const detailSections = form.detailSections
-    .map((item) => ({
-      title: item.title.trim(),
-      content: item.content.trim(),
-    }))
-    .filter((item) => item.title || item.content);
+  const detailSections = cleanFlexibleDetailSections(form.detailSections);
+  const dataTables = cleanFlexibleDataTables(form.dataTables);
 
   const quickInfoRows = form.quickInfoRows
     .map((item) => ({
@@ -141,16 +175,21 @@ function preparePayload(form: ImportantInfoFormState): ImportantInfoPost {
     title: form.title.trim(),
     slug,
     shortDescription: form.shortDescription.trim(),
+    notificationNumber: form.notificationNumber.trim(),
     details: form.details.trim(),
     detailSections,
+    dataTables,
+    previewImageUrl: form.previewImageUrl.trim(),
     imageUrls,
     youtubeUrl: form.youtubeUrl.trim(),
     youtubeUrls,
     referenceKeywords,
     quickInfoRows,
+    importantDates: cleanImportantDates(form.importantDates),
+    importantLinks: cleanImportantLinks(form.importantLinks),
     shareTitle: form.shareTitle.trim(),
     shareDescription: form.shareDescription.trim(),
-    shareImageUrl,
+    shareImageUrl: form.previewImageUrl.trim() || shareImageUrl,
     isFeatured: form.isFeatured,
     featuredOrder: Number(form.featuredOrder || 0),
     status: form.status,
@@ -168,11 +207,6 @@ export default function AdminImportantInformationPage() {
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const featuredCount = useMemo(
-    () => posts.filter((post) => post.isFeatured && post.status !== "hidden").length,
-    [posts]
-  );
 
   async function loadPosts() {
     try {
@@ -306,7 +340,7 @@ export default function AdminImportantInformationPage() {
           <div>
             <h1 style={{ margin: "0 0 6px" }}>Important Information</h1>
             <p style={{ margin: 0, color: "#64748b" }}>
-              Manage homepage 8 important tiles and full information detail pages.
+              Manage important update posts, ticker content and full detail pages.
             </p>
           </div>
 
@@ -332,24 +366,12 @@ export default function AdminImportantInformationPage() {
           </button>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "14px",
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
           <div style={cardStyle}>
             <strong style={{ display: "block", fontSize: "24px", color: "#0f172a" }}>
               {posts.length}
             </strong>
             <span style={{ color: "#64748b", fontWeight: 800 }}>Total information posts</span>
-          </div>
-          <div style={cardStyle}>
-            <strong style={{ display: "block", fontSize: "24px", color: "#0f172a" }}>
-              {featuredCount}/8
-            </strong>
-            <span style={{ color: "#64748b", fontWeight: 800 }}>Featured homepage tiles</span>
           </div>
         </div>
 
@@ -423,69 +445,39 @@ export default function AdminImportantInformationPage() {
               />
             </div>
 
-            <div style={{ display: "grid", gap: "12px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-                <h3 style={{ margin: 0 }}>Details Stacks</h3>
-                <button
-                  type="button"
-                  style={smallButtonStyle}
-                  onClick={() =>
-                    setForm((oldValue) => ({
-                      ...oldValue,
-                      detailSections: [...oldValue.detailSections, { title: "", content: "" }],
-                    }))
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
+              <div>
+                <label>Notification / Reference Number</label>
+                <input
+                  value={form.notificationNumber}
+                  onChange={(event) =>
+                    updateField("notificationNumber", event.target.value)
                   }
-                >
-                  + Add Stack
-                </button>
+                  placeholder="Optional"
+                  style={fieldStyle}
+                />
               </div>
-
-              {form.detailSections.map((section, index) => (
-                <div key={index} style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px", display: "grid", gap: "10px" }}>
-                  <input
-                    value={section.title}
-                    onChange={(event) => updateSection(index, "title", event.target.value)}
-                    placeholder="Stack title"
-                    style={fieldStyle}
-                  />
-                  <textarea
-                    value={section.content}
-                    onChange={(event) => updateSection(index, "content", event.target.value)}
-                    placeholder="Stack content"
-                    rows={4}
-                    style={fieldStyle}
-                  />
-                  {form.detailSections.length > 1 ? (
-                    <button
-                      type="button"
-                      style={{ ...smallButtonStyle, color: "#dc2626", width: "fit-content" }}
-                      onClick={() =>
-                        setForm((oldValue) => ({
-                          ...oldValue,
-                          detailSections: oldValue.detailSections.filter((_, sectionIndex) => sectionIndex !== index),
-                        }))
-                      }
-                    >
-                      Remove Stack
-                    </button>
-                  ) : null}
-                </div>
-              ))}
             </div>
 
-            <div>
-              <label>Image URLs (Optional)</label>
-              <textarea
-                value={form.imageUrlsText}
-                onChange={(event) => updateField("imageUrlsText", event.target.value)}
-                placeholder="One image URL per line. If empty, the page will use YouTube thumbnail first, otherwise a default Odisha Sathi preview image."
-                rows={4}
-                style={fieldStyle}
-              />
-              <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
-                Manual image upload is avoided here. Add an image URL only when you want a custom image.
-              </p>
-            </div>
+            <ImageUploadField
+              label="Preview Image / Title Banner"
+              value={form.previewImageUrl}
+              onChange={(value) => updateField("previewImageUrl", value)}
+              helpText="Priority: uploaded image or image URL → YouTube thumbnail → default Odisha Sathi banner."
+              folder="important-information"
+            />
+
+            <FlexibleDetailsEditor
+              detailSections={form.detailSections}
+              dataTables={form.dataTables}
+              onDetailSectionsChange={(detailSections) =>
+                setForm((oldValue) => ({ ...oldValue, detailSections }))
+              }
+              onDataTablesChange={(dataTables) =>
+                setForm((oldValue) => ({ ...oldValue, dataTables }))
+              }
+              sectionLabel="Multiple Detail Boxes, Images and Data Tables"
+            />
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
               <div>
@@ -570,6 +562,17 @@ export default function AdminImportantInformationPage() {
               ))}
             </div>
 
+            <PostDynamicTables
+              importantDates={form.importantDates}
+              importantLinks={form.importantLinks}
+              onDatesChange={(importantDates) =>
+                setForm((oldValue) => ({ ...oldValue, importantDates }))
+              }
+              onLinksChange={(importantLinks) =>
+                setForm((oldValue) => ({ ...oldValue, importantLinks }))
+              }
+            />
+
             <div style={{ ...cardStyle, background: "#f8fafc" }}>
               <h3 style={{ marginTop: 0 }}>Share Preview / SEO Preview</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
@@ -589,20 +592,6 @@ export default function AdminImportantInformationPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800 }}>
-                <input
-                  type="checkbox"
-                  checked={form.isFeatured}
-                  onChange={(event) => updateField("isFeatured", event.target.checked)}
-                />
-                Show in top 8 homepage tiles
-              </label>
-
-              <div>
-                <label>Featured Order</label>
-                <input type="number" value={form.featuredOrder} onChange={(event) => updateField("featuredOrder", event.target.value)} style={fieldStyle} />
-              </div>
-
               <div>
                 <label>Status</label>
                 <select value={form.status} onChange={(event) => updateField("status", event.target.value)} style={fieldStyle}>
@@ -651,7 +640,7 @@ export default function AdminImportantInformationPage() {
                     <div>
                       <h3 style={{ margin: "0 0 5px" }}>{post.title}</h3>
                       <p style={{ margin: 0, color: "#64748b", fontSize: "14px" }}>
-                        {post.isFeatured ? `Featured tile order: ${post.featuredOrder || 0}` : "Bottom list only"} · {post.status || "published"}
+                        {post.status || "published"}
                       </p>
                     </div>
 

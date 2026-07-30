@@ -8,6 +8,18 @@ import {
   getActiveAdminSubCategories,
   mergeSubCategoryOptions,
 } from "@/lib/adminSubCategories";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import CommonDocumentsEditor from "@/components/admin/CommonDocumentsEditor";
+import {
+  cleanJobDocuments,
+  normalizeJobDocuments,
+} from "@/lib/jobDetails";
+import {
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+} from "@/lib/flexibleDetails";
 
 type ResultFormProps = {
   initialData?: ResultPost | null;
@@ -61,6 +73,12 @@ const emptyForm: ResultPost = {
   resultDateDisplay: "",
   importantDates: [],
   description: "",
+  notificationNumber: "",
+  previewImageUrl: "",
+  resultCheckingProcess: "",
+  documentsRequired: [],
+  contentSections: [],
+  dataTables: [],
   youtubeUrl: "",
   youtubeUrls: [],
   status: "Released",
@@ -112,6 +130,17 @@ export default function ResultForm({
       setFormData({
         ...emptyForm,
         ...initialData,
+        subCategories:
+          initialData.subCategories?.length
+            ? initialData.subCategories
+            : [initialData.subCategory || "odisha-results"],
+        contentSections: normalizeFlexibleDetailSections(
+          initialData.contentSections || initialData.detailSections
+        ),
+        dataTables: normalizeFlexibleDataTables(
+          initialData.dataTables || initialData.customTables
+        ),
+        documentsRequired: normalizeJobDocuments(initialData),
         links: savedLinks.length > 0 ? savedLinks : emptyLinks,
       });
     } else {
@@ -134,18 +163,32 @@ export default function ResultForm({
     });
   };
 
-  const updateResultCategory = (value: string) => {
-    const selected = resultCategoryOptions.find((item) => item.value === value);
+  const selectedResultCategoryValues = resultCategoryOptions
+    .filter((option) =>
+      (formData.subCategories || []).some(
+        (item) => item === option.value || item === option.label
+      )
+    )
+    .map((option) => option.value);
+
+  const toggleResultCategory = (value: string) => {
+    const nextValues = selectedResultCategoryValues.includes(value)
+      ? selectedResultCategoryValues.filter((item) => item !== value)
+      : [...selectedResultCategoryValues, value];
+    const selected = resultCategoryOptions.filter((item) =>
+      nextValues.includes(item.value)
+    );
+    const primary = selected[0] || RESULT_BASE_CATEGORY_OPTIONS[0];
 
     setFormData((prev) => ({
       ...prev,
-      subCategory: value,
-      subCategories: selected ? [selected.label, selected.value] : [value],
-      resultCategory: selected?.label || value,
-      resultCategories: selected ? [selected.label] : [value],
-      categoryName: selected?.label || value,
-      categorySlug: value,
-      subCategorySlug: value,
+      subCategory: primary.value,
+      subCategories: selected.flatMap((item) => [item.label, item.value]),
+      resultCategory: primary.label,
+      resultCategories: selected.map((item) => item.label),
+      categoryName: primary.label,
+      categorySlug: primary.value,
+      subCategorySlug: primary.value,
     }));
   };
 
@@ -228,10 +271,14 @@ export default function ResultForm({
             .slice(0, 2)
         : [];
 
-      const selectedCategory =
-        resultCategoryOptions.find(
-          (item) => item.value === (formData.subCategory || "")
-        ) || RESULT_BASE_CATEGORY_OPTIONS[0];
+      const selectedCategories = resultCategoryOptions.filter((item) =>
+        selectedResultCategoryValues.includes(item.value)
+      );
+      if (selectedCategories.length === 0) {
+        alert("Please select at least one result subcategory.");
+        return;
+      }
+      const selectedCategory = selectedCategories[0];
       const cleanedLinks = formData.links
         .map((link) => ({
           label: link.label.trim(),
@@ -241,10 +288,29 @@ export default function ResultForm({
 
       await onSubmit({
         ...formData,
+        notificationNumber: (formData.notificationNumber || "").trim(),
+        previewImageUrl: (formData.previewImageUrl || "").trim(),
+        imageUrl: (formData.previewImageUrl || "").trim(),
+        contentSections: cleanFlexibleDetailSections(
+          formData.contentSections || []
+        ),
+        detailSections: cleanFlexibleDetailSections(
+          formData.contentSections || []
+        ),
+        dataTables: cleanFlexibleDataTables(formData.dataTables || []),
+        customTables: cleanFlexibleDataTables(formData.dataTables || []),
+        resultCheckingProcess: (formData.resultCheckingProcess || "").trim(),
+        applicationProcess: (formData.resultCheckingProcess || "").trim(),
+        documentsRequired: cleanJobDocuments(
+          formData.documentsRequired || []
+        ),
         subCategory: selectedCategory.value,
-        subCategories: [selectedCategory.label, selectedCategory.value],
+        subCategories: selectedCategories.flatMap((item) => [
+          item.label,
+          item.value,
+        ]),
         resultCategory: selectedCategory.label,
-        resultCategories: [selectedCategory.label],
+        resultCategories: selectedCategories.map((item) => item.label),
         categoryName: selectedCategory.label,
         categorySlug: selectedCategory.value,
         subCategorySlug: selectedCategory.value,
@@ -323,17 +389,43 @@ export default function ResultForm({
         </div>
 
         <div className="admin-form-group">
-          <label>Result Subcategory</label>
-          <select
-            value={formData.subCategory || "odisha-results"}
-            onChange={(event) => updateResultCategory(event.target.value)}
-          >
+          <label>Notification / Reference Number</label>
+          <input
+            type="text"
+            value={formData.notificationNumber || ""}
+            onChange={(event) =>
+              updateField("notificationNumber", event.target.value)
+            }
+            placeholder="Optional"
+          />
+        </div>
+
+        <div className="admin-form-group">
+          <label>Preview Image URL</label>
+          <input
+            type="url"
+            value={formData.previewImageUrl || ""}
+            onChange={(event) =>
+              updateField("previewImageUrl", event.target.value)
+            }
+            placeholder="Optional image URL"
+          />
+        </div>
+
+        <div className="admin-form-group" style={{ gridColumn: "1 / -1" }}>
+          <label>Result Subcategories (select one or more)</label>
+          <div className="admin-checkbox-grid">
             {resultCategoryOptions.map((item) => (
-              <option key={item.value} value={item.value}>
+              <label className="admin-checkbox-card" key={item.value}>
+                <input
+                  type="checkbox"
+                  checked={selectedResultCategoryValues.includes(item.value)}
+                  onChange={() => toggleResultCategory(item.value)}
+                />
                 {item.label}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
 
         <div className="admin-form-group">
@@ -408,6 +500,25 @@ export default function ResultForm({
         />
       </div>
 
+      <div className="admin-form-group">
+        <label>How to Check Result / Result Process</label>
+        <textarea
+          value={formData.resultCheckingProcess || ""}
+          onChange={(event) =>
+            updateField("resultCheckingProcess", event.target.value)
+          }
+          placeholder="Write the result checking process step by step."
+          rows={6}
+        />
+      </div>
+
+      <CommonDocumentsEditor
+        documents={formData.documentsRequired || []}
+        onChange={(documentsRequired) =>
+          setFormData((previous) => ({ ...previous, documentsRequired }))
+        }
+      />
+
       <div className="admin-section-box">
         <div className="admin-section-title-row">
           <h3>Important Links</h3>
@@ -445,6 +556,18 @@ export default function ResultForm({
           </div>
         ))}
       </div>
+
+      <FlexibleDetailsEditor
+        detailSections={formData.contentSections || []}
+        dataTables={formData.dataTables || []}
+        onDetailSectionsChange={(contentSections) =>
+          setFormData((previous) => ({ ...previous, contentSections }))
+        }
+        onDataTablesChange={(dataTables) =>
+          setFormData((previous) => ({ ...previous, dataTables }))
+        }
+        sectionLabel="Optional Result Details and Data Tables"
+      />
 
       <div className="admin-form-actions">
         <button type="submit" className="admin-submit-btn" disabled={isSaving}>

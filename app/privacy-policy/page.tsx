@@ -29,8 +29,8 @@ export default function PrivacyPolicyPage() {
           <h2>Introduction</h2>
           <p>
             Odisha Sathi provides public information related to jobs,
-            admissions, admit cards, exams, results, schemes and useful online
-            services. We respect user privacy and aim to collect only the
+            admissions, admit cards, exams, results, citizen services and useful
+            public updates. We respect user privacy and aim to collect only the
             information needed to operate, secure and improve the website.
           </p>
 

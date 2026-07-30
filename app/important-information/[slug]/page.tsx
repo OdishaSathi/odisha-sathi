@@ -10,6 +10,7 @@ import {
   type ImportantInfoPost,
 } from "@/lib/importantInformation";
 import { isPublicDetailPost } from "@/lib/publicPostQuality";
+import SocialShareButtons from "@/components/public/SocialShareButtons";
 
 type ImportantInfoPageProps = {
   params: Promise<{
@@ -198,10 +199,6 @@ export default async function ImportantInformationDetailPage({ params }: Importa
   const shareDescription = post.shareDescription || post.shortDescription || "";
   const shareUrl = `https://odishasathi.in/important-information/${post.slug || post.id}`;
   const previewImageUrl = getImportantInfoDisplayImage(post);
-  const customImageUrls = (post.imageUrls || []).filter(Boolean);
-  const detailImageUrls = customImageUrls.length > 0 ? customImageUrls : [previewImageUrl].filter(Boolean);
-  const imageSectionTitle = customImageUrls.length > 0 ? "Images" : videos.length > 0 ? "Video Thumbnail" : "Preview Image";
-
   return (
     <main className="important-detail-page">
       <div className="important-detail-container">
@@ -224,20 +221,22 @@ export default async function ImportantInformationDetailPage({ params }: Importa
 
           <div className="important-detail-grid">
             <section className="important-main-column">
-              {detailImageUrls.length > 0 ? (
-                <section className="important-section important-images-section">
-                  <SectionHeader title={imageSectionTitle} />
-                  <div className="important-image-grid">
-                    {detailImageUrls.map((imageUrl, index) => (
-                      <img key={`${imageUrl}-${index}`} src={imageUrl} alt={`${post.title} image ${index + 1}`} />
-                    ))}
-                  </div>
-                </section>
+              {previewImageUrl ? (
+                <div className="important-title-image">
+                  <img src={previewImageUrl} alt={`${post.title} preview`} />
+                </div>
+              ) : null}
+
+              {post.notificationNumber?.trim() ? (
+                <p className="important-notification-number">
+                  Notification / Reference No.:{" "}
+                  <strong>{post.notificationNumber.trim()}</strong>
+                </p>
               ) : null}
 
               {post.details?.trim() ? (
                 <section className="important-section">
-                  <SectionHeader title="Details" />
+                  <SectionHeader title="Main Content" />
                   <div className="important-description">{post.details}</div>
                 </section>
               ) : null}
@@ -245,9 +244,100 @@ export default async function ImportantInformationDetailPage({ params }: Importa
               {(post.detailSections || []).map((section, index) => (
                 <section className="important-section" key={`${section.title}-${index}`}>
                   <SectionHeader title={section.title || `Information ${index + 1}`} />
-                  <div className="important-description">{section.content}</div>
+                  {(section.imageUrls || []).length > 0 ? (
+                    <div className="important-image-grid">
+                      {(section.imageUrls || []).map((imageUrl, imageIndex) => (
+                        <img
+                          key={`${imageUrl}-${imageIndex}`}
+                          src={imageUrl}
+                          alt={`${section.title || post.title} image ${imageIndex + 1}`}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                  {section.content ? (
+                    <div className="important-description">{section.content}</div>
+                  ) : null}
                 </section>
               ))}
+
+              {(post.dataTables || []).map((table, tableIndex) => (
+                <section
+                  className="important-section"
+                  key={table.id || tableIndex}
+                >
+                  <SectionHeader
+                    title={table.title || `Data Table ${tableIndex + 1}`}
+                  />
+                  {table.imageUrl ? (
+                    <div className="important-image-grid">
+                      <img
+                        src={table.imageUrl}
+                        alt={`${table.title || "Data table"} reference`}
+                      />
+                    </div>
+                  ) : null}
+                  {table.rows.length > 0 ? (
+                    <div className="important-table-scroll">
+                      <table className="important-data-table">
+                        <thead>
+                          <tr>
+                            {table.columns.map((column, columnIndex) => (
+                              <th key={columnIndex}>
+                                {column || `Column ${columnIndex + 1}`}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {table.rows.map((row) => (
+                            <tr key={row.id}>
+                              {table.columns.map((_, cellIndex) => (
+                                <td key={cellIndex}>
+                                  {row.cells[cellIndex] || "—"}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                </section>
+              ))}
+
+              {(post.importantDates || []).length > 0 ? (
+                <section className="important-section">
+                  <SectionHeader title="Important Dates" />
+                  <div className="important-simple-rows">
+                    {(post.importantDates || []).map((row, index) => (
+                      <div key={row.id || index}>
+                        <span>{row.label || row.type || "Date"}</span>
+                        <strong>{row.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {(post.importantLinks || []).length > 0 ? (
+                <section className="important-section">
+                  <SectionHeader title="Important Links" />
+                  <div className="important-link-rows">
+                    {(post.importantLinks || []).map((row, index) => (
+                      <a
+                        key={row.id || index}
+                        href={row.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <span>{row.label || row.type || "Official Link"}</span>
+                        <strong>Open Link</strong>
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
 
               {videos.length > 0 ? (
                 <section className="important-section">
@@ -275,25 +365,11 @@ export default async function ImportantInformationDetailPage({ params }: Importa
 
               <section className="important-share-section">
                 <p>Share this information</p>
-                <div className="important-share-actions">
-                  <span aria-hidden="true">➜</span>
-                  <a
-                    className="important-share-btn whatsapp"
-                    href={`https://wa.me/?text=${encodeURIComponent(`${shareTitle}\n${shareDescription}\n${shareUrl}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    WhatsApp
-                  </a>
-                  <a
-                    className="important-share-btn telegram"
-                    href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`${shareTitle}\n${shareDescription}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Telegram
-                  </a>
-                </div>
+                <SocialShareButtons
+                  title={shareTitle}
+                  description={shareDescription}
+                  postUrl={shareUrl}
+                />
               </section>
             </section>
 
@@ -332,8 +408,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                   <Link href="/admit-cards">Admit Cards & Exams</Link>
                   <Link href="/results">Results</Link>
                   <Link href="/admissions">Admissions</Link>
-                  <Link href="/schemes">Schemes</Link>
-                  <Link href="/tools">Tools</Link>
+                  <Link href="/citizen-services">Citizen Services</Link>
                 </div>
               </div>
             </aside>
@@ -493,7 +568,34 @@ function ImportantDetailStyles() {
         color: #334155;
         font-size: 15.5px;
         line-height: 1.8;
+        text-align: left;
         white-space: pre-line;
+      }
+
+      .important-title-image {
+        margin-bottom: 22px;
+        overflow: hidden;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        background: #f8fafc;
+      }
+
+      .important-title-image img {
+        display: block;
+        width: 100%;
+        max-height: 620px;
+        object-fit: contain;
+      }
+
+      .important-notification-number {
+        margin: -6px 0 22px;
+        padding: 11px 14px;
+        border-left: 4px solid #f97316;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #7c2d12;
+        font-size: 14px;
+        font-weight: 750;
       }
 
       .important-image-grid {
@@ -509,6 +611,77 @@ function ImportantDetailStyles() {
         border: 1px solid #e5e7eb;
         border-radius: 14px;
         background: #f8fafc;
+      }
+
+      .important-table-scroll {
+        overflow-x: auto;
+        padding: 14px;
+      }
+
+      .important-data-table {
+        width: 100%;
+        min-width: 520px;
+        border-collapse: collapse;
+      }
+
+      .important-data-table th,
+      .important-data-table td {
+        padding: 10px 12px;
+        border: 1px solid #dbe3ee;
+        text-align: left;
+        vertical-align: top;
+        white-space: pre-line;
+      }
+
+      .important-data-table th {
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .important-simple-rows,
+      .important-link-rows {
+        display: grid;
+      }
+
+      .important-simple-rows > div,
+      .important-link-rows > a {
+        display: grid;
+        grid-template-columns: minmax(140px, 0.75fr) minmax(0, 1.25fr);
+        gap: 10px;
+        padding: 8px 11px;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 13.5px;
+      }
+
+      .important-simple-rows > div:last-child,
+      .important-link-rows > a:last-child {
+        border-bottom: 0;
+      }
+
+      .important-simple-rows span,
+      .important-link-rows span {
+        color: #475569;
+        font-weight: 800;
+      }
+
+      .important-simple-rows strong {
+        color: #0f172a;
+      }
+
+      .important-link-rows > a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .important-link-rows > a strong {
+        width: fit-content;
+        color: #1d4ed8;
+      }
+
+      .important-link-rows > a:hover {
+        background: #fff7ed;
       }
 
       .important-video-list {
@@ -563,15 +736,15 @@ function ImportantDetailStyles() {
 
       .important-share-section {
         margin-top: 22px;
-        padding: 16px;
-        border-radius: 18px;
+        padding: 12px 13px;
+        border-radius: 13px;
         background: linear-gradient(135deg, #f0fdf4, #eff6ff);
         border: 1px solid #dbeafe;
       }
 
       .important-share-section p {
-        margin: 0 0 13px;
-        font-size: 17px;
+        margin: 0;
+        font-size: 15px;
         font-weight: 950;
       }
 
@@ -668,10 +841,24 @@ function ImportantDetailStyles() {
       @media (max-width: 520px) {
         .important-detail-container { width: min(100% - 18px, 1180px); }
         .important-detail-grid { gap: 16px; padding: 12px; }
-        .important-description { font-size: 15px; padding: 13px; }
+        .important-description { font-size: 15px; padding: 13px; text-align: left; }
         .important-video-footer { align-items: flex-start; flex-direction: column; }
-        .important-video-footer a,
-        .important-share-btn { width: 100%; justify-content: center; }
+        .important-video-footer a { width: 100%; justify-content: center; }
+        .important-table-scroll { overflow-x: visible; padding: 8px; }
+        .important-data-table { min-width: 0; table-layout: fixed; }
+        .important-data-table th,
+        .important-data-table td {
+          padding: 7px 5px;
+          font-size: 11.5px;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+        }
+        .important-simple-rows > div,
+        .important-link-rows > a {
+          grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+          padding: 8px 9px;
+        }
+        .important-share-section { padding: 11px; }
       }
     `}</style>
   );

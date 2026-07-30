@@ -55,12 +55,18 @@ export type Post = {
   applicationFeeRows?: import("@/lib/jobDetails").JobFeeRow[];
   documentsRequired?: import("@/lib/jobDetails").RequiredDocumentRow[];
   requiredDocuments?: import("@/lib/jobDetails").RequiredDocumentRow[];
+  contentSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  detailSections?: import("@/lib/flexibleDetails").FlexibleDetailSection[];
+  dataTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
+  customTables?: import("@/lib/flexibleDetails").FlexibleDataTable[];
 
   // Jobs-specific optional fields
   organization?: string;
   department?: string;
   postName?: string;
   totalVacancy?: string;
+  applicationMode?: string;
+  modeOfApplication?: string;
   feeStructure?: string;
   applicationFee?: string;
   qualification?: string;

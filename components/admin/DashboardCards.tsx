@@ -15,7 +15,7 @@ export default function DashboardCards() {
     results: 0,
     admissions: 0,
     admitCards: 0,
-    schemes: 0,
+    citizenServices: 0,
   });
 
   const [loading, setLoading] = useState(true);
@@ -35,20 +35,23 @@ export default function DashboardCards() {
           postsRef,
           where("category", "==", "admit-cards")
         );
-        const schemesQuery = query(postsRef, where("category", "==", "schemes"));
+        const citizenServicesQuery = query(
+          postsRef,
+          where("category", "==", "citizen-services")
+        );
 
         const [
           jobsSnapshot,
           resultsSnapshot,
           admissionsSnapshot,
           admitCardsSnapshot,
-          schemesSnapshot,
+          citizenServicesSnapshot,
         ] = await Promise.all([
           getCountFromServer(jobsQuery),
           getCountFromServer(resultsQuery),
           getCountFromServer(admissionsQuery),
           getCountFromServer(admitCardsQuery),
-          getCountFromServer(schemesQuery),
+          getCountFromServer(citizenServicesQuery),
         ]);
 
         setCounts({
@@ -56,7 +59,7 @@ export default function DashboardCards() {
           results: resultsSnapshot.data().count,
           admissions: admissionsSnapshot.data().count,
           admitCards: admitCardsSnapshot.data().count,
-          schemes: schemesSnapshot.data().count,
+          citizenServices: citizenServicesSnapshot.data().count,
         });
       } catch (error) {
         console.error("Dashboard count error:", error);
@@ -85,7 +88,7 @@ export default function DashboardCards() {
       <DashboardCard title="Results" count={counts.results} />
       <DashboardCard title="Admissions" count={counts.admissions} />
       <DashboardCard title="Admit Cards" count={counts.admitCards} />
-      <DashboardCard title="Schemes" count={counts.schemes} />
+      <DashboardCard title="Citizen Services" count={counts.citizenServices} />
     </div>
   );
 }

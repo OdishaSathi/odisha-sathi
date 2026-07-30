@@ -19,9 +19,19 @@ const ADMISSION_SUB_CATEGORIES = [
   "Entrance Admissions",
   "University Admissions",
   "Distance Education",
+  "Scholarships",
+  "Pre-Matric Scholarship",
+  "Post-Matric Scholarship",
+  "Higher Education Scholarship",
 ];
 
-const ADMISSION_COLLECTIONS = ["posts", "admissions", "admission"];
+const ADMISSION_COLLECTIONS = [
+  "posts",
+  "admissions",
+  "admission",
+  "schemes",
+  "scheme",
+];
 
 const POSTS_PER_PAGE = 30;
 const LATEST_STACK_COUNT = 8;
@@ -268,12 +278,20 @@ function getAdmissionMeta(item: AdmissionPost) {
 function isAdmissionPost(item: AdmissionPost) {
   const category = normalizeText(item.category);
   const sourceCollection = normalizeText(item.sourceCollection);
+  const isScholarship = getSearchText(item).includes("scholar");
 
   return (
     sourceCollection === "admissions" ||
     sourceCollection === "admission" ||
     category === "admissions" ||
-    category === "admission"
+    category === "admission" ||
+    ((sourceCollection === "schemes" ||
+      sourceCollection === "scheme" ||
+      category === "schemes" ||
+      category === "scheme" ||
+      category === "scholarships" ||
+      category === "scholarship") &&
+      isScholarship)
   );
 }
 
@@ -597,7 +615,7 @@ export default function AdmissionSubCategoryPage() {
 
             allAdmissions.push({
               id: docItem.id,
-              title: data.title || "",
+              title: data.title || data.schemeName || "",
               slug: data.slug || "",
               content: data.content || "",
               description: data.description || "",
@@ -612,6 +630,7 @@ export default function AdmissionSubCategoryPage() {
                 data.admissionCategory ||
                 data.admissionSubCategory ||
                 data.selectedAdmissionCategory ||
+                data.schemeCategory ||
                 "",
               admissionCategories: Array.isArray(data.admissionCategories)
                 ? data.admissionCategories
@@ -816,8 +835,7 @@ export default function AdmissionSubCategoryPage() {
               <Link href="/results">Results</Link>
               <Link href="/admissions">Admissions</Link>
               <Link href="/admit-cards">Admit Cards & Exams</Link>
-              <Link href="/schemes">Schemes</Link>
-              <Link href="/tools">Tools</Link>
+              <Link href="/citizen-services">Citizen Services</Link>
             </section>
 
             <section className="os-side-card os-reminder-card">

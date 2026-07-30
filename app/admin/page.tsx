@@ -11,12 +11,12 @@ type AdminPost = { id: string; title: string; slug?: string; category?: string; 
 const categories = [
   ["jobs", "Jobs", "/admin/jobs"], ["results", "Results", "/admin/results"],
   ["admissions", "Admissions", "/admin/admissions"], ["admit-cards", "Exams", "/admin/admit-cards"],
-  ["schemes", "Schemes", "/admin/schemes"], ["tools", "Tools", "/admin/tools"],
+  ["citizen-services", "Citizen Services", "/admin/citizen-services"],
 ] as const;
 
-function publicLink(post: AdminPost) { return post.category === "schemes" ? `/schemes/${post.id}` : `/post/${post.slug || post.id}`; }
+function publicLink(post: AdminPost) { return post.category === "citizen-services" ? `/citizen-services/${post.slug || post.id}` : `/post/${post.slug || post.id}`; }
 function editLink(post: AdminPost) {
-  const map: Record<string, string> = { jobs: "jobs/edit", results: "results", admissions: "admissions/edit", "admit-cards": "admit-cards/edit", schemes: "schemes/edit", tools: "tools" };
+  const map: Record<string, string> = { jobs: "jobs/edit", results: "results", admissions: "admissions/edit", "admit-cards": "admit-cards/edit", "citizen-services": "citizen-services" };
   return `/admin/${map[post.category || ""] || ""}/${post.id}`;
 }
 function timeValue(value: any) { return value?.toMillis?.() || value?.seconds * 1000 || 0; }
@@ -85,7 +85,7 @@ export default function AdminDashboardPage() {
           <label className="dashboard-search"><Search size={18}/><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search title, department or category…" /></label>
           {loading ? <p className="empty-state">Loading recent posts…</p> : visiblePosts.length === 0 ? <p className="empty-state">No matching posts found.</p> : (
             <div className="recent-list">{visiblePosts.map((post) => {
-              const title = post.category === "schemes" ? post.schemeName || post.title : post.title;
+              const title = post.title;
               return <article key={post.id}><div><span>{post.category || "post"}</span><h3>{title || "Untitled post"}</h3><p>{post.department || "No department added"}</p></div><div className="post-actions"><Link href={publicLink(post)} target="_blank"><ExternalLink size={16}/>View</Link><Link href={editLink(post)}>Edit</Link></div></article>;
             })}</div>
           )}

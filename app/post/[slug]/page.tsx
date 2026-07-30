@@ -42,6 +42,21 @@ type MetaPost = {
   department?: string;
   postName?: string;
   jobInfoPanels?: any[];
+  importantDates?: Array<{ label?: string; type?: string; value?: string }>;
+  totalVacancy?: string;
+  courseName?: string;
+  status?: string;
+  startDateDisplay?: string;
+  applicationStartDateDisplay?: string;
+  applicationStartDate?: string;
+  lastDateDisplay?: string;
+  lastDate?: string;
+  resultDateDisplay?: string;
+  resultDate?: string;
+  admitCardDateDisplay?: string;
+  admitCardDate?: string;
+  examDateDisplay?: string;
+  examDate?: string;
 };
 
 const PUBLIC_POST_COLLECTIONS = [
@@ -173,12 +188,71 @@ function getDescription(post: MetaPost | null) {
 
 function buildOgImageUrl(post: MetaPost | null) {
   const shareThumbnail = getJobShareThumbnail(post);
+  const category = String(post?.category || "").toLowerCase();
+  const findDate = (words: string[]) =>
+    (post?.importantDates || []).find((row) => {
+      const label = `${row.label || ""} ${row.type || ""}`.toLowerCase();
+      return words.some((word) => label.includes(word));
+    })?.value || "";
+  const firstPanel = post?.jobInfoPanels?.[0];
+  const lastDate =
+    post?.lastDateDisplay ||
+    post?.lastDate ||
+    findDate(["last", "closing", "deadline"]);
+  const startDate =
+    post?.startDateDisplay ||
+    post?.applicationStartDateDisplay ||
+    post?.applicationStartDate ||
+    findDate(["start", "opening"]);
+  const resultDate =
+    post?.resultDateDisplay ||
+    post?.resultDate ||
+    findDate(["result", "merit", "declared"]);
+  const admitOrExamDate =
+    post?.examDateDisplay ||
+    post?.examDate ||
+    post?.admitCardDateDisplay ||
+    post?.admitCardDate ||
+    findDate(["exam", "admit"]);
+  const vacancy = firstPanel?.totalVacancy || post?.totalVacancy || "";
+  const title = cleanText(post?.title || "Odisha Sathi Update", 80);
+  const bannerDepartment =
+    category === "jobs" ||
+    category === "admissions" ||
+    category === "results" ||
+    category.includes("admit") ||
+    category === "exams"
+      ? title
+      : getDepartmentName(post);
+  const bannerDetails = category === "jobs"
+    ? [
+        getPostNames(post),
+        vacancy ? `Vacancy: ${vacancy}` : "",
+        lastDate ? `Last Date: ${lastDate}` : "",
+      ]
+    : category === "admissions"
+    ? [
+        post?.courseName ? `Course: ${post.courseName}` : getPostNames(post),
+        startDate ? `Start Date: ${startDate}` : "",
+        lastDate ? `Last Date: ${lastDate}` : "",
+      ]
+    : category === "results"
+    ? [
+        post?.status ? `Status: ${post.status}` : "Result / Merit List Update",
+        resultDate ? `Date: ${resultDate}` : "",
+      ]
+    : category.includes("admit") || category === "exams"
+    ? [
+        post?.status ? `Status: ${post.status}` : "",
+        admitOrExamDate ? `Exam / Admit Card Date: ${admitOrExamDate}` : "",
+      ]
+    : [getPostNames(post)];
 
   const params = new URLSearchParams({
     category: post?.category || "Job",
-    title: cleanText(post?.title || "Odisha Sathi Update", 80),
-    department: getDepartmentName(post),
-    posts: getPostNames(post),
+    title,
+    department: bannerDepartment,
+    posts: bannerDetails.filter(Boolean).join(" • "),
   });
 
   const fallbackUrl = `/api/og/post?${params.toString()}`;

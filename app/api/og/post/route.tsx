@@ -36,6 +36,10 @@ function getCategoryDisplayName(value: string | null) {
   }
   if (category.includes("admission")) return "Admission";
   if (category.includes("result")) return "Result";
+  if (category.includes("important")) return "Important Information";
+  if (category.includes("citizen") || category.includes("service")) {
+    return "Citizen Services";
+  }
   if (category.includes("scheme")) return "Government Scheme";
   if (category.includes("scholar")) return "Scholarship";
   if (category.includes("job")) return "Job";
@@ -51,6 +55,12 @@ function getBannerTags(category: string) {
 
   if (value.includes("result")) {
     return ["Result Details", "How to Check", "Important Date", "Official Link"];
+  }
+  if (value.includes("important")) {
+    return ["Important Update", "Official Information", "Read Full Details"];
+  }
+  if (value.includes("citizen") || value.includes("service")) {
+    return ["Service Details", "Documents", "Eligibility", "Apply Process"];
   }
   if (value.includes("admission")) {
     return ["Course Details", "Eligibility", "Important Dates", "Apply Procedure"];
