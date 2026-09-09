@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
 import StructuredData from "@/components/StructuredData";
@@ -107,9 +108,15 @@ export default async function RootLayout({
         <StructuredData />
         <GoogleAnalytics />
         <SiteShell initialSettings={settings}>{children}</SiteShell>
-{process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
-  <NextGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
-) : null}
+        {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
+          <NextGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+        ) : null}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9732312061343542"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
