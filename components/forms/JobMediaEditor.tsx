@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "@/lib/firebase";
+import {
+  getImageUploadErrorMessage,
+  uploadImageFile,
+} from "@/lib/clientImageUpload";
 
 type JobMediaEditorProps = {
   imageUrl: string;
@@ -27,50 +29,19 @@ export default function JobMediaEditor({
   const [uploadError, setUploadError] = useState("");
 
   const uploadImage = async (file?: File) => {
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setUploadError("Please select a valid image file.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError("Image size must be 5 MB or less.");
-      return;
-    }
-
     try {
       setUploading(true);
       onUploadingChange?.(true);
       setUploadError("");
-
-      const safeName = file.name
-        .toLowerCase()
-        .replace(/[^a-z0-9.]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      const imageRef = ref(
-        storage,
-        `job-banners/${Date.now()}-${safeName || "job-banner"}`
+      onImageUrlChange(
+        await uploadImageFile(file, {
+          folder: "job-banners",
+          fallbackName: "job-banner",
+        })
       );
-
-      await uploadBytes(imageRef, file, {
-        contentType: file.type,
-      });
-
-      const downloadUrl = await getDownloadURL(imageRef);
-      onImageUrlChange(downloadUrl);
     } catch (error) {
       console.error(error);
-      const errorCode =
-        typeof error === "object" && error && "code" in error
-          ? String((error as { code?: unknown }).code || "")
-          : "";
-
-      setUploadError(
-        errorCode === "storage/unauthorized"
-          ? "Image upload was blocked by Firebase Storage permission. Paste a direct image URL for now, or update the Storage rules."
-          : "Image upload failed. Please retry or paste a direct image URL."
-      );
+      setUploadError(getImageUploadErrorMessage(error));
     } finally {
       setUploading(false);
       onUploadingChange?.(false);
@@ -96,7 +67,10 @@ export default function JobMediaEditor({
               type="file"
               accept="image/*"
               disabled={uploading}
-              onChange={(event) => uploadImage(event.target.files?.[0])}
+              onChange={(event) => {
+                uploadImage(event.target.files?.[0]);
+                event.currentTarget.value = "";
+              }}
             />
             <small>{uploading ? "Uploading image…" : "Maximum size: 5 MB"}</small>
           </label>

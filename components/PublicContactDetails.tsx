@@ -1,48 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { siteConfig } from "@/lib/siteConfig";
-
-type PublicContact = {
-  email: string;
-  phone: string;
-  address: string;
-};
-
-const fallbackContact: PublicContact = {
-  email: siteConfig.contact.email,
-  phone: "",
-  address: siteConfig.contact.address || "Odisha",
-};
-
-function readText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
+import { usePublicSiteSettings } from "@/components/public/PublicSiteSettingsProvider";
 
 function usePublicContact() {
-  const [contact, setContact] = useState<PublicContact>(fallbackContact);
+  const settings = usePublicSiteSettings();
 
-  useEffect(() => {
-    getDoc(doc(db, "siteSettings", "main"))
-      .then((snapshot) => {
-        if (!snapshot.exists()) return;
-
-        const data = snapshot.data();
-        setContact((current) => ({
-          email: readText(data.email) || current.email,
-          phone: readText(data.phone) || current.phone,
-          address: readText(data.address) || current.address,
-        }));
-      })
-      .catch((error) => {
-        console.warn("Public contact settings unavailable; using safe defaults", error);
-      });
-  }, []);
-
-  return contact;
+  return {
+    email: settings.email,
+    phone: settings.phone,
+    address: settings.address,
+  };
 }
 
 export function PublicContactEmail() {

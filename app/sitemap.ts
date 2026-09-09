@@ -7,8 +7,7 @@ import {
   isPublishedPublicPost,
 } from "@/lib/publicPostQuality";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
 
 const STATIC_ROUTES = [
   "/",
@@ -16,7 +15,11 @@ const STATIC_ROUTES = [
   "/results",
   "/admissions",
   "/admit-cards",
+  "/schemes",
   "/citizen-services",
+  "/tools",
+  "/tools/pdf-tools",
+  "/tools/image-tools",
   "/about",
   "/contact",
   "/privacy-policy",
@@ -35,6 +38,10 @@ const PUBLIC_POST_COLLECTIONS = [
   "admitcards",
   "results",
   "result",
+  "schemes",
+  "scheme",
+  "governmentSchemes",
+  "government-schemes",
 ];
 
 function getBaseUrl() {
@@ -65,7 +72,6 @@ function getPostRoute(data: any, id: string) {
 
   if (
     category === "tools" ||
-    category === "schemes" ||
     category === "scheme-category" ||
     category === "pdf-tools" ||
     category === "image-tools"

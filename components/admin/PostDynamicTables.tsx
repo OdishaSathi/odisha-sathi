@@ -14,346 +14,192 @@ type PostDynamicTablesProps = {
   importantLinks: ImportantLinkRow[];
   onDatesChange: (rows: ImportantDateRow[]) => void;
   onLinksChange: (rows: ImportantLinkRow[]) => void;
+  enableOdia?: boolean;
 };
+
+const DATE_PRESETS = [
+  "Application Start Date",
+  "Last Date",
+  "Admit Card Date",
+  "Exam Date",
+  "Result Date",
+  "Custom",
+];
+
+const LINK_PRESETS = [
+  "Apply Online",
+  "Official Notification",
+  "Official Website",
+  "Download PDF",
+  "Download Admit Card",
+  "Check Result",
+  "Custom",
+];
 
 export default function PostDynamicTables({
   importantDates,
   importantLinks,
   onDatesChange,
   onLinksChange,
+  enableOdia = false,
 }: PostDynamicTablesProps) {
-  function updateDateRow(
-    id: string,
-    field: keyof ImportantDateRow,
-    value: string
-  ) {
+  function updateDateRow(id: string, field: keyof ImportantDateRow, value: string) {
     onDatesChange(
       importantDates.map((row) => {
         if (row.id !== id) return row;
-
         if (field === "type") {
-          return {
-            ...row,
-            type: value,
-            label: value === "Custom" ? "" : value,
-          };
+          return { ...row, type: value, label: value === "Custom" ? "" : value };
         }
-
-        return {
-          ...row,
-          [field]: value,
-        };
+        return { ...row, [field]: value };
       })
     );
   }
 
-  function updateLinkRow(
-    id: string,
-    field: keyof ImportantLinkRow,
-    value: string
-  ) {
+  function updateLinkRow(id: string, field: keyof ImportantLinkRow, value: string) {
     onLinksChange(
       importantLinks.map((row) => {
         if (row.id !== id) return row;
-
         if (field === "type") {
-          return {
-            ...row,
-            type: value,
-            label: value === "Custom" ? "" : value,
-          };
+          return { ...row, type: value, label: value === "Custom" ? "" : value };
         }
-
-        return {
-          ...row,
-          [field]: value,
-        };
+        return { ...row, [field]: value };
       })
     );
   }
 
-  function removeDateRow(id: string) {
-    onDatesChange(importantDates.filter((row) => row.id !== id));
+  function addDate(type = "Application Start Date") {
+    const row = createEmptyDateRow();
+    row.type = type;
+    row.label = type === "Custom" ? "" : type;
+    onDatesChange([...importantDates, row]);
   }
 
-  function removeLinkRow(id: string) {
-    onLinksChange(importantLinks.filter((row) => row.id !== id));
+  function addLink(type = "Apply Online") {
+    const row = createEmptyLinkRow();
+    row.type = type;
+    row.label = type === "Custom" ? "" : type;
+    onLinksChange([...importantLinks, row]);
   }
 
   return (
-    <div style={{ display: "grid", gap: "22px" }}>
-      <section style={sectionStyle}>
-        <div style={sectionHeaderStyle}>
+    <div className="dynamic-admin-wrap" data-admin-section="dates-links">
+      <section className="dynamic-admin-section">
+        <div className="dynamic-admin-head">
           <div>
-            <h3 style={sectionTitleStyle}>Important Dates</h3>
-            <p style={sectionTextStyle}>
-              Select date type and enter date/value. Use Custom for special
-              labels.
-            </p>
+            <h3>Important Dates</h3>
+            <p>Quick-add a common date or choose any type in the row.</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onDatesChange([...importantDates, createEmptyDateRow()])}
-            style={addButtonStyle}
-          >
-            + Add Date
+          <button type="button" className="dynamic-primary" onClick={() => addDate()}>
+            + Date
           </button>
         </div>
 
-        <div style={{ display: "grid", gap: "12px" }}>
-          {importantDates.length === 0 ? (
-            <p style={emptyTextStyle}>No date rows added.</p>
-          ) : null}
+        <div className="dynamic-presets" aria-label="Quick date presets">
+          {DATE_PRESETS.map((type) => (
+            <button type="button" key={type} onClick={() => addDate(type)}>
+              + {type.replace("Application ", "").replace(" Date", "")}
+            </button>
+          ))}
+        </div>
 
+        <div className="dynamic-row-list">
+          {importantDates.length === 0 ? <p className="dynamic-empty">No date rows added.</p> : null}
           {importantDates.map((row, index) => (
-            <div key={row.id} style={rowCardStyle}>
-              <div style={rowTopStyle}>
-                <strong style={{ color: "#0f172a" }}>Date Row {index + 1}</strong>
-
-                <button
-                  type="button"
-                  onClick={() => removeDateRow(row.id)}
-                  style={removeButtonStyle}
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div style={gridStyle}>
-                <label style={labelStyle}>
+            <details className="dynamic-row-card" key={row.id} open={!row.value.trim()}>
+              <summary>
+                <strong>{row.label || row.type || `Date ${index + 1}`}</strong>
+                <span>{row.value || "Add value"}</span>
+              </summary>
+              <div className="dynamic-row-body">
+                <label>
                   Date Type
-                  <select
-                    value={row.type}
-                    onChange={(e) =>
-                      updateDateRow(row.id, "type", e.target.value)
-                    }
-                    style={inputStyle}
-                  >
-                    {DATE_TYPE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
+                  <select value={row.type} onChange={(e) => updateDateRow(row.id, "type", e.target.value)}>
+                    {DATE_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </label>
-
                 {row.type === "Custom" ? (
-                  <label style={labelStyle}>
-                    Custom Date Label
-                    <input
-                      value={row.label}
-                      onChange={(e) =>
-                        updateDateRow(row.id, "label", e.target.value)
-                      }
-                      placeholder="Example: Online Form Reopen Date"
-                      style={inputStyle}
-                    />
+                  <label>
+                    Custom Label
+                    <input value={row.label} onChange={(e) => updateDateRow(row.id, "label", e.target.value)} placeholder="Example: Online Form Reopen Date" />
                   </label>
                 ) : null}
-
-                <label style={labelStyle}>
+                <label>
                   Date / Value
-                  <input
-                    value={row.value}
-                    onChange={(e) =>
-                      updateDateRow(row.id, "value", e.target.value)
-                    }
-                    placeholder="Example: 30-07-2026 or Coming Soon"
-                    style={inputStyle}
-                  />
+                  <input value={row.value} onChange={(e) => updateDateRow(row.id, "value", e.target.value)} placeholder="30-07-2026 or Coming Soon" />
                 </label>
+                {enableOdia ? (
+                  <label>
+                    ଓଡ଼ିଆ Label <small>(optional)</small>
+                    <input value={row.labelOdia || ""} onChange={(e) => updateDateRow(row.id, "labelOdia", e.target.value)} placeholder="English label is used when blank" />
+                  </label>
+                ) : null}
+                <button type="button" className="dynamic-danger" onClick={() => onDatesChange(importantDates.filter((item) => item.id !== row.id))}>Remove</button>
               </div>
-            </div>
+            </details>
           ))}
         </div>
       </section>
 
-      <section style={sectionStyle}>
-        <div style={sectionHeaderStyle}>
+      <section className="dynamic-admin-section">
+        <div className="dynamic-admin-head">
           <div>
-            <h3 style={sectionTitleStyle}>Important Links</h3>
-            <p style={sectionTextStyle}>
-              Select link type and paste URL. Use Custom for special link names.
-            </p>
+            <h3>Important Links</h3>
+            <p>Choose a preset and paste the URL. Labels fill automatically.</p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onLinksChange([...importantLinks, createEmptyLinkRow()])}
-            style={addButtonStyle}
-          >
-            + Add Link
+          <button type="button" className="dynamic-primary" onClick={() => addLink()}>
+            + Link
           </button>
         </div>
 
-        <div style={{ display: "grid", gap: "12px" }}>
-          {importantLinks.length === 0 ? (
-            <p style={emptyTextStyle}>No link rows added.</p>
-          ) : null}
+        <div className="dynamic-presets" aria-label="Quick link presets">
+          {LINK_PRESETS.map((type) => (
+            <button type="button" key={type} onClick={() => addLink(type)}>
+              + {type.replace("Official ", "").replace("Download ", "")}
+            </button>
+          ))}
+        </div>
 
+        <div className="dynamic-row-list">
+          {importantLinks.length === 0 ? <p className="dynamic-empty">No link rows added.</p> : null}
           {importantLinks.map((row, index) => (
-            <div key={row.id} style={rowCardStyle}>
-              <div style={rowTopStyle}>
-                <strong style={{ color: "#0f172a" }}>Link Row {index + 1}</strong>
-
-                <button
-                  type="button"
-                  onClick={() => removeLinkRow(row.id)}
-                  style={removeButtonStyle}
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div style={gridStyle}>
-                <label style={labelStyle}>
+            <details className="dynamic-row-card" key={row.id} open={!row.url.trim()}>
+              <summary>
+                <strong>{row.label || row.type || `Link ${index + 1}`}</strong>
+                <span>{row.url ? "URL added" : "Add URL"}</span>
+              </summary>
+              <div className="dynamic-row-body">
+                <label>
                   Link Type
-                  <select
-                    value={row.type}
-                    onChange={(e) =>
-                      updateLinkRow(row.id, "type", e.target.value)
-                    }
-                    style={inputStyle}
-                  >
-                    {LINK_TYPE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
+                  <select value={row.type} onChange={(e) => updateLinkRow(row.id, "type", e.target.value)}>
+                    {LINK_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
                   </select>
                 </label>
-
                 {row.type === "Custom" ? (
-                  <label style={labelStyle}>
-                    Custom Link Label
-                    <input
-                      value={row.label}
-                      onChange={(e) =>
-                        updateLinkRow(row.id, "label", e.target.value)
-                      }
-                      placeholder="Example: District Wise Vacancy"
-                      style={inputStyle}
-                    />
+                  <label>
+                    Custom Label
+                    <input value={row.label} onChange={(e) => updateLinkRow(row.id, "label", e.target.value)} placeholder="Example: District Wise Vacancy" />
                   </label>
                 ) : null}
-
-                <label style={labelStyle}>
+                <label>
                   Link URL
-                  <input
-                    value={row.url}
-                    onChange={(e) =>
-                      updateLinkRow(row.id, "url", e.target.value)
-                    }
-                    placeholder="https://example.com"
-                    style={inputStyle}
-                  />
+                  <input type="url" value={row.url} onChange={(e) => updateLinkRow(row.id, "url", e.target.value)} placeholder="https://example.com" />
                 </label>
+                {enableOdia ? (
+                  <label>
+                    ଓଡ଼ିଆ Label <small>(optional)</small>
+                    <input value={row.labelOdia || ""} onChange={(e) => updateLinkRow(row.id, "labelOdia", e.target.value)} placeholder="English label is used when blank" />
+                  </label>
+                ) : null}
+                <button type="button" className="dynamic-danger" onClick={() => onLinksChange(importantLinks.filter((item) => item.id !== row.id))}>Remove</button>
               </div>
-            </div>
+            </details>
           ))}
         </div>
       </section>
+
+      <style jsx>{`
+        .dynamic-admin-wrap{display:grid;gap:12px}.dynamic-admin-section{border:1px solid #e5e7eb;border-radius:13px;background:#fff;padding:12px}.dynamic-admin-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}.dynamic-admin-head h3{margin:0;color:#0f172a;font-size:16px;font-weight:900}.dynamic-admin-head p{margin:3px 0 0;color:#64748b;font-size:12px}.dynamic-primary,.dynamic-presets button,.dynamic-danger{border:1px solid #cbd5e1;border-radius:999px;padding:7px 10px;background:#fff;color:#1d4ed8;font-size:12px;font-weight:850;cursor:pointer}.dynamic-primary{border-color:#2563eb;background:#2563eb;color:#fff}.dynamic-danger{border-color:#fecaca;background:#fff1f2;color:#be123c}.dynamic-presets{display:flex;gap:6px;overflow-x:auto;padding:9px 0 2px;scrollbar-width:thin}.dynamic-presets button{flex:0 0 auto;background:#f8fafc}.dynamic-row-list{display:grid;gap:8px;margin-top:10px}.dynamic-row-card{border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;overflow:hidden}.dynamic-row-card summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;cursor:pointer}.dynamic-row-card summary::-webkit-details-marker{display:none}.dynamic-row-card summary strong{font-size:12.5px;color:#0f172a}.dynamic-row-card summary span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b;font-size:11.5px}.dynamic-row-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;padding:9px;border-top:1px solid #e2e8f0;background:#fff}.dynamic-row-body label{display:grid;gap:4px;color:#334155;font-size:12px;font-weight:800}.dynamic-row-body small{color:#64748b}.dynamic-row-body input,.dynamic-row-body select{width:100%;box-sizing:border-box;min-height:38px;border:1px solid #cbd5e1;border-radius:8px;padding:7px 9px;background:#fff;color:#0f172a;font:inherit}.dynamic-row-body .dynamic-danger{align-self:end}.dynamic-empty{margin:0;padding:9px;border-radius:8px;background:#f8fafc;color:#64748b;font-size:12px}@media(max-width:600px){.dynamic-admin-section{padding:10px}.dynamic-primary{min-width:72px}.dynamic-row-body{grid-template-columns:1fr}.dynamic-row-body .dynamic-danger{width:100%}}
+      `}</style>
     </div>
   );
 }
-
-const sectionStyle: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
-  borderRadius: "18px",
-  background: "#ffffff",
-  padding: "16px",
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: "12px",
-  flexWrap: "wrap",
-  marginBottom: "14px",
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  margin: 0,
-  fontSize: "18px",
-  fontWeight: 900,
-  color: "#111827",
-};
-
-const sectionTextStyle: React.CSSProperties = {
-  margin: "5px 0 0",
-  fontSize: "13px",
-  color: "#64748b",
-  lineHeight: 1.45,
-};
-
-const addButtonStyle: React.CSSProperties = {
-  border: "none",
-  borderRadius: "999px",
-  background: "#2563eb",
-  color: "#ffffff",
-  padding: "9px 14px",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const removeButtonStyle: React.CSSProperties = {
-  border: "1px solid #fecaca",
-  borderRadius: "999px",
-  background: "#fff1f2",
-  color: "#be123c",
-  padding: "7px 11px",
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const rowCardStyle: React.CSSProperties = {
-  border: "1px solid #e5e7eb",
-  borderRadius: "14px",
-  background: "#f8fafc",
-  padding: "12px",
-};
-
-const rowTopStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  gap: "10px",
-  alignItems: "center",
-  marginBottom: "10px",
-};
-
-const gridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "12px",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "6px",
-  fontSize: "13px",
-  fontWeight: 800,
-  color: "#334155",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: "42px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "12px",
-  padding: "9px 11px",
-  fontSize: "14px",
-  color: "#0f172a",
-  background: "#ffffff",
-  outline: "none",
-};
-
-const emptyTextStyle: React.CSSProperties = {
-  margin: 0,
-  padding: "12px",
-  borderRadius: "12px",
-  background: "#f8fafc",
-  color: "#64748b",
-  fontSize: "14px",
-};

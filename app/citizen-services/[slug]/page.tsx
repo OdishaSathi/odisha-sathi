@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import {
   collection,
   doc,
@@ -23,9 +24,11 @@ import {
   normalizeFlexibleDetailSections,
 } from "@/lib/flexibleDetails";
 import { isPublicDetailPost } from "@/lib/publicPostQuality";
+import { getPublicLinkAction } from "@/lib/publicLinkLabels";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ lang?: string | string[] }>;
 };
 
 function cleanText(value: unknown, limitLength = 160) {
@@ -51,6 +54,9 @@ function normalizeService(data: any, id: string): CitizenServicePost {
       : [],
     shortDescription: String(data.shortDescription || "").trim(),
     description: String(data.description || data.content || "").trim(),
+    titleOdia: String(data.titleOdia || data.odiaTitle || "").trim(),
+    shortDescriptionOdia: String(data.shortDescriptionOdia || data.odiaShortDescription || "").trim(),
+    descriptionOdia: String(data.descriptionOdia || data.odiaDescription || "").trim(),
     notificationNumber: String(
       data.notificationNumber || data.notificationNo || ""
     ).trim(),
@@ -70,6 +76,18 @@ function normalizeService(data: any, id: string): CitizenServicePost {
     howToApply: String(
       data.howToApply || data.applicationProcess || ""
     ).trim(),
+    eligibilityOdia: String(
+      data.eligibilityOdia ||
+        data.odiaEligibility ||
+        data.eligibility_odia ||
+        data.eligibilityOR ||
+        data.odia?.eligibility ||
+        ""
+    ).trim(),
+    feesOdia: String(data.feesOdia || data.odiaFees || data.fees_odia || data.odia?.fees || "").trim(),
+    howToApplyOdia: String(
+      data.howToApplyOdia || data.odiaHowToApply || data.howToApply_odia || data.odia?.howToApply || ""
+    ).trim(),
     youtubeUrl: String(data.youtubeUrl || "").trim(),
     youtubeUrl2: String(
       data.youtubeUrl2 ||
@@ -86,6 +104,8 @@ function normalizeService(data: any, id: string): CitizenServicePost {
       : [],
     shareTitle: String(data.shareTitle || "").trim(),
     shareDescription: String(data.shareDescription || "").trim(),
+    shareTitleOdia: String(data.shareTitleOdia || data.odiaShareTitle || "").trim(),
+    shareDescriptionOdia: String(data.shareDescriptionOdia || data.odiaShareDescription || "").trim(),
     status: "published",
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || null,
@@ -217,7 +237,8 @@ export async function generateMetadata({
       post?.description ||
       "Citizen Services from Odisha Sathi."
   );
-  const canonical = `/citizen-services/${encodeURIComponent(slug)}`;
+  const canonicalSlug = post?.slug || post?.id || decodeURIComponent(slug);
+  const canonical = `/citizen-services/${encodeURIComponent(canonicalSlug)}`;
 
   return {
     title,
@@ -267,27 +288,145 @@ function YouTubeThumbnail({
 
 export default async function CitizenServiceDetailPage({
   params,
+  searchParams,
 }: PageProps) {
   const { slug } = await params;
+  const queryParams = searchParams ? await searchParams : undefined;
+  const rawLanguage = Array.isArray(queryParams?.lang) ? queryParams?.lang[0] : queryParams?.lang;
+  const useOdia = rawLanguage === "odia" || rawLanguage === "or";
   const post = await getService(slug);
 
   if (!post) {
-    return (
-      <main className="service-detail-page">
-        <div className="service-detail-container">
-          <div className="service-empty">
-            <h1>Citizen Service not found</h1>
-            <Link href="/citizen-services">Back to Citizen Services</Link>
-          </div>
-        </div>
-        <ServiceStyles />
-      </main>
+    notFound();
+  }
+
+  const requestedSlug = decodeURIComponent(slug).trim();
+  const canonicalSlug = String(post.slug || post.id || requestedSlug).trim();
+  if (canonicalSlug && canonicalSlug !== requestedSlug) {
+    redirect(
+      `/citizen-services/${encodeURIComponent(canonicalSlug)}${useOdia ? "?lang=odia" : ""}`
     );
   }
+
+  const localized = (english: unknown, odia: unknown) => {
+    const englishText = String(english || "").trim();
+    if (!useOdia) return englishText;
+    return String(odia || "").trim() || englishText;
+  };
+
+  const ui = useOdia
+    ? {
+        overview: "ସେବା ସଂକ୍ଷିପ୍ତ ବିବରଣୀ",
+        details: "ସେବା ବିବରଣୀ",
+        documents: "ଆବଶ୍ୟକ ଦଲିଲ",
+        eligibility: "ଯୋଗ୍ୟତା / କିଏ ଆବେଦନ କରିପାରିବେ",
+        fees: "ଶୁଳ୍କ / ଚାର୍ଜ",
+        howToApply: "କିପରି ଆବେଦନ କରିବେ",
+        dates: "ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ ତାରିଖ",
+        links: "ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ ଲିଙ୍କ",
+        share: "ଏହି ସେବାଟି ସେୟାର କରନ୍ତୁ",
+        related: "ସମ୍ବନ୍ଧିତ ସେବା",
+        reference: "ବିଜ୍ଞପ୍ତି / ସନ୍ଦର୍ଭ ନଂ.",
+        citizenService: "ନାଗରିକ ସେବା",
+        serial: "କ୍ରମିକ ନଂ.",
+        document: "ଆବଶ୍ୟକ ଦଲିଲ",
+      }
+    : {
+        overview: "Service Overview",
+        details: "Service Details",
+        documents: "Documents Required",
+        eligibility: "Eligibility / Who Can Apply",
+        fees: "Fees / Charges",
+        howToApply: "How to Apply",
+        dates: "Important Dates",
+        links: "Important Links",
+        share: "Share this Citizen Service",
+        related: "Related Services",
+        reference: "Notification / Reference No.",
+        citizenService: "Citizen Service",
+        serial: "Sl. No.",
+        document: "Document Required",
+      };
+
+  const displayTitle = localized(post.title, post.titleOdia);
+  const displayShortDescription = localized(post.shortDescription, post.shortDescriptionOdia);
+  const displayDescription = localized(post.description, post.descriptionOdia);
+  const displayEligibility = localized(post.eligibility, post.eligibilityOdia);
+  const displayFees = localized(post.fees, post.feesOdia);
+  const displayHowToApply = localized(post.howToApply, post.howToApplyOdia);
+
+  const overviewRows = post.overviewRows
+    .map((row) => ({
+      ...row,
+      displayLabel: localized(row.label, row.labelOdia),
+      displayValue: localized(row.value, row.valueOdia),
+    }))
+    .filter((row) => Boolean(row.displayValue));
+
+  const contentSections = post.contentSections
+    .map((section) => ({
+      ...section,
+      displayTitle: localized(section.title, section.titleOdia),
+      displayContent: localized(section.content, section.contentOdia),
+    }))
+    .filter((section) => {
+      const hasImages = (section.imageUrls || []).some((url) => Boolean(String(url || "").trim()));
+      return Boolean(section.displayContent) || hasImages;
+    });
+
+  const dataTables = post.dataTables
+    .map((table) => {
+      const displayColumns = (table.columns || []).map((column, index) =>
+        localized(column, table.columnsOdia?.[index])
+      );
+      const displayRows = (table.rows || [])
+        .map((row) => ({
+          ...row,
+          displayCells: displayColumns.map((_, index) =>
+            localized(row.cells?.[index], row.cellsOdia?.[index])
+          ),
+        }))
+        .filter((row) => row.displayCells.some(Boolean));
+      return {
+        ...table,
+        displayTitle: localized(table.title, table.titleOdia),
+        displayNote: localized(table.note, table.noteOdia),
+        displayColumns,
+        displayRows,
+      };
+    })
+    .filter((table) =>
+      Boolean(String(table.imageUrl || "").trim()) ||
+      Boolean(table.displayNote) ||
+      table.displayRows.length > 0
+    );
+
+  const documents = post.documentsRequired
+    .map((document) => ({
+      ...document,
+      displayName: localized(document.name, document.nameOdia),
+    }))
+    .filter((document) => Boolean(document.displayName));
+
+  const importantDates = post.importantDates
+    .map((row) => ({
+      ...row,
+      displayLabel: localized(row.label || row.type, row.labelOdia),
+    }))
+    .filter((row) => Boolean(String(row.value || "").trim()));
+
+  const importantLinks = post.importantLinks
+    .map((row) => ({
+      ...row,
+      displayLabel: localized(row.label || row.type, row.labelOdia),
+    }))
+    .filter((row) => Boolean(String(row.url || "").trim()));
 
   const related = await getRelatedServices(post);
   const previewImage = getPreviewImage(post);
   const shareUrl = `https://odishasathi.in/citizen-services/${post.slug || post.id}`;
+  const englishHref = `/citizen-services/${encodeURIComponent(canonicalSlug)}`;
+  const odiaHref = `${englishHref}?lang=odia`;
 
   return (
     <main className="service-detail-page">
@@ -297,17 +436,24 @@ export default async function CitizenServiceDetailPage({
           <span>/</span>
           <Link href="/citizen-services">Citizen Services</Link>
           <span>/</span>
-          <span>{post.title}</span>
+          <span>{displayTitle}</span>
         </nav>
+
+        <div className="service-language-switch" aria-label="Citizen Service language">
+          <span aria-hidden="true">🌐</span>
+          <Link href={englishHref} className={!useOdia ? "active" : ""}>English</Link>
+          <span className="service-language-divider">|</span>
+          <Link href={odiaHref} className={useOdia ? "active" : ""}>ଓଡ଼ିଆ</Link>
+        </div>
 
         <article className="service-detail-shell">
           <header>
-            <span>{post.subCategoryLabel || "Citizen Service"}</span>
-            <h1>{post.title}</h1>
-            {post.shortDescription ? <p>{post.shortDescription}</p> : null}
+            <span>{post.subCategoryLabel || ui.citizenService}</span>
+            <h1>{displayTitle}</h1>
+            {displayShortDescription ? <p>{displayShortDescription}</p> : null}
             {post.notificationNumber ? (
               <small>
-                Notification / Reference No.:{" "}
+                {ui.reference}: {" "}
                 <strong>{post.notificationNumber}</strong>
               </small>
             ) : null}
@@ -315,105 +461,109 @@ export default async function CitizenServiceDetailPage({
 
           <div className="service-main">
             <div className="service-preview">
-              <img src={previewImage} alt={`${post.title} preview`} />
+              <img src={previewImage} alt={`${displayTitle} preview`} />
             </div>
 
-            {post.overviewRows.length > 0 ? (
+            {overviewRows.length > 0 ? (
               <section className="service-section">
-                <SectionTitle title="Service Overview" />
+                <SectionTitle title={ui.overview} />
                 <div className="service-overview-table">
-                  {post.overviewRows.map((row) => (
+                  {overviewRows.map((row) => (
                     <div key={row.id}>
-                      <span>{row.label}</span>
-                      <strong>{row.value || "—"}</strong>
+                      {row.displayLabel ? <span>{row.displayLabel}</span> : <span />}
+                      <strong>{row.displayValue}</strong>
                     </div>
                   ))}
                 </div>
               </section>
             ) : null}
 
-            <YouTubeThumbnail url={post.youtubeUrl} title={post.title} />
+            <YouTubeThumbnail url={post.youtubeUrl} title={displayTitle} />
 
-            {post.description ? (
+            {displayDescription ? (
               <section className="service-section">
-                <SectionTitle title="Service Details" />
-                <div className="service-text">{post.description}</div>
+                <SectionTitle title={ui.details} />
+                <div className="service-text">{displayDescription}</div>
               </section>
             ) : null}
 
-            {post.contentSections.map((section, index) => (
+            {contentSections.map((section, index) => (
               <section className="service-section" key={section.id || index}>
-                <SectionTitle title={section.title || `Details ${index + 1}`} />
+                {section.displayTitle ? <SectionTitle title={section.displayTitle} /> : null}
                 {section.imageUrls.length > 0 ? (
                   <div className="service-images">
                     {section.imageUrls.map((url, imageIndex) => (
                       <img
                         src={url}
-                        alt={`${section.title || post.title} image ${imageIndex + 1}`}
+                        alt={`${section.displayTitle || displayTitle} image ${imageIndex + 1}`}
                         key={`${url}-${imageIndex}`}
                       />
                     ))}
                   </div>
                 ) : null}
-                {section.content ? (
-                  <div className="service-text">{section.content}</div>
+                {section.displayContent ? (
+                  <div className="service-text">{section.displayContent}</div>
                 ) : null}
               </section>
             ))}
 
-            {post.dataTables.map((table, index) => (
-              <section className="service-section" key={table.id || index}>
-                <SectionTitle title={table.title || `Data Table ${index + 1}`} />
-                {table.imageUrl ? (
-                  <div className="service-images">
-                    <img src={table.imageUrl} alt={`${table.title} reference`} />
-                  </div>
-                ) : null}
-                {table.rows.length > 0 ? (
-                  <div className="service-table-scroll">
-                    <table>
-                      <thead>
-                        <tr>
-                          {table.columns.map((column, columnIndex) => (
-                            <th key={columnIndex}>
-                              {column || `Column ${columnIndex + 1}`}
-                            </th>
+            {dataTables.map((table, index) => {
+              const showHeader = table.displayColumns.some(Boolean);
+              return (
+                <section className="service-section" key={table.id || index}>
+                  {table.displayTitle ? <SectionTitle title={table.displayTitle} /> : null}
+                  {table.imageUrl ? (
+                    <div className="service-images">
+                      <img src={table.imageUrl} alt={`${table.displayTitle || displayTitle} reference`} />
+                    </div>
+                  ) : null}
+                  {table.displayRows.length > 0 ? (
+                    <div className="service-table-scroll">
+                      <table>
+                        {showHeader ? (
+                          <thead>
+                            <tr>
+                              {table.displayColumns.map((column, columnIndex) => (
+                                <th key={columnIndex}>{column}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                        ) : null}
+                        <tbody>
+                          {table.displayRows.map((row) => (
+                            <tr key={row.id}>
+                              {row.displayCells.map((cell, cellIndex) => (
+                                <td key={cellIndex}>{cell}</td>
+                              ))}
+                            </tr>
                           ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {table.rows.map((row) => (
-                          <tr key={row.id}>
-                            {table.columns.map((_, cellIndex) => (
-                              <td key={cellIndex}>
-                                {row.cells[cellIndex] || "—"}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : null}
-              </section>
-            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                  {table.displayNote ? (
+                    <div className="service-table-note">{table.displayNote}</div>
+                  ) : null}
+                </section>
+              );
+            })}
 
-            {post.documentsRequired.length > 0 ? (
+            {documents.length > 0 ? (
               <section className="service-section">
-                <SectionTitle title="Documents Required" />
+                <SectionTitle title={ui.documents} />
                 <div className="service-table-scroll compact">
                   <table>
                     <thead>
                       <tr>
-                        <th>Sl. No.</th>
-                        <th>Document Required</th>
+                        <th>{ui.serial}</th>
+                        <th>{ui.document}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {post.documentsRequired.map((document, index) => (
+                      {documents.map((document, index) => (
                         <tr key={document.id}>
                           <td>{index + 1}</td>
-                          <td>{document.name}</td>
+                          <td>{document.displayName}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -422,36 +572,36 @@ export default async function CitizenServiceDetailPage({
               </section>
             ) : null}
 
-            {post.eligibility ? (
+            {displayEligibility ? (
               <section className="service-section">
-                <SectionTitle title="Eligibility / Who Can Apply" />
-                <div className="service-text">{post.eligibility}</div>
+                <SectionTitle title={ui.eligibility} />
+                <div className="service-text">{displayEligibility}</div>
               </section>
             ) : null}
 
-            {post.fees ? (
+            {displayFees ? (
               <section className="service-section">
-                <SectionTitle title="Fees / Charges" />
-                <div className="service-text">{post.fees}</div>
+                <SectionTitle title={ui.fees} />
+                <div className="service-text">{displayFees}</div>
               </section>
             ) : null}
 
-            {post.howToApply ? (
+            {displayHowToApply ? (
               <section className="service-section">
-                <SectionTitle title="How to Apply" />
-                <div className="service-text">{post.howToApply}</div>
+                <SectionTitle title={ui.howToApply} />
+                <div className="service-text">{displayHowToApply}</div>
               </section>
             ) : null}
 
-            <YouTubeThumbnail url={post.youtubeUrl2} title={post.title} />
+            <YouTubeThumbnail url={post.youtubeUrl2} title={displayTitle} />
 
-            {post.importantDates.length > 0 ? (
+            {importantDates.length > 0 ? (
               <section className="service-section">
-                <SectionTitle title="Important Dates" />
+                <SectionTitle title={ui.dates} />
                 <div className="service-simple-list">
-                  {post.importantDates.map((row, index) => (
+                  {importantDates.map((row, index) => (
                     <div key={row.id || index}>
-                      <span>{row.label || row.type || "Date"}</span>
+                      <span>{row.displayLabel}</span>
                       <strong>{row.value}</strong>
                     </div>
                   ))}
@@ -459,19 +609,19 @@ export default async function CitizenServiceDetailPage({
               </section>
             ) : null}
 
-            {post.importantLinks.length > 0 ? (
+            {importantLinks.length > 0 ? (
               <section className="service-section">
-                <SectionTitle title="Important Links" />
+                <SectionTitle title={ui.links} />
                 <div className="service-link-list">
-                  {post.importantLinks.map((row, index) => (
+                  {importantLinks.map((row, index) => (
                     <a
                       key={row.id || index}
                       href={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span>{row.label || row.type || "Official Link"}</span>
-                      <strong>Open Link</strong>
+                      <span>{row.displayLabel}</span>
+                      <strong>{getPublicLinkAction(row)}</strong>
                     </a>
                   ))}
                 </div>
@@ -479,26 +629,27 @@ export default async function CitizenServiceDetailPage({
             ) : null}
 
             <section className="service-share">
-              <h2>Share this Citizen Service</h2>
+              <h2>{ui.share}</h2>
               <SocialShareButtons
-                title={post.shareTitle || post.title}
-                description={
-                  post.shareDescription || post.shortDescription
-                }
+                title={localized(post.shareTitle || post.title, post.shareTitleOdia || post.titleOdia)}
+                description={localized(
+                  post.shareDescription || post.shortDescription,
+                  post.shareDescriptionOdia || post.shortDescriptionOdia
+                )}
                 postUrl={shareUrl}
               />
             </section>
 
             {related.length > 0 ? (
               <section className="service-section">
-                <SectionTitle title="Related Services" />
+                <SectionTitle title={ui.related} />
                 <div className="service-related-list">
                   {related.map((item: any) => (
                     <Link
-                      href={`/citizen-services/${item.slug || item.id}`}
+                      href={`/citizen-services/${item.slug || item.id}${useOdia ? "?lang=odia" : ""}`}
                       key={item.id}
                     >
-                      {item.title}
+                      {useOdia && String(item.titleOdia || "").trim() ? item.titleOdia : item.title}
                     </Link>
                   ))}
                 </div>
@@ -545,6 +696,37 @@ function ServiceStyles() {
         color: #1d4ed8;
         font-weight: 800;
         text-decoration: none;
+      }
+      .service-language-switch {
+        position: sticky;
+        top: 8px;
+        z-index: 20;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 7px;
+        width: fit-content;
+        max-width: 100%;
+        margin: 0 0 9px auto;
+        padding: 6px 9px;
+        border: 1px solid #dbeafe;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(8px);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .service-language-switch a {
+        color: #64748b;
+        font-weight: 900;
+        text-decoration: none;
+      }
+      .service-language-switch a.active {
+        color: #1d4ed8;
+      }
+      .service-language-divider {
+        color: #cbd5e1;
       }
       .service-detail-shell,
       .service-empty {
@@ -705,8 +887,9 @@ function ServiceStyles() {
       }
       .service-table-scroll table {
         width: 100%;
-        min-width: 520px;
+        min-width: 560px;
         border-collapse: collapse;
+        table-layout: auto;
       }
       .service-table-scroll.compact table {
         min-width: 420px;
@@ -724,8 +907,21 @@ function ServiceStyles() {
         color: #115e59;
         font-size: 13px;
       }
+      .service-table-note {
+        margin: -4px 14px 14px;
+        padding: 9px 11px;
+        border-left: 3px solid #0f766e;
+        border-radius: 7px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-line;
+      }
       .service-share {
         padding: 12px 13px;
+        overflow: visible;
+        min-width: 0;
         background: linear-gradient(135deg, #f0fdf4, #eff6ff);
       }
       .service-share > div {
@@ -760,20 +956,30 @@ function ServiceStyles() {
           padding: 8px 9px;
         }
         .service-table-scroll {
-          overflow-x: visible;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
           padding: 8px;
         }
-        .service-table-scroll table,
+        .service-table-scroll table {
+          min-width: 560px;
+          table-layout: auto;
+        }
         .service-table-scroll.compact table {
-          min-width: 0;
-          table-layout: fixed;
+          min-width: 390px;
         }
         .service-table-scroll th,
         .service-table-scroll td {
-          padding: 7px 5px;
+          padding: 7px 8px;
           font-size: 11.5px;
           line-height: 1.35;
-          overflow-wrap: anywhere;
+          overflow-wrap: normal;
+          word-break: normal;
+        }
+        .service-language-switch {
+          top: 6px;
+          margin-bottom: 7px;
+          padding: 5px 8px;
+          font-size: 11.5px;
         }
         .service-share { padding: 11px; }
       }

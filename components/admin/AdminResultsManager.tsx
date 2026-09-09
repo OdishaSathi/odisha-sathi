@@ -11,6 +11,14 @@ import {
 } from "@/lib/results";
 import { ResultPost } from "@/types/result";
 import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
+import {
+  findPublicSlugConflict,
+  formatPublicSlugConflict,
+} from "@/lib/adminSlugGuard";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
 
 export default function AdminResultsManager() {
   const [results, setResults] = useState<ResultPost[]>([]);
@@ -37,6 +45,24 @@ export default function AdminResultsManager() {
   }, []);
 
   const handleCreate = async (data: ResultPost) => {
+    const validationReport = validateAdminContent(
+      {
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        importantDates: data.importantDates,
+        importantLinks: data.importantLinks || data.links,
+      },
+      { expectDescription: true, expectOfficialLink: true }
+    );
+    if (!confirmAdminValidation(validationReport)) return;
+
+    const slugConflict = await findPublicSlugConflict(data.slug);
+    if (slugConflict) {
+      alert(formatPublicSlugConflict(slugConflict));
+      return;
+    }
+
     await addResult(data);
     await loadResults();
     setShowCreateForm(false);
@@ -45,6 +71,27 @@ export default function AdminResultsManager() {
 
   const handleUpdate = async (data: ResultPost) => {
     if (!editingResult?.id) return;
+
+    const validationReport = validateAdminContent(
+      {
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        importantDates: data.importantDates,
+        importantLinks: data.importantLinks || data.links,
+      },
+      { expectDescription: true, expectOfficialLink: true }
+    );
+    if (!confirmAdminValidation(validationReport)) return;
+
+    const slugConflict = await findPublicSlugConflict(data.slug, {
+      collectionName: "results",
+      documentId: editingResult.id,
+    });
+    if (slugConflict) {
+      alert(formatPublicSlugConflict(slugConflict));
+      return;
+    }
 
     await updateResult(editingResult.id, data);
     setEditingResult(null);

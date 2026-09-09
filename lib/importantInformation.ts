@@ -12,6 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 import {
   FlexibleDataTable,
   FlexibleDetailSection,
@@ -22,6 +23,7 @@ import type {
   ImportantDateRow,
   ImportantLinkRow,
 } from "@/lib/postOptions";
+import { normalizePublicImageUrl, toImportantImageProxyUrl } from "@/lib/publicImageUrl";
 
 export type ImportantInfoRow = {
   label: string;
@@ -53,6 +55,8 @@ export type ImportantInfoPost = {
   isFeatured?: boolean;
   featuredOrder?: number;
   status?: string;
+  canonicalLastDate?: string;
+  tickerEndDate?: string;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -107,7 +111,7 @@ export function getImportantInfoDisplayImage(post?: Partial<ImportantInfoPost> |
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
 
-  if (customImage) return customImage;
+  if (customImage) return normalizePublicImageUrl(customImage);
 
   const youtubeThumbnail = getFirstImportantInfoYouTubeThumbnail(post);
 
@@ -126,12 +130,12 @@ export function getImportantInfoOgImage(
   siteUrl = "https://odishasathi.in"
 ) {
   const customImage =
-    post?.previewImageUrl?.trim() ||
     post?.shareImageUrl?.trim() ||
+    post?.previewImageUrl?.trim() ||
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
 
-  if (customImage) return customImage;
+  if (customImage) return toImportantImageProxyUrl(customImage, siteUrl);
 
   const youtubeThumbnail = getFirstImportantInfoYouTubeThumbnail(post);
 
@@ -245,6 +249,8 @@ export function cleanImportantInfoPost(data: any, id?: string): ImportantInfoPos
     isFeatured: Boolean(data.isFeatured),
     featuredOrder: Number(data.featuredOrder || 0),
     status: String(data.status || "published").trim() || "published",
+    canonicalLastDate: String(data.canonicalLastDate || "").trim(),
+    tickerEndDate: String(data.tickerEndDate || data.endDate || "").trim(),
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || null,
   };
@@ -273,6 +279,10 @@ export async function getImportantInformationPost(id: string) {
 export async function createImportantInformationPost(data: ImportantInfoPost) {
   return addDoc(collection(db, IMPORTANT_INFORMATION_COLLECTION), {
     ...data,
+    ...buildAdminPostMetadata({
+      importantDates: data.importantDates,
+      importantLinks: data.importantLinks,
+    }),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -281,6 +291,10 @@ export async function createImportantInformationPost(data: ImportantInfoPost) {
 export async function updateImportantInformationPost(id: string, data: ImportantInfoPost) {
   return updateDoc(doc(db, IMPORTANT_INFORMATION_COLLECTION, id), {
     ...data,
+    ...buildAdminPostMetadata({
+      importantDates: data.importantDates,
+      importantLinks: data.importantLinks,
+    }),
     updatedAt: serverTimestamp(),
   });
 }

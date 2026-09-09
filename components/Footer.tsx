@@ -1,16 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import SocialLinks from "@/components/SocialLinks";
 import { siteConfig } from "@/lib/siteConfig";
+import { usePublicSiteSettings } from "@/components/public/PublicSiteSettingsProvider";
 
 export default function Footer() {
+  const settings = usePublicSiteSettings();
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="site-footer" aria-label="Website footer">
       <div className="container footer-grid footer-grid-four">
         <div className="footer-brand-block">
-          <h3>{siteConfig.siteName}</h3>
-          <p>{siteConfig.description}</p>
+          <h3>{settings.siteName || siteConfig.siteName}</h3>
+          <p>{settings.defaultSeoDescription || siteConfig.description}</p>
           <p className="footer-disclaimer-note">
             Odisha Sathi is not a government website. Always verify important
             details from the official notification or official website before
@@ -43,8 +47,8 @@ export default function Footer() {
         <div>
           <h4>Connect With Us</h4>
           <SocialLinks iconOnly />
-          {siteConfig.contact.address ? (
-            <p className="footer-small-text">Location: {siteConfig.contact.address}</p>
+          {settings.address ? (
+            <p className="footer-small-text">Location: {settings.address}</p>
           ) : null}
           <Link className="footer-contact-link" href="/contact">
             Contact / Correction Request
@@ -54,7 +58,7 @@ export default function Footer() {
 
       <div className="footer-bottom">
         <p>
-          © {currentYear} {siteConfig.siteName}. All rights reserved. Not a
+          © {currentYear} {settings.siteName || siteConfig.siteName}. All rights reserved. Not a
           government website. Trademarks, logos and official names belong to
           their respective owners.
         </p>

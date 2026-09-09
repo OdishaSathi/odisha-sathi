@@ -26,6 +26,10 @@ import {
   normalizeFlexibleDataTables,
   normalizeFlexibleDetailSections,
 } from "@/lib/flexibleDetails";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
 
 const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "+2 Admission", value: "plus-two-admission" },
@@ -33,10 +37,6 @@ const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "Diploma Admission", value: "diploma-admission" },
   { label: "ITI Admission", value: "iti-admission" },
   { label: "B.Ed / Teacher Training", value: "bed-teacher-training" },
-  { label: "Scholarships", value: "scholarships" },
-  { label: "Pre-Matric Scholarship", value: "pre-matric-scholarship" },
-  { label: "Post-Matric Scholarship", value: "post-matric-scholarship" },
-  { label: "Higher Education Scholarship", value: "higher-education-scholarship" },
 ];
 
 const OTHER_ADMISSION_OPTION = { label: "Other Admissions", value: "other-admissions" };
@@ -584,7 +584,7 @@ export default function EditAdmissionPage() {
     }
 
     if (form.subCategories.length === 0) {
-      alert("Please select at least one admission or scholarship subcategory.");
+      alert("Please select at least one admission subcategory.");
       return;
     }
 
@@ -597,7 +597,20 @@ export default function EditAdmissionPage() {
 
     try {
       const ref = doc(db, "posts", id);
-      await updateDoc(ref, buildAdmissionPayload(form, oldSlug));
+      const payload = buildAdmissionPayload(form, oldSlug);
+      const validationReport = validateAdminContent(
+        {
+          title: payload.title,
+          slug: payload.slug,
+          description: payload.description,
+          importantDates: payload.importantDates,
+          importantLinks: payload.importantLinks,
+        },
+        { expectDescription: true, expectOfficialLink: true }
+      );
+      if (!confirmAdminValidation(validationReport)) return;
+
+      await updateDoc(ref, payload);
 
       alert("Admission post updated successfully.");
       router.push("/admin/admissions");
@@ -668,7 +681,7 @@ export default function EditAdmissionPage() {
 
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>
-                  Admission / Scholarship Subcategories (select one or more)
+                  Admission Subcategories (select one or more)
                 </label>
                 <div className="admin-checkbox-grid">
                   {admissionOptions.map((item) => (

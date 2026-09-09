@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
-import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
-import { dbServer } from "@/lib/firebaseServer";
 import PublicPostDetailsClient from "@/components/public/PublicPostDetailsClient";
+import { notFound, redirect } from "next/navigation";
+import { getServerPublicPost } from "@/lib/server/publicPost";
 import { decorateShareMetadata } from "@/lib/postShare";
 import {
   buildJobShareSummary,
   getJobShareThumbnail,
   isJobPostData,
 } from "@/lib/jobShare";
-import { isPublicDetailPost } from "@/lib/publicPostQuality";
 
 type PostPageProps = {
   params: Promise<{
@@ -18,6 +17,24 @@ type PostPageProps = {
     reminder?: string | string[];
   }>;
 };
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function cleanText(value: any, maxLength = 160) {
+  const text = String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength - 3)}...`;
+}
+
 
 type MetaPost = {
   id: string;
@@ -58,84 +75,6 @@ type MetaPost = {
   examDateDisplay?: string;
   examDate?: string;
 };
-
-const PUBLIC_POST_COLLECTIONS = [
-  { name: "posts", category: "" },
-  { name: "jobs", category: "jobs" },
-  { name: "admissions", category: "admissions" },
-  { name: "admitCards", category: "admit-cards" },
-  { name: "admit-cards", category: "admit-cards" },
-  { name: "admitcards", category: "admit-cards" },
-  { name: "results", category: "results" },
-  { name: "result", category: "results" },
-  { name: "schemes", category: "schemes" },
-  { name: "scheme", category: "schemes" },
-  { name: "governmentSchemes", category: "schemes" },
-  { name: "government-schemes", category: "schemes" },
-];
-
-function cleanText(value: any, maxLength = 160) {
-  const text = String(value || "")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength - 3)}...`;
-}
-
-async function getPostForMetadata(slug: string): Promise<MetaPost | null> {
-  const pageSlug = decodeURIComponent(slug);
-
-  for (const item of PUBLIC_POST_COLLECTIONS) {
-    try {
-      const slugQuery = query(
-        collection(dbServer, item.name),
-        where("slug", "==", pageSlug),
-        limit(1)
-      );
-
-      const slugSnapshot = await getDocs(slugQuery);
-
-      if (!slugSnapshot.empty) {
-        const postDoc = slugSnapshot.docs[0];
-        const data = postDoc.data();
-        const postData = {
-          ...data,
-          category: item.category || data.category,
-        };
-
-        if (!isPublicDetailPost(postData, postDoc.id)) continue;
-
-        return {
-          id: postDoc.id,
-          ...postData,
-        };
-      }
-
-      const directDoc = await getDoc(doc(dbServer, item.name, pageSlug));
-
-      if (directDoc.exists()) {
-        const data = directDoc.data();
-        const postData = {
-          ...data,
-          category: item.category || data.category,
-        };
-
-        if (!isPublicDetailPost(postData, directDoc.id)) continue;
-
-        return {
-          id: directDoc.id,
-          ...postData,
-        };
-      }
-    } catch (error) {
-      console.warn(`Metadata fetch skipped ${item.name}`, error);
-    }
-  }
-
-  return null;
-}
 
 function getDepartmentName(post: MetaPost | null) {
   if (!post) return "Odisha Sathi";
@@ -274,8 +213,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
   const isReminderShare = resolvedSearchParams.reminder === "1";
-  const post = await getPostForMetadata(slug);
-  const canonicalUrl = `/post/${encodeURIComponent(slug)}`;
+  const serverRecord = await getServerPublicPost(slug);
+  const post = serverRecord
+    ? ({
+        ...serverRecord.data,
+        id: serverRecord.id,
+        category: serverRecord.data.category || serverRecord.categoryOverride,
+      } as MetaPost)
+    : null;
+  const canonicalSlug = serverRecord?.canonicalSlug || safeDecode(slug);
+  const canonicalUrl = `/post/${encodeURIComponent(canonicalSlug)}`;
 
   if (!post) {
     return {
@@ -348,6 +295,31 @@ export async function generateMetadata({
   };
 }
 
-export default function PublicPostDetailsPage() {
-  return <PublicPostDetailsClient />;
+export default async function PublicPostDetailsPage({ params }: PostPageProps) {
+  const { slug } = await params;
+  const requestedValue = safeDecode(slug);
+  const serverRecord = await getServerPublicPost(requestedValue);
+
+  if (!serverRecord) {
+    notFound();
+  }
+
+  if (
+    serverRecord.matchedBy === "id" &&
+    serverRecord.canonicalSlug &&
+    serverRecord.canonicalSlug !== requestedValue
+  ) {
+    redirect(`/post/${encodeURIComponent(serverRecord.canonicalSlug)}`);
+  }
+
+  return (
+    <PublicPostDetailsClient
+      pageSlug={serverRecord.canonicalSlug}
+      initialRecord={{
+        id: serverRecord.id,
+        data: serverRecord.data,
+        categoryOverride: serverRecord.categoryOverride,
+      }}
+    />
+  );
 }

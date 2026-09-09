@@ -247,7 +247,7 @@ export default function AdminSettingsPage() {
       );
 
       setForm((previous) => ({ ...previous, quickAccessLinks }));
-      setMessage("Settings saved successfully. Valid social links will now appear automatically in the public follow controls.");
+      setMessage("Settings saved successfully. Public website settings refresh automatically within about 5 minutes.");
     } catch (error) {
       console.error(error);
       setMessage(
@@ -273,8 +273,7 @@ export default function AdminSettingsPage() {
           <div>
             <h1 style={{ margin: "0 0 6px", color: "#111827" }}>Settings</h1>
             <p style={{ margin: 0, color: "#64748b" }}>
-              Add or update your public social-platform links here. Valid links
-              automatically appear in the website follow controls.
+              Manage website identity, contact links, homepage controls, SEO defaults and homepage Quick Access from one place.
             </p>
           </div>
 
@@ -394,7 +393,7 @@ export default function AdminSettingsPage() {
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "#374151" }}>
               <input type="checkbox" checked={form.showLastDateReminder} onChange={(event) => updateField("showLastDateReminder", event.target.checked)} />
-              Show Last Date Reminder later
+              Show Last Date Reminder
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: 800, color: "#374151" }}>
               <input type="checkbox" checked={form.showLatestCitizenServices} onChange={(event) => updateField("showLatestCitizenServices", event.target.checked)} />
@@ -440,10 +439,10 @@ export default function AdminSettingsPage() {
           >
             <div>
               <h2 style={{ margin: 0, color: "#0f172a", fontSize: "20px" }}>
-                Quick Access Links
+                Homepage Quick Access Links
               </h2>
               <p style={{ margin: "5px 0 0", color: "#64748b", fontSize: "14px" }}>
-                Prepared for future right-side Quick Access panels. Current public UI is unchanged.
+                Controls the Quick Access links on the homepage. Disabled links are hidden.
               </p>
             </div>
             <button

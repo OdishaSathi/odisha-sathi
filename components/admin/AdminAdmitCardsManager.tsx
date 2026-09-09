@@ -11,6 +11,14 @@ import {
 } from "@/lib/admitCards";
 import { AdmitCard } from "@/types/admitCard";
 import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
+import {
+  findPublicSlugConflict,
+  formatPublicSlugConflict,
+} from "@/lib/adminSlugGuard";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
 
 export default function AdminAdmitCardsManager() {
   const [admitCards, setAdmitCards] = useState<AdmitCard[]>([]);
@@ -40,6 +48,24 @@ export default function AdminAdmitCardsManager() {
   }, []);
 
   const handleCreate = async (data: AdmitCard) => {
+    const validationReport = validateAdminContent(
+      {
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        importantDates: data.importantDates,
+        importantLinks: data.importantLinks || data.links,
+      },
+      { expectDescription: true, expectOfficialLink: true }
+    );
+    if (!confirmAdminValidation(validationReport)) return;
+
+    const slugConflict = await findPublicSlugConflict(data.slug);
+    if (slugConflict) {
+      alert(formatPublicSlugConflict(slugConflict));
+      return;
+    }
+
     await addAdmitCard(data);
     await loadAdmitCards();
     setShowCreateForm(false);
@@ -48,6 +74,27 @@ export default function AdminAdmitCardsManager() {
 
   const handleUpdate = async (data: AdmitCard) => {
     if (!editingAdmitCard?.id) return;
+
+    const validationReport = validateAdminContent(
+      {
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        importantDates: data.importantDates,
+        importantLinks: data.importantLinks || data.links,
+      },
+      { expectDescription: true, expectOfficialLink: true }
+    );
+    if (!confirmAdminValidation(validationReport)) return;
+
+    const slugConflict = await findPublicSlugConflict(data.slug, {
+      collectionName: "admitCards",
+      documentId: editingAdmitCard.id,
+    });
+    if (slugConflict) {
+      alert(formatPublicSlugConflict(slugConflict));
+      return;
+    }
 
     await updateAdmitCard(editingAdmitCard.id, data);
     setEditingAdmitCard(null);

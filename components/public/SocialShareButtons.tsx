@@ -168,13 +168,18 @@ export default function SocialShareButtons({
           justify-content: flex-start;
           flex-wrap: wrap;
           gap: 8px;
+          width: 100%;
+          min-width: 0;
           margin-top: 10px;
+          padding-bottom: 2px;
+          overflow: visible;
         }
 
         .compact-share-button {
           width: 38px;
           height: 38px;
           flex: 0 0 38px;
+          min-width: 38px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -237,6 +242,7 @@ export default function SocialShareButtons({
             width: 36px;
             height: 36px;
             flex-basis: 36px;
+            min-width: 36px;
           }
         }
       `}</style>

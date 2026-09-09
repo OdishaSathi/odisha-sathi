@@ -386,18 +386,18 @@ function normalizeAnchorId(value: string, fallback: string) {
 
 function cleanContentSections(sections?: DetailContentSection[]): DetailContentSection[] {
   return (sections || [])
-    .map((section, index) => ({
-      id: section.id?.trim() || normalizeAnchorId(section.title, `section-${index + 1}`),
-      title: section.title?.trim() || `Section ${index + 1}`,
-      content: section.content?.trim() || "",
-      imageUrls: (section.imageUrls || [])
-        .map((item) => item.trim())
-        .filter(Boolean),
-    }))
-    .filter(
-      (section) =>
-        section.title && (section.content || section.imageUrls.length > 0)
-    );
+    .map((section, index) => {
+      const title = section.title?.trim() || "";
+      return {
+        id: section.id?.trim() || normalizeAnchorId(title, `section-${index + 1}`),
+        title,
+        content: section.content?.trim() || "",
+        imageUrls: (section.imageUrls || [])
+          .map((item) => item.trim())
+          .filter(Boolean),
+      };
+    })
+    .filter((section) => section.content || section.imageUrls.length > 0);
 }
 
 function DetailDescription({ description }: { description?: string }) {
@@ -459,8 +459,10 @@ export default function PostDetailLayout({
   const relatedSectionTitle = getRelatedSectionTitle(post.category);
   const displaySubCategories = getUniqueLabels(post.subCategories || []);
   const contentSections = cleanContentSections(post.contentSections);
-  const dataTables = (post.dataTables || []).filter(
-    (table) => table.title.trim() || table.imageUrl.trim() || table.rows.length > 0
+  const dataTables = (post.dataTables || []).filter((table) =>
+    table.imageUrl.trim() ||
+    String(table.note || "").trim() ||
+    table.rows.some((row) => row.cells.some((cell) => cell.trim()))
   );
   const whatsappShareText = isJobDetail
     ? buildPostShareMessage({
@@ -593,14 +595,18 @@ export default function PostDetailLayout({
         hasDocumentDetails
           ? { id: "documents-required", title: "Documents Required" }
           : null,
-        ...contentSections.map((section) => ({
-          id: section.id || normalizeAnchorId(section.title, "content-section"),
-          title: section.title,
-        })),
-        ...dataTables.map((table, index) => ({
-          id: normalizeAnchorId(table.title, `data-table-${index + 1}`),
-          title: table.title || `Data Table ${index + 1}`,
-        })),
+        ...contentSections
+          .filter((section) => section.title.trim())
+          .map((section) => ({
+            id: section.id || normalizeAnchorId(section.title, "content-section"),
+            title: section.title,
+          })),
+        ...dataTables
+          .filter((table) => table.title.trim())
+          .map((table, index) => ({
+            id: normalizeAnchorId(table.title, `data-table-${index + 1}`),
+            title: table.title.trim(),
+          })),
         importantDates.length > 0
           ? { id: "important-dates", title: "Important Dates" }
           : null,
@@ -904,7 +910,7 @@ function TableOfContents({ items }: { items: TableOfContentsItem[] }) {
 function DetailTextSection({ section }: { section: DetailContentSection }) {
   return (
     <section className="post-detail-section" id={section.id}>
-      <SectionHeader title={section.title} />
+      {section.title.trim() ? <SectionHeader title={section.title.trim()} /> : null}
       {(section.imageUrls || []).length > 0 ? (
         <div className="post-detail-section-images">
           {(section.imageUrls || []).map((imageUrl, index) => (
@@ -930,41 +936,44 @@ function FlexibleDataTableSection({
   table: FlexibleDataTable;
   index: number;
 }) {
-  const title = table.title.trim() || `Data Table ${index + 1}`;
+  const title = table.title.trim();
+  const note = String(table.note || "").trim();
   const id = normalizeAnchorId(title, `data-table-${index + 1}`);
+  const columns = table.columns.map((column) => column.trim());
+  const showHeader = columns.some(Boolean);
   const visibleRows = table.rows.filter((row) =>
     row.cells.some((cell) => cell.trim())
   );
 
-  if (!table.imageUrl.trim() && visibleRows.length === 0) return null;
+  if (!table.imageUrl.trim() && !note && visibleRows.length === 0) return null;
 
   return (
     <section className="post-detail-section" id={id}>
-      <SectionHeader title={title} />
+      {title ? <SectionHeader title={title} /> : null}
 
       {table.imageUrl.trim() ? (
         <div className="post-detail-table-image">
-          <img src={table.imageUrl.trim()} alt={`${title} reference`} />
+          <img src={table.imageUrl.trim()} alt={`${title || "Table"} reference`} />
         </div>
       ) : null}
 
       {visibleRows.length > 0 ? (
         <div className="job-detail-table-scroll standalone-table">
           <table className="job-detail-data-table flexible-data-table">
-            <thead>
-              <tr>
-                {table.columns.map((column, columnIndex) => (
-                  <th key={columnIndex}>
-                    {column.trim() || `Column ${columnIndex + 1}`}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+            {showHeader ? (
+              <thead>
+                <tr>
+                  {columns.map((column, columnIndex) => (
+                    <th key={columnIndex}>{column}</th>
+                  ))}
+                </tr>
+              </thead>
+            ) : null}
             <tbody>
               {visibleRows.map((row) => (
                 <tr key={row.id}>
-                  {table.columns.map((_, cellIndex) => (
-                    <td key={cellIndex}>{row.cells[cellIndex] || "—"}</td>
+                  {columns.map((_, cellIndex) => (
+                    <td key={cellIndex}>{String(row.cells[cellIndex] || "").trim()}</td>
                   ))}
                 </tr>
               ))}
@@ -972,6 +981,8 @@ function FlexibleDataTableSection({
           </table>
         </div>
       ) : null}
+
+      {note ? <div className="post-detail-table-note">{note}</div> : null}
     </section>
   );
 }
@@ -1346,6 +1357,10 @@ function JobFeeStructureSection({ rows }: { rows: JobFeeRow[] }) {
 
   if (visibleRows.length === 0) return null;
 
+  const showPost = visibleRows.some((row) => row.postName.trim());
+  const showCategory = visibleRows.some((row) => row.category.trim());
+  const showRemarks = visibleRows.some((row) => row.remarks.trim());
+
   return (
     <section className="post-detail-section" id="fee-structure">
       <SectionHeader title="Fee Structure" />
@@ -1354,21 +1369,21 @@ function JobFeeStructureSection({ rows }: { rows: JobFeeRow[] }) {
         <table className="job-detail-data-table fee-table">
           <thead>
             <tr>
-              <th>Post / Vacancy</th>
-              <th>Applicant Category</th>
+              {showPost ? <th>Post / Vacancy</th> : null}
+              {showCategory ? <th>Applicant Category</th> : null}
               <th>Fee</th>
-              <th>Remarks</th>
+              {showRemarks ? <th>Remarks</th> : null}
             </tr>
           </thead>
           <tbody>
             {visibleRows.map((row) => (
               <tr key={row.id}>
-                <th scope="row">{row.postName || "All Posts"}</th>
-                <td>{row.category || "All Categories"}</td>
+                {showPost ? <th scope="row">{row.postName.trim()}</th> : null}
+                {showCategory ? <td>{row.category.trim()}</td> : null}
                 <td>
-                  <strong>{row.fee}</strong>
+                  <strong>{row.fee.trim()}</strong>
                 </td>
-                <td>{row.remarks || "—"}</td>
+                {showRemarks ? <td>{row.remarks.trim()}</td> : null}
               </tr>
             ))}
           </tbody>
@@ -1988,21 +2003,39 @@ function PostDetailStyles() {
       .job-detail-table-scroll.standalone-table {
         box-sizing: border-box;
         padding: 14px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .post-detail-table-note {
+        margin: -4px 14px 14px;
+        padding: 9px 11px;
+        border-left: 3px solid #1d4ed8;
+        border-radius: 7px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-line;
       }
 
       .standalone-table .job-detail-data-table {
         border: 1px solid #e2e8f0;
       }
 
-      .fee-table td:nth-child(3) strong {
+      .fee-table strong {
         color: #166534;
         font-weight: 950;
+      }
+
+      .fee-table {
+        min-width: 480px;
       }
 
       .job-detail-data-table {
         width: 100%;
         min-width: 560px;
         border-collapse: collapse;
+        table-layout: auto;
       }
 
       .job-detail-data-table th,
@@ -2014,7 +2047,8 @@ function PostDetailStyles() {
         font-size: 13.5px;
         line-height: 1.4;
         text-align: center;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
+        word-break: normal;
       }
 
       .job-detail-data-table tr:last-child th,
@@ -2307,6 +2341,8 @@ function PostDetailStyles() {
       .post-detail-share-section {
         margin-top: 22px;
         padding: 12px 13px;
+        min-width: 0;
+        overflow: visible;
         border-radius: 13px;
         background: linear-gradient(135deg, #f0fdf4, #eff6ff);
         border: 1px solid #dbeafe;
@@ -2324,6 +2360,9 @@ function PostDetailStyles() {
         align-items: center;
         flex-wrap: wrap;
         gap: 8px;
+        width: 100%;
+        min-width: 0;
+        overflow: visible;
       }
 
       .share-pointer {
@@ -2671,8 +2710,8 @@ function PostDetailStyles() {
         }
 
         .job-detail-data-table {
-          min-width: 0;
-          table-layout: fixed;
+          min-width: 560px;
+          table-layout: auto;
         }
 
         .job-detail-data-table th,

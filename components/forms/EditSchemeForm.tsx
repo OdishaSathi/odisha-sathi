@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 
 function makeSlug(text: string) {
   return text
@@ -243,6 +244,7 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
         importantDates,
         importantLinks,
         links: importantLinks,
+        ...buildAdminPostMetadata({ importantDates, importantLinks }),
         updatedAt: serverTimestamp(),
       });
 

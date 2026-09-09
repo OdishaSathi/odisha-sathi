@@ -38,6 +38,15 @@ import {
   getActiveAdminSubCategories,
   mergeSubCategoryNames,
 } from "@/lib/adminSubCategories";
+import {
+  findPublicSlugConflict,
+  formatPublicSlugConflict,
+} from "@/lib/adminSlugGuard";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -191,6 +200,12 @@ setYoutubeUrl3("");
     try {
       setSaving(true);
 
+      const slugConflict = await findPublicSlugConflict(finalSlug);
+      if (slugConflict) {
+        alert(formatPublicSlugConflict(slugConflict));
+        return;
+      }
+
       const cleanedPanels = cleanJobInfoPanels(jobInfoPanels);
       const cleanedFeeRows = cleanJobFeeRows(feeStructureRows);
       const cleanedDocuments = cleanJobDocuments(documentsRequired);
@@ -207,6 +222,22 @@ const excerpt = makeExcerpt(shortDescription, description);
 const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
   .map((item) => item.trim())
   .filter(Boolean);
+
+      const validationReport = validateAdminContent(
+        {
+          title,
+          slug: finalSlug,
+          shortDescription,
+          description,
+          importantDates: cleanedDates,
+          importantLinks: cleanedLinks,
+        },
+        {
+          expectDescription: true,
+          expectOfficialLink: true,
+        }
+      );
+      if (!confirmAdminValidation(validationReport)) return;
 
       await addDoc(collection(db, "posts"), {
         title: title.trim(),
@@ -260,6 +291,10 @@ youtubeUrls: cleanedYoutubeUrls,
         importantLinks: cleanedLinks,
         links: cleanedLinks,
         sourceUrl: cleanedLinks[0]?.url || "",
+        ...buildAdminPostMetadata({
+          importantDates: cleanedDates,
+          importantLinks: cleanedLinks,
+        }),
 
         tags: subCategories,
         status,

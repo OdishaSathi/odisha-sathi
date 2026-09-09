@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -122,6 +121,17 @@ type PostData = {
   updatedAt?: any;
 };
 
+type InitialPublicPostRecord = {
+  id: string;
+  data: Record<string, any>;
+  categoryOverride?: string;
+};
+
+type PublicPostDetailsClientProps = {
+  pageSlug: string;
+  initialRecord?: InitialPublicPostRecord | null;
+};
+
 const PUBLIC_POST_COLLECTIONS = [
   { name: "posts", category: "" },
   { name: "jobs", category: "jobs" },
@@ -161,7 +171,7 @@ function normalizePostCategory(value?: string, fallback?: string) {
     category === "scholarship" ||
     category === "scholarships"
   ) {
-    return "admissions";
+    return "schemes";
   }
 
   return value || fallback || "";
@@ -183,10 +193,8 @@ function getBackLink(category?: string) {
   if (category === "admissions") return "/admissions";
   if (category === "admit-cards") return "/admit-cards";
   if (category === "schemes" || category === "scholarships") {
-    return "/admissions";
+    return "/schemes";
   }
-  if (category === "exams") return "/exams";
-  if (category === "scholarships") return "/scholarships";
   return "/";
 }
 
@@ -320,6 +328,128 @@ function normalizeVideoRows(value: any): VideoRow[] {
       };
     })
     .filter((item) => item.url?.trim());
+}
+
+function mapRawPostToPostData(
+  id: string,
+  data: Record<string, any>,
+  categoryOverride = ""
+): PostData {
+  const normalizedImageUrl = normalizePostImageUrl(data);
+  const normalizedCategory = normalizePostCategory(
+    data.category,
+    categoryOverride
+  );
+
+  return {
+    id,
+    title: data.title || data.schemeName || "",
+    slug: data.slug || "",
+
+    category: normalizedCategory,
+    subCategory:
+      data.subCategory ||
+      data.subcategory ||
+      data.schemeCategory ||
+      data.admitCardCategory ||
+      "",
+    subCategories: Array.isArray(data.subCategories)
+      ? data.subCategories
+      : data.subCategory
+      ? [data.subCategory]
+      : [],
+
+    excerpt: data.excerpt || "",
+    content: data.content || "",
+
+    shortDescription: data.shortDescription || "",
+    description: data.description || "",
+    notificationNumber:
+      data.notificationNumber || data.notificationNo || "",
+
+    imageUrl: normalizedImageUrl,
+    previewImageUrl: normalizedImageUrl,
+    shareImage: data.shareImage || "",
+    bannerImageUrl: data.bannerImageUrl || "",
+    bannerUrl: data.bannerUrl || "",
+    imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
+
+    youtubeUrl: data.youtubeUrl || "",
+    youtubeUrls: normalizeYoutubeUrls(data),
+    youtubeVideos: normalizeVideoRows(data.youtubeVideos),
+    videos: normalizeVideoRows(data.videos),
+
+    postUrl: data.postUrl || "",
+    shareTitle: data.shareTitle || "",
+    shareDescription: data.shareDescription || "",
+
+    jobInfoPanels: normalizeJobInfoPanels(data),
+    feeStructureRows: normalizeJobFeeRows(data),
+    documentsRequired: normalizeJobDocuments(data),
+    quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
+
+    importantDates: normalizeImportantDates(data.importantDates),
+    importantLinks: normalizeImportantLinks(data),
+
+    sourceUrl: data.sourceUrl || "",
+
+    organization: data.organization || "",
+    department: data.department || "",
+    postName:
+      data.postName ||
+      data.examName ||
+      data.courseName ||
+      data.schemeName ||
+      "",
+    totalVacancy: data.totalVacancy || "",
+    applicationMode:
+      data.applicationMode || data.modeOfApplication || "",
+    modeOfApplication: data.modeOfApplication || "",
+    feeStructure:
+      data.feeStructure || data.applicationFee || data.fees || "",
+    applicationFee: data.applicationFee || "",
+    qualification: data.qualification || "",
+    ageLimit: data.ageLimit || "",
+    salary: data.salary || "",
+    payScale: data.payScale || "",
+    courseName: data.courseName || data.programmeName || "",
+    eligibility: data.eligibility || "",
+    fees: data.fees || data.feeStructure || "",
+    applicationProcess:
+      data.applicationProcess || data.howToApply || "",
+    howToApply: data.howToApply || "",
+    resultCheckingProcess:
+      data.resultCheckingProcess || data.checkingProcess || "",
+    downloadProcess: data.downloadProcess || "",
+    examMode: data.examMode || "",
+    updateTypeLabel: data.updateTypeLabel || "",
+    resultDateDisplay:
+      data.resultDateDisplay || data.resultDate || "",
+    admitCardDateDisplay:
+      data.admitCardDateDisplay || data.admitCardDate || "",
+    examDateDisplay: data.examDateDisplay || data.examDate || "",
+    startDateDisplay:
+      data.startDateDisplay ||
+      data.applicationStartDateDisplay ||
+      data.applicationStartDate ||
+      "",
+    lastDateDisplay: data.lastDateDisplay || data.lastDate || "",
+
+    syllabus: data.syllabus || "",
+    examPattern: data.examPattern || "",
+    selectionProcedure: data.selectionProcedure || "",
+    contentSections: Array.isArray(data.contentSections)
+      ? normalizeFlexibleDetailSections(data.contentSections)
+      : normalizeFlexibleDetailSections(data.detailSections),
+    dataTables: normalizeFlexibleDataTables(
+      data.dataTables || data.customTables
+    ),
+
+    status: data.status || "published",
+    published: data.published !== false,
+    createdAt: data.createdAt || null,
+    updatedAt: data.updatedAt || null,
+  };
 }
 
 function panelToRows(panel: JobInfoPanel): InfoRow[] {
@@ -555,13 +685,10 @@ function buildContentSections(post: PostData): DetailContentSection[] {
 
   if (Array.isArray(post.contentSections)) {
     normalizeFlexibleDetailSections(post.contentSections).forEach((section) => {
-      if (
-        section?.title?.trim() &&
-        (section?.content?.trim() || section.imageUrls.length > 0)
-      ) {
+      if (section?.content?.trim() || section.imageUrls.length > 0) {
         sections.push({
           id: section.id || "",
-          title: section.title.trim(),
+          title: section.title?.trim() || "",
           content: section.content.trim(),
           imageUrls: section.imageUrls,
         });
@@ -631,25 +758,27 @@ function mapToCommonPost(post: PostData): CommonPostDetailData {
   };
 }
 
-export default function PublicPostDetailsPage() {
-  const params = useParams();
+export default function PublicPostDetailsPage({
+  pageSlug,
+  initialRecord = null,
+}: PublicPostDetailsClientProps) {
+  const initialPost = useMemo(() => {
+    if (!initialRecord) return null;
 
-  const rawSlug =
-    typeof params.slug === "string"
-      ? params.slug
-      : Array.isArray(params.slug)
-      ? params.slug[0]
-      : "";
+    return mapRawPostToPostData(
+      initialRecord.id,
+      initialRecord.data,
+      initialRecord.categoryOverride || ""
+    );
+  }, [initialRecord]);
 
-  const pageSlug = decodeURIComponent(rawSlug);
-
-  const [post, setPost] = useState<PostData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<PostData | null>(initialPost);
+  const [loading, setLoading] = useState(!initialPost);
 
   useEffect(() => {
     const loadPost = async () => {
       try {
-        setLoading(true);
+        if (!initialPost) setLoading(true);
 
         const loadedCollections = await Promise.all(
           PUBLIC_POST_COLLECTIONS.map((item) =>
@@ -662,130 +791,17 @@ export default function PublicPostDetailsPage() {
 
           return loaded.snapshot.docs.flatMap((docItem) => {
             const data = docItem.data();
-            const normalizedImageUrl = normalizePostImageUrl(data);
-            const normalizedCategory = normalizePostCategory(
-              data.category,
+            const mappedPost = mapRawPostToPostData(
+              docItem.id,
+              data,
               loaded.category
             );
 
-            if (
-              !isPublicDetailPost(
-                { ...data, category: normalizedCategory },
-                docItem.id
-              )
-            ) {
+            if (!isPublicDetailPost(mappedPost, docItem.id)) {
               return [];
             }
 
-            return [{
-              id: docItem.id,
-              title: data.title || data.schemeName || "",
-              slug: data.slug || "",
-
-              category: normalizedCategory,
-              subCategory:
-                data.subCategory ||
-                data.subcategory ||
-                data.schemeCategory ||
-                data.admitCardCategory ||
-                "",
-              subCategories: Array.isArray(data.subCategories)
-                ? data.subCategories
-                : data.subCategory
-                ? [data.subCategory]
-                : [],
-
-              excerpt: data.excerpt || "",
-              content: data.content || "",
-
-              shortDescription: data.shortDescription || "",
-              description: data.description || "",
-              notificationNumber:
-                data.notificationNumber || data.notificationNo || "",
-
-              imageUrl: normalizedImageUrl,
-              previewImageUrl: normalizedImageUrl,
-              shareImage: data.shareImage || "",
-              bannerImageUrl: data.bannerImageUrl || "",
-              bannerUrl: data.bannerUrl || "",
-              imageUrls: Array.isArray(data.imageUrls) ? data.imageUrls : [],
-
-              youtubeUrl: data.youtubeUrl || "",
-              youtubeUrls: normalizeYoutubeUrls(data),
-              youtubeVideos: normalizeVideoRows(data.youtubeVideos),
-              videos: normalizeVideoRows(data.videos),
-
-              postUrl: data.postUrl || "",
-              shareTitle: data.shareTitle || "",
-              shareDescription: data.shareDescription || "",
-
-              jobInfoPanels: normalizeJobInfoPanels(data),
-              feeStructureRows: normalizeJobFeeRows(data),
-              documentsRequired: normalizeJobDocuments(data),
-              quickInfoRows: normalizeQuickInfoRows(data.quickInfoRows),
-
-              importantDates: normalizeImportantDates(data.importantDates),
-              importantLinks: normalizeImportantLinks(data),
-
-              sourceUrl: data.sourceUrl || "",
-
-              organization: data.organization || "",
-              department: data.department || "",
-              postName:
-                data.postName ||
-                data.examName ||
-                data.courseName ||
-                data.schemeName ||
-                "",
-              totalVacancy: data.totalVacancy || "",
-              applicationMode:
-                data.applicationMode || data.modeOfApplication || "",
-              modeOfApplication: data.modeOfApplication || "",
-              feeStructure:
-                data.feeStructure || data.applicationFee || data.fees || "",
-              applicationFee: data.applicationFee || "",
-              qualification: data.qualification || "",
-              ageLimit: data.ageLimit || "",
-              salary: data.salary || "",
-              payScale: data.payScale || "",
-              courseName: data.courseName || data.programmeName || "",
-              eligibility: data.eligibility || "",
-              fees: data.fees || data.feeStructure || "",
-              applicationProcess:
-                data.applicationProcess || data.howToApply || "",
-              howToApply: data.howToApply || "",
-              resultCheckingProcess:
-                data.resultCheckingProcess || data.checkingProcess || "",
-              downloadProcess: data.downloadProcess || "",
-              examMode: data.examMode || "",
-              updateTypeLabel: data.updateTypeLabel || "",
-              resultDateDisplay:
-                data.resultDateDisplay || data.resultDate || "",
-              admitCardDateDisplay:
-                data.admitCardDateDisplay || data.admitCardDate || "",
-              examDateDisplay: data.examDateDisplay || data.examDate || "",
-              startDateDisplay:
-                data.startDateDisplay ||
-                data.applicationStartDateDisplay ||
-                data.applicationStartDate ||
-                "",
-              lastDateDisplay: data.lastDateDisplay || data.lastDate || "",
-
-              syllabus: data.syllabus || "",
-              examPattern: data.examPattern || "",
-              selectionProcedure: data.selectionProcedure || "",
-              contentSections: Array.isArray(data.contentSections)
-                ? normalizeFlexibleDetailSections(data.contentSections)
-                : normalizeFlexibleDetailSections(data.detailSections),
-              dataTables: normalizeFlexibleDataTables(
-                data.dataTables || data.customTables
-              ),
-
-              status: data.status || "published",
-              published: data.published !== false,
-              createdAt: data.createdAt || null,
-              updatedAt: data.updatedAt || null,
-            }];
+            return [mappedPost];
           });
         });
 
@@ -796,6 +812,7 @@ export default function PublicPostDetailsPage() {
         );
 
         const foundPost =
+          initialPost ||
           uniquePosts.find((item) => item.slug === pageSlug) ||
           uniquePosts.find((item) => item.id === pageSlug) ||
           null;
@@ -822,14 +839,14 @@ export default function PublicPostDetailsPage() {
         }
       } catch (error) {
         console.error(error);
-        alert("Failed to load post");
+        if (!initialPost) alert("Failed to load post");
       } finally {
         setLoading(false);
       }
     };
 
     loadPost();
-  }, [pageSlug]);
+  }, [pageSlug, initialPost]);
 
   const commonPost = useMemo(() => {
     if (!post) return null;

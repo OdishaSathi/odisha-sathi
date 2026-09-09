@@ -1,41 +1,33 @@
-import Link from "next/link";
-import CategoryPosts from "@/components/CategoryPosts";
+import { notFound, redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+function getCanonicalCategoryRoute(value: string) {
+  const category = decodeURIComponent(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, "-");
 
-function titleFromCategory(category: string) {
-  const text = category.replace(/-/g, " ");
+  if (category.includes("job")) return "/jobs";
+  if (category.includes("result")) return "/results";
+  if (category.includes("admission")) return "/admissions";
+  if (category.includes("scholar") || category.includes("scheme")) return "/schemes";
+  if (category.includes("exam") || category.includes("admit")) return "/admit-cards";
+  if (category.includes("citizen")) return "/citizen-services";
+  if (category.includes("tool")) return "/tools";
 
-  if (category === "jobs") return "Jobs";
-  if (category === "exams") return "Exams";
-  if (category === "results") return "Results";
-  if (category === "scholarships") return "Scholarships";
-  if (category === "schemes") return "Government Schemes";
-  if (category === "govt-schemes") return "Government Schemes";
-  if (category === "admissions") return "Admissions";
-
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return "";
 }
 
-export default async function CategoryPage({
-  params
+export default async function LegacyCategoryPage({
+  params,
 }: {
   params: Promise<{ category: string }>;
 }) {
   const { category } = await params;
+  const destination = getCanonicalCategoryRoute(category);
 
-  return (
-    <section className="section container">
-      <div className="section-title">
-        <div>
-          <p><Link href="/">Home</Link> / Category</p>
-          <h1>{titleFromCategory(category)}</h1>
-          <p>Latest published updates from this category.</p>
-        </div>
-      </div>
+  if (!destination) {
+    notFound();
+  }
 
-      <CategoryPosts category={category} />
-    </section>
-  );
+  redirect(destination);
 }

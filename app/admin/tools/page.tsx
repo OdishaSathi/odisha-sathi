@@ -255,7 +255,7 @@ export default function AdminToolsPage() {
                       </a>
 
                       <Link
-                        href={`/admin/tools/edit/${tool.id}`}
+                        href={`/admin/tools/${tool.id}`}
                         style={{
                           display: "inline-flex",
                           alignItems: "center",

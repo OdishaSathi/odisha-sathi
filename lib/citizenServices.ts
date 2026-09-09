@@ -11,11 +11,14 @@ export type ServiceOverviewRow = {
   id: string;
   label: string;
   value: string;
+  labelOdia?: string;
+  valueOdia?: string;
 };
 
 export type ServiceDocumentRow = {
   id: string;
   name: string;
+  nameOdia?: string;
 };
 
 export type CitizenServicePost = {
@@ -28,6 +31,9 @@ export type CitizenServicePost = {
   subCategories: string[];
   shortDescription: string;
   description: string;
+  titleOdia?: string;
+  shortDescriptionOdia?: string;
+  descriptionOdia?: string;
   notificationNumber: string;
   previewImageUrl: string;
   overviewRows: ServiceOverviewRow[];
@@ -37,13 +43,28 @@ export type CitizenServicePost = {
   eligibility: string;
   fees: string;
   howToApply: string;
+  eligibilityOdia?: string;
+  feesOdia?: string;
+  howToApplyOdia?: string;
   youtubeUrl: string;
   youtubeUrl2: string;
   importantDates: ImportantDateRow[];
   importantLinks: ImportantLinkRow[];
   shareTitle: string;
   shareDescription: string;
+  shareTitleOdia?: string;
+  shareDescriptionOdia?: string;
   status: "published";
+  canonicalStartDate?: string;
+  canonicalLastDate?: string;
+  canonicalExamDate?: string;
+  canonicalResultDate?: string;
+  lifecycleStatus?: string;
+  dataQualityVersion?: number;
+  sourceReferenceStatus?: string;
+  sourceReferenceType?: string;
+  sourceReferenceLabel?: string;
+  sourceReferenceUrl?: string;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -83,6 +104,8 @@ export function createOverviewRow(
     id: createCitizenServiceId("overview"),
     label,
     value,
+    labelOdia: "",
+    valueOdia: "",
   };
 }
 
@@ -90,6 +113,7 @@ export function createServiceDocument(name = ""): ServiceDocumentRow {
   return {
     id: createCitizenServiceId("document"),
     name,
+    nameOdia: "",
   };
 }
 
@@ -100,6 +124,8 @@ export function normalizeOverviewRows(value: unknown): ServiceOverviewRow[] {
       id: String(item?.id || `overview_${index}`),
       label: String(item?.label || item?.key || "").trim(),
       value: String(item?.value || item?.details || "").trim(),
+      labelOdia: String(item?.labelOdia || item?.odiaLabel || "").trim(),
+      valueOdia: String(item?.valueOdia || item?.odiaValue || "").trim(),
     }))
     .filter((item) => item.label || item.value);
 }
@@ -115,6 +141,10 @@ export function normalizeServiceDocuments(
         typeof item === "string"
           ? item.trim()
           : String(item?.name || item?.label || "").trim(),
+      nameOdia:
+        typeof item === "string"
+          ? ""
+          : String(item?.nameOdia || item?.odiaName || "").trim(),
     }))
     .filter((item) => item.name);
 }

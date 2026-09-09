@@ -6,6 +6,8 @@ import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
+import AdminFormNavigator from "./AdminFormNavigator";
+import AdminWritingToolbar from "./AdminWritingToolbar";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -63,7 +65,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           onMenu={() => setMenuOpen(true)}
           onLogout={handleLogout}
         />
-        <main className="admin-layout-content"><div className="admin-layout-inner">{children}</div></main>
+        <main className="admin-layout-content"><div className="admin-layout-inner"><AdminFormNavigator />{children}</div></main>
+        <AdminWritingToolbar />
       </div>
       <style jsx global>{`
         .admin-layout-shell{min-height:100vh;display:flex;background:#f4f7fb;color:#0f172a;overflow-x:hidden}
@@ -83,13 +86,63 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         .admin-menu-button{display:none}.admin-header-text{min-width:0;flex:1}.admin-header-text h1{font-size:21px;line-height:1.2;margin:0;color:#102a4c}.admin-header-text p{font-size:12px;margin:4px 0 0;color:#64748b;overflow:hidden;text-overflow:ellipsis}
         .admin-header-actions{display:flex;gap:8px}.admin-header-actions a,.admin-header-actions button{min-height:42px;padding:0 13px;border:1px solid #d7e0ea;border-radius:9px;background:#fff;color:#17365f;display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-weight:750;cursor:pointer}.admin-header-actions button{color:#b42318}.admin-header-actions button:disabled{opacity:.6}
         .admin-auth-loading{min-height:100vh;display:grid;place-items:center;background:#f4f7fb;padding:20px;text-align:center}.admin-auth-loading>div{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:28px;box-shadow:0 16px 40px rgba(15,39,71,.08)}.admin-auth-loading h2{font-size:18px;margin:14px 0 5px}.admin-auth-loading p{margin:0;color:#64748b}.admin-spinner{display:inline-block;width:30px;height:30px;border:3px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:admin-spin .8s linear infinite}@keyframes admin-spin{to{transform:rotate(360deg)}}
+        .admin-layout-content form section{scroll-margin-top:136px}
+        .admin-layout-content .admin-checkbox-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px}
+        .admin-layout-content .admin-checkbox-card{min-height:38px!important;padding:7px 9px!important;border-radius:9px!important}
+        .admin-layout-content form.admin-compact-form{font-size:13px}
+        .admin-layout-content form.admin-compact-form section{margin-bottom:12px!important;padding:14px!important;border-radius:12px!important}
+        .admin-layout-content form.admin-compact-form label{gap:5px!important;font-size:12px!important}
+        .admin-layout-content form.admin-compact-form input:not([type="checkbox"]):not([type="radio"]),.admin-layout-content form.admin-compact-form select{min-height:38px!important;padding:7px 9px!important;border-radius:8px!important}
+        .admin-layout-content form.admin-compact-form textarea{padding:8px 9px!important;border-radius:8px!important;line-height:1.45!important}
+        .admin-layout-content form.admin-compact-form h2,.admin-layout-content form.admin-compact-form h3{margin-top:0!important}
+        .admin-layout-content form.admin-compact-form button{touch-action:manipulation}
+        @media(min-width:901px){.admin-layout-content form.admin-compact-form{max-width:1180px;margin-inline:auto}}
         @media(max-width:900px){
           .admin-layout-main{margin-left:0}.admin-layout-content{padding:16px 12px 88px}.admin-header{min-height:64px;padding:8px 12px}.admin-menu-button{width:44px;height:44px;flex:0 0 44px;border:1px solid #d7e0ea;border-radius:9px;background:#fff;color:#17365f;display:grid;place-items:center}.admin-header-text h1{font-size:17px}.admin-header-text p{max-width:38vw}.admin-header-actions a,.admin-header-actions button{width:44px;height:44px;padding:0;justify-content:center}.admin-header-actions span{display:none}
           .admin-sidebar{transform:translateX(-105%);transition:transform .22s ease;width:min(86vw,320px);padding:0;min-height:100vh;position:fixed}.admin-sidebar.is-open{transform:translateX(0)}.admin-sidebar-close{display:grid;place-items:center}.admin-sidebar-backdrop{position:fixed;inset:0;z-index:45;border:0;background:rgba(15,23,42,.55);opacity:0;pointer-events:none;display:block;transition:opacity .2s}.admin-sidebar-backdrop.is-open{opacity:1;pointer-events:auto}
           .admin-sidebar-brand{height:76px;padding:0 20px;margin:0}.admin-sidebar-brand h2{font-size:19px}.admin-sidebar-brand p{font-size:12px;margin-top:3px}
           .admin-sidebar-nav{display:block!important;padding:16px 12px 28px!important;overflow-y:auto!important}.admin-sidebar-group{display:block;margin-bottom:18px}.admin-sidebar-group-label{display:block;margin:0 10px 7px}.admin-sidebar-link{width:auto;min-width:0;min-height:44px;padding:9px 11px;font-size:14px;line-height:1.35;border-radius:9px;text-align:left;white-space:normal;background:transparent;display:flex;align-items:center;gap:11px}.admin-sidebar-link-active{background:#fff!important;color:#12355f!important}
         }
-        @media(max-width:420px){.admin-header-text p{display:none}.admin-header-actions{gap:5px}}
+        @media(max-width:720px){
+          .admin-layout-content{padding:10px 8px 104px!important}
+          .admin-layout-inner{max-width:100%;overflow:visible}
+          .admin-layout-content form.admin-compact-form{width:100%;max-width:100%;min-width:0;font-size:13px}
+          .admin-layout-content form.admin-compact-form section,
+          .admin-layout-content form.admin-compact-form [data-admin-section]{width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin:0 0 10px!important;padding:11px 10px!important;border-radius:10px!important;overflow:visible}
+          .admin-layout-content form.admin-compact-form section > div,
+          .admin-layout-content form.admin-compact-form [data-admin-section] > div{max-width:100%;min-width:0}
+          .admin-layout-content form.admin-compact-form .form-grid,
+          .admin-layout-content form.admin-compact-form .admin-form-grid,
+          .admin-layout-content form.admin-compact-form [class*="grid"]{grid-template-columns:minmax(0,1fr)!important;gap:9px!important}
+          .admin-layout-content form.admin-compact-form label{width:100%;max-width:100%;min-width:0;box-sizing:border-box;font-size:12px!important;line-height:1.35}
+          .admin-layout-content form.admin-compact-form input:not([type="checkbox"]):not([type="radio"]),
+          .admin-layout-content form.admin-compact-form select,
+          .admin-layout-content form.admin-compact-form textarea{display:block;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;font-size:16px!important}
+          .admin-layout-content form.admin-compact-form input:not([type="checkbox"]):not([type="radio"]),
+          .admin-layout-content form.admin-compact-form select{min-height:42px!important;padding:8px 10px!important}
+          .admin-layout-content form.admin-compact-form textarea{min-height:105px!important;padding:9px 10px!important;line-height:1.45!important;resize:vertical}
+          .admin-layout-content form.admin-compact-form input[type="date"],
+          .admin-layout-content form.admin-compact-form input[type="datetime-local"]{min-width:0!important}
+          .admin-layout-content .admin-checkbox-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important}
+          .admin-layout-content .admin-checkbox-card{min-width:0!important;min-height:40px!important;padding:7px 8px!important;font-size:12px!important}
+          .admin-layout-content form.admin-compact-form button{max-width:100%;min-height:40px;white-space:normal;line-height:1.25}
+          .admin-layout-content form.admin-compact-form [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
+          .admin-layout-content form.admin-compact-form [style*="display: flex"],
+          .admin-layout-content form.admin-compact-form [style*="display:flex"]{flex-wrap:wrap!important;max-width:100%}
+          .admin-layout-content form.admin-compact-form table{font-size:12px}
+          .admin-layout-content form.admin-compact-form table input,
+          .admin-layout-content form.admin-compact-form table select,
+          .admin-layout-content form.admin-compact-form table textarea{font-size:14px!important}
+          .admin-layout-content form.admin-compact-form h1{font-size:20px!important;line-height:1.25}
+          .admin-layout-content form.admin-compact-form h2{font-size:17px!important;line-height:1.3}
+          .admin-layout-content form.admin-compact-form h3{font-size:15px!important;line-height:1.3}
+          .admin-layout-content form.admin-compact-form p{max-width:100%;overflow-wrap:anywhere}
+        }
+        @media(max-width:420px){
+          .admin-header-text p{display:none}.admin-header-actions{gap:5px}
+          .admin-layout-content{padding-inline:7px!important}
+          .admin-layout-content .admin-checkbox-grid{grid-template-columns:minmax(0,1fr)!important}
+        }
       `}</style>
     </div>
   );

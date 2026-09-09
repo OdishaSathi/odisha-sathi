@@ -1,23 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { siteConfig } from "@/lib/siteConfig";
-import { db } from "@/lib/firebase";
+import { usePublicSiteSettings } from "@/components/public/PublicSiteSettingsProvider";
 
 export default function FloatingWhatsApp() {
-  const [whatsappLink, setWhatsAppLink] = useState(
-    siteConfig.socialLinks.whatsapp
-  );
-
-  useEffect(() => {
-    getDoc(doc(db, "siteSettings", "main"))
-      .then((snapshot) => {
-        const savedLink = snapshot.data()?.whatsapp?.trim();
-        if (savedLink) setWhatsAppLink(savedLink);
-      })
-      .catch((error) => console.warn("WhatsApp link unavailable", error));
-  }, []);
+  const { whatsapp: whatsappLink } = usePublicSiteSettings();
 
   if (!whatsappLink || whatsappLink === "#") {
     return null;

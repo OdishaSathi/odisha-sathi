@@ -19,6 +19,15 @@ import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 import { db } from "@/lib/firebase";
 import { getActiveAdminSubCategories } from "@/lib/adminSubCategories";
 import {
+  findPublicSlugConflict,
+  formatPublicSlugConflict,
+} from "@/lib/adminSlugGuard";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
+import {
   CitizenServicePost,
   SUGGESTED_SERVICE_DOCUMENTS,
   ServiceDocumentRow,
@@ -53,6 +62,9 @@ type ServiceForm = {
   subCategories: string[];
   shortDescription: string;
   description: string;
+  titleOdia: string;
+  shortDescriptionOdia: string;
+  descriptionOdia: string;
   notificationNumber: string;
   previewImageUrl: string;
   overviewRows: ServiceOverviewRow[];
@@ -62,12 +74,17 @@ type ServiceForm = {
   eligibility: string;
   fees: string;
   howToApply: string;
+  eligibilityOdia: string;
+  feesOdia: string;
+  howToApplyOdia: string;
   youtubeUrl: string;
   youtubeUrl2: string;
   importantDates: ImportantDateRow[];
   importantLinks: ImportantLinkRow[];
   shareTitle: string;
   shareDescription: string;
+  shareTitleOdia: string;
+  shareDescriptionOdia: string;
 };
 
 function createEmptyForm(): ServiceForm {
@@ -78,6 +95,9 @@ function createEmptyForm(): ServiceForm {
     subCategories: [],
     shortDescription: "",
     description: "",
+    titleOdia: "",
+    shortDescriptionOdia: "",
+    descriptionOdia: "",
     notificationNumber: "",
     previewImageUrl: "",
     overviewRows: [
@@ -92,12 +112,17 @@ function createEmptyForm(): ServiceForm {
     eligibility: "",
     fees: "",
     howToApply: "",
+    eligibilityOdia: "",
+    feesOdia: "",
+    howToApplyOdia: "",
     youtubeUrl: "",
     youtubeUrl2: "",
     importantDates: [createEmptyDateRow()],
     importantLinks: [createEmptyLinkRow()],
     shareTitle: "",
     shareDescription: "",
+    shareTitleOdia: "",
+    shareDescriptionOdia: "",
   };
 }
 
@@ -200,7 +225,7 @@ export default function AdminCitizenServicesPage() {
 
   function updateOverviewRow(
     id: string,
-    field: "label" | "value",
+    field: "label" | "value" | "labelOdia" | "valueOdia",
     value: string
   ) {
     updateField(
@@ -248,6 +273,9 @@ export default function AdminCitizenServicesPage() {
         ),
       shortDescription: post.shortDescription || "",
       description: post.description || "",
+      titleOdia: post.titleOdia || "",
+      shortDescriptionOdia: post.shortDescriptionOdia || "",
+      descriptionOdia: post.descriptionOdia || "",
       notificationNumber: post.notificationNumber || "",
       previewImageUrl: post.previewImageUrl || "",
       overviewRows: normalizeOverviewRows(post.overviewRows),
@@ -257,6 +285,9 @@ export default function AdminCitizenServicesPage() {
       eligibility: post.eligibility || "",
       fees: post.fees || "",
       howToApply: post.howToApply || "",
+      eligibilityOdia: post.eligibilityOdia || (post as any).odiaEligibility || (post as any).eligibility_odia || (post as any).odia?.eligibility || "",
+      feesOdia: post.feesOdia || (post as any).odiaFees || (post as any).fees_odia || (post as any).odia?.fees || "",
+      howToApplyOdia: post.howToApplyOdia || (post as any).odiaHowToApply || (post as any).howToApply_odia || (post as any).odia?.howToApply || "",
       youtubeUrl: post.youtubeUrl || "",
       youtubeUrl2: post.youtubeUrl2 || "",
       importantDates:
@@ -269,6 +300,8 @@ export default function AdminCitizenServicesPage() {
           : [createEmptyLinkRow()],
       shareTitle: post.shareTitle || "",
       shareDescription: post.shareDescription || "",
+      shareTitleOdia: post.shareTitleOdia || "",
+      shareDescriptionOdia: post.shareDescriptionOdia || "",
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -286,12 +319,20 @@ export default function AdminCitizenServicesPage() {
     }
 
     const slug = makeCitizenServiceSlug(form.slug || form.title);
-    if (
-      posts.some(
-        (post) => post.slug === slug && post.id !== editingId
-      )
-    ) {
-      alert("This slug is already used. Please change the title or slug.");
+    try {
+      const slugConflict = await findPublicSlugConflict(
+        slug,
+        editingId
+          ? { collectionName: "posts", documentId: editingId }
+          : undefined
+      );
+      if (slugConflict) {
+        alert(formatPublicSlugConflict(slugConflict));
+        return;
+      }
+    } catch (error) {
+      console.error("Slug safety check failed", error);
+      alert("Could not verify that this public URL is unique. Please try again.");
       return;
     }
 
@@ -307,6 +348,9 @@ export default function AdminCitizenServicesPage() {
       ]),
       shortDescription: form.shortDescription.trim(),
       description: form.description.trim(),
+      titleOdia: form.titleOdia.trim(),
+      shortDescriptionOdia: form.shortDescriptionOdia.trim(),
+      descriptionOdia: form.descriptionOdia.trim(),
       notificationNumber: form.notificationNumber.trim(),
       previewImageUrl: form.previewImageUrl.trim(),
       overviewRows: normalizeOverviewRows(form.overviewRows),
@@ -316,14 +360,36 @@ export default function AdminCitizenServicesPage() {
       eligibility: form.eligibility.trim(),
       fees: form.fees.trim(),
       howToApply: form.howToApply.trim(),
+      eligibilityOdia: form.eligibilityOdia.trim(),
+      feesOdia: form.feesOdia.trim(),
+      howToApplyOdia: form.howToApplyOdia.trim(),
       youtubeUrl: form.youtubeUrl.trim(),
       youtubeUrl2: form.youtubeUrl2.trim(),
       importantDates: cleanImportantDates(form.importantDates),
       importantLinks: cleanImportantLinks(form.importantLinks),
+      ...buildAdminPostMetadata({
+        importantDates: cleanImportantDates(form.importantDates),
+        importantLinks: cleanImportantLinks(form.importantLinks),
+      }),
       shareTitle: form.shareTitle.trim(),
       shareDescription: form.shareDescription.trim(),
+      shareTitleOdia: form.shareTitleOdia.trim(),
+      shareDescriptionOdia: form.shareDescriptionOdia.trim(),
       status: "published",
     };
+
+    const validationReport = validateAdminContent(
+      {
+        title: payload.title,
+        slug: payload.slug,
+        shortDescription: payload.shortDescription,
+        description: payload.description,
+        importantDates: payload.importantDates,
+        importantLinks: payload.importantLinks,
+      },
+      { expectDescription: true, expectOfficialLink: true }
+    );
+    if (!confirmAdminValidation(validationReport)) return;
 
     try {
       setSaving(true);
@@ -426,7 +492,18 @@ export default function AdminCitizenServicesPage() {
                         makeCitizenServiceSlug(event.target.value)
                       )
                     }
+                    readOnly={Boolean(editingId)}
+                    title={
+                      editingId
+                        ? "The public URL is locked after publishing."
+                        : ""
+                    }
                   />
+                  {editingId ? (
+                    <small className="citizen-field-help">
+                      Public URL is locked after publishing to protect shared and indexed links.
+                    </small>
+                  ) : null}
                 </label>
                 <div style={{ gridColumn: "1 / -1" }}>
                   <label>Subcategories * (select one or more)</label>
@@ -490,6 +567,43 @@ export default function AdminCitizenServicesPage() {
                   }
                 />
               </label>
+
+              <details className="citizen-odia-panel">
+                <summary>🌐 Add Odia / ଓଡ଼ିଆ translation (optional)</summary>
+                <div className="citizen-grid">
+                  <label>
+                    Service Title — ଓଡ଼ିଆ
+                    <input
+                      value={form.titleOdia}
+                      onChange={(event) =>
+                        updateField("titleOdia", event.target.value)
+                      }
+                      placeholder="ଓଡ଼ିଆ ଶୀର୍ଷକ"
+                    />
+                  </label>
+                  <label>
+                    Short Description — ଓଡ଼ିଆ
+                    <textarea
+                      rows={3}
+                      value={form.shortDescriptionOdia}
+                      onChange={(event) =>
+                        updateField("shortDescriptionOdia", event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+                <label>
+                  Main Description — ଓଡ଼ିଆ
+                  <textarea
+                    rows={6}
+                    value={form.descriptionOdia}
+                    onChange={(event) =>
+                      updateField("descriptionOdia", event.target.value)
+                    }
+                  />
+                </label>
+                <small>Leave any Odia field blank to use its English value automatically on the public Odia view.</small>
+              </details>
             </section>
 
             <ImageUploadField
@@ -547,6 +661,32 @@ export default function AdminCitizenServicesPage() {
                   </div>
                 ))}
               </div>
+              {form.overviewRows.length > 0 ? (
+                <details className="citizen-odia-panel">
+                  <summary>🌐 Odia overview labels / values (optional)</summary>
+                  <div className="citizen-row-list">
+                    {form.overviewRows.map((row) => (
+                      <div className="citizen-entry-row citizen-entry-row-odia" key={`${row.id}-odia`}>
+                        <input
+                          value={row.labelOdia || ""}
+                          onChange={(event) =>
+                            updateOverviewRow(row.id, "labelOdia", event.target.value)
+                          }
+                          placeholder={`${row.label || "Label"} — ଓଡ଼ିଆ`}
+                        />
+                        <input
+                          value={row.valueOdia || ""}
+                          onChange={(event) =>
+                            updateOverviewRow(row.id, "valueOdia", event.target.value)
+                          }
+                          placeholder={`${row.value || "Value"} — ଓଡ଼ିଆ`}
+                        />
+                        <span className="citizen-odia-fallback">English fallback</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </section>
 
             <label>
@@ -571,6 +711,7 @@ export default function AdminCitizenServicesPage() {
                 updateField("dataTables", value)
               }
               sectionLabel="Optional Details, Images and Extra Data Tables"
+              enableOdia
             />
 
             <section>
@@ -628,6 +769,30 @@ export default function AdminCitizenServicesPage() {
                   </div>
                 ))}
               </div>
+              {form.documentsRequired.length > 0 ? (
+                <details className="citizen-odia-panel">
+                  <summary>🌐 Odia document names (optional)</summary>
+                  <div className="citizen-row-list">
+                    {form.documentsRequired.map((document) => (
+                      <input
+                        key={`${document.id}-odia`}
+                        value={document.nameOdia || ""}
+                        onChange={(event) =>
+                          updateField(
+                            "documentsRequired",
+                            form.documentsRequired.map((item) =>
+                              item.id === document.id
+                                ? { ...item, nameOdia: event.target.value }
+                                : item
+                            )
+                          )
+                        }
+                        placeholder={`${document.name || "Document"} — ଓଡ଼ିଆ`}
+                      />
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </section>
 
             <div className="citizen-grid">
@@ -665,6 +830,36 @@ export default function AdminCitizenServicesPage() {
               />
             </label>
 
+            <details className="citizen-odia-panel">
+              <summary>🌐 Odia eligibility, fees and application process (optional)</summary>
+              <div className="citizen-grid">
+                <label>
+                  Eligibility — ଓଡ଼ିଆ
+                  <textarea
+                    rows={5}
+                    value={form.eligibilityOdia}
+                    onChange={(event) => updateField("eligibilityOdia", event.target.value)}
+                  />
+                </label>
+                <label>
+                  Fees / Charges — ଓଡ଼ିଆ
+                  <textarea
+                    rows={5}
+                    value={form.feesOdia}
+                    onChange={(event) => updateField("feesOdia", event.target.value)}
+                  />
+                </label>
+              </div>
+              <label>
+                How to Apply — ଓଡ଼ିଆ
+                <textarea
+                  rows={7}
+                  value={form.howToApplyOdia}
+                  onChange={(event) => updateField("howToApplyOdia", event.target.value)}
+                />
+              </label>
+            </details>
+
             <label>
               YouTube Thumbnail 2 (shown below How to Apply)
               <input
@@ -682,6 +877,7 @@ export default function AdminCitizenServicesPage() {
               importantLinks={form.importantLinks}
               onDatesChange={(value) => updateField("importantDates", value)}
               onLinksChange={(value) => updateField("importantLinks", value)}
+              enableOdia
             />
 
             <section>
@@ -708,6 +904,27 @@ export default function AdminCitizenServicesPage() {
                   />
                 </label>
               </div>
+              <details className="citizen-odia-panel">
+                <summary>🌐 Odia share text (optional)</summary>
+                <div className="citizen-grid">
+                  <label>
+                    Share Title — ଓଡ଼ିଆ
+                    <input
+                      value={form.shareTitleOdia}
+                      onChange={(event) => updateField("shareTitleOdia", event.target.value)}
+                      placeholder="Falls back to English share title"
+                    />
+                  </label>
+                  <label>
+                    Share Description — ଓଡ଼ିଆ
+                    <textarea
+                      rows={3}
+                      value={form.shareDescriptionOdia}
+                      onChange={(event) => updateField("shareDescriptionOdia", event.target.value)}
+                    />
+                  </label>
+                </div>
+              </details>
             </section>
 
             <button
@@ -913,10 +1130,50 @@ export default function AdminCitizenServicesPage() {
         .citizen-post-list article h3 {
           margin: 4px 0 0;
         }
+        .citizen-odia-panel {
+          grid-column: 1 / -1;
+          border: 1px dashed #bfdbfe;
+          border-radius: 11px;
+          background: #f8fbff;
+          overflow: hidden;
+        }
+        .citizen-odia-panel > summary {
+          padding: 10px 12px;
+          color: #1d4ed8;
+          font-size: 13px;
+          font-weight: 900;
+          cursor: pointer;
+          user-select: none;
+        }
+        .citizen-odia-panel[open] > summary {
+          border-bottom: 1px dashed #bfdbfe;
+        }
+        .citizen-odia-panel > :not(summary) {
+          margin: 11px 12px;
+        }
+        .citizen-odia-panel small {
+          display: block;
+          color: #64748b;
+          line-height: 1.5;
+        }
+        .citizen-entry-row-odia {
+          grid-template-columns: minmax(140px, 0.65fr) minmax(220px, 1.35fr) auto;
+          align-items: center;
+        }
+        .citizen-odia-fallback {
+          color: #64748b;
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
         @media (max-width: 680px) {
           .citizen-entry-row,
-          .citizen-document-row {
+          .citizen-document-row,
+          .citizen-entry-row-odia {
             grid-template-columns: 1fr;
+          }
+          .citizen-odia-fallback {
+            display: none;
           }
         }
       `}</style>

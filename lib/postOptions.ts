@@ -53,6 +53,7 @@ export type ImportantDateRow = {
   type: string;
   label: string;
   value: string;
+  labelOdia?: string;
 };
 
 export type ImportantLinkRow = {
@@ -60,6 +61,7 @@ export type ImportantLinkRow = {
   type: string;
   label: string;
   url: string;
+  labelOdia?: string;
 };
 
 export type QuickInfoRow = {
@@ -157,6 +159,7 @@ export function cleanImportantDates(
       ...row,
       label: resolveRowLabel(row.type, row.label),
       value: row.value.trim(),
+      labelOdia: String(row.labelOdia || "").trim(),
     }))
     .filter((row) => row.label.trim() || row.value.trim());
 }
@@ -169,6 +172,7 @@ export function cleanImportantLinks(
       ...row,
       label: resolveRowLabel(row.type, row.label),
       url: row.url.trim(),
+      labelOdia: String(row.labelOdia || "").trim(),
     }))
     .filter((row) => row.label.trim() && row.url.trim());
 }

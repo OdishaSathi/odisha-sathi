@@ -23,9 +23,9 @@ export const siteConfig = {
   headerNav: [
     { label: "Home", href: "/" },
     { label: "Jobs", href: "/jobs" },
+    { label: "Admissions", href: "/admissions" },
     { label: "Results", href: "/results" },
-    { label: "Admissions & Scholarships", href: "/admissions" },
-    { label: "Exams", href: "/admit-cards" },
+    { label: "Exams & Admit Cards", href: "/admit-cards" },
     { label: "Citizen Services", href: "/citizen-services" },
   ],
 
@@ -49,9 +49,9 @@ export const siteConfig = {
 
   homeCategories: [
     { label: "Jobs", href: "/jobs" },
+    { label: "Admissions", href: "/admissions" },
     { label: "Results", href: "/results" },
-    { label: "Admissions & Scholarships", href: "/admissions" },
-    { label: "Admit Cards & Exams", href: "/admit-cards" },
+    { label: "Exams & Admit Cards", href: "/admit-cards" },
     { label: "Citizen Services", href: "/citizen-services" },
   ],
 };

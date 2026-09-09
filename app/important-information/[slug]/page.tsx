@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
 import { dbServer } from "@/lib/firebaseServer";
 import {
@@ -11,6 +12,8 @@ import {
 } from "@/lib/importantInformation";
 import { isPublicDetailPost } from "@/lib/publicPostQuality";
 import SocialShareButtons from "@/components/public/SocialShareButtons";
+import { getPublicLinkAction } from "@/lib/publicLinkLabels";
+import { toImportantImageProxyUrl } from "@/lib/publicImageUrl";
 
 type ImportantInfoPageProps = {
   params: Promise<{
@@ -60,13 +63,15 @@ async function getImportantInfoBySlug(slug: string): Promise<ImportantInfoPost |
 
     if (!slugSnapshot.empty) {
       const item = slugSnapshot.docs[0];
-      return cleanImportantInfoPost(item.data(), item.id);
+      const post = cleanImportantInfoPost(item.data(), item.id);
+      return post.status === "hidden" ? null : post;
     }
 
     const directDoc = await getDoc(doc(dbServer, "importantInformation", pageSlug));
 
     if (directDoc.exists()) {
-      return cleanImportantInfoPost(directDoc.data(), directDoc.id);
+      const post = cleanImportantInfoPost(directDoc.data(), directDoc.id);
+      return post.status === "hidden" ? null : post;
     }
 
     return null;
@@ -139,7 +144,8 @@ export async function generateMetadata({ params }: ImportantInfoPageProps): Prom
     160
   );
   const imageUrl = getImportantInfoOgImage(post);
-  const canonicalUrl = `/important-information/${encodeURIComponent(slug)}`;
+  const canonicalSlug = post?.slug || post?.id || decodeURIComponent(slug);
+  const canonicalUrl = `/important-information/${encodeURIComponent(canonicalSlug)}`;
 
   return {
     metadataBase: new URL("https://odishasathi.in"),
@@ -176,20 +182,37 @@ export default async function ImportantInformationDetailPage({ params }: Importa
   const { slug } = await params;
   const post = await getImportantInfoBySlug(slug);
 
-  if (!post || post.status === "hidden") {
-    return (
-      <main className="important-detail-page">
-        <div className="important-detail-container">
-          <div className="important-empty-card">
-            <h1>Information not found</h1>
-            <p>The requested important information is not available.</p>
-            <Link href="/">Back to Home</Link>
-          </div>
-        </div>
-        <ImportantDetailStyles />
-      </main>
-    );
+  if (!post) {
+    notFound();
   }
+
+  const requestedSlug = decodeURIComponent(slug).trim();
+  const canonicalSlug = String(post.slug || post.id || requestedSlug).trim();
+  if (canonicalSlug && canonicalSlug !== requestedSlug) {
+    redirect(`/important-information/${encodeURIComponent(canonicalSlug)}`);
+  }
+
+  const detailSections = (post.detailSections || []).filter((section) => {
+    const hasContent = Boolean(String(section.content || "").trim());
+    const hasImages = (section.imageUrls || []).some((url) =>
+      Boolean(String(url || "").trim())
+    );
+    return hasContent || hasImages;
+  });
+  const dataTables = (post.dataTables || []).filter((table) => {
+    const hasImage = Boolean(String(table.imageUrl || "").trim());
+    const hasNote = Boolean(String(table.note || "").trim());
+    const hasRows = (table.rows || []).some((row) =>
+      (row.cells || []).some((cell) => Boolean(String(cell || "").trim()))
+    );
+    return hasImage || hasNote || hasRows;
+  });
+  const importantDates = (post.importantDates || []).filter((row) =>
+    Boolean(String(row.value || "").trim())
+  );
+  const importantLinks = (post.importantLinks || []).filter((row) =>
+    Boolean(String(row.url || "").trim())
+  );
 
   const relatedPosts = await getRelatedPosts(post.referenceKeywords || []);
   const videos = [post.youtubeUrl, ...(post.youtubeUrls || [])]
@@ -199,6 +222,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
   const shareDescription = post.shareDescription || post.shortDescription || "";
   const shareUrl = `https://odishasathi.in/important-information/${post.slug || post.id}`;
   const previewImageUrl = getImportantInfoDisplayImage(post);
+  const proxiedPreviewImageUrl = toImportantImageProxyUrl(previewImageUrl);
   return (
     <main className="important-detail-page">
       <div className="important-detail-container">
@@ -223,7 +247,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
             <section className="important-main-column">
               {previewImageUrl ? (
                 <div className="important-title-image">
-                  <img src={previewImageUrl} alt={`${post.title} preview`} />
+                  <img src={proxiedPreviewImageUrl || previewImageUrl} alt={`${post.title} preview`} />
                 </div>
               ) : null}
 
@@ -241,15 +265,15 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                 </section>
               ) : null}
 
-              {(post.detailSections || []).map((section, index) => (
-                <section className="important-section" key={`${section.title}-${index}`}>
-                  <SectionHeader title={section.title || `Information ${index + 1}`} />
+              {detailSections.map((section, index) => (
+                <section className="important-section" key={`${section.id || section.title}-${index}`}>
+                  {section.title?.trim() ? <SectionHeader title={section.title.trim()} /> : null}
                   {(section.imageUrls || []).length > 0 ? (
                     <div className="important-image-grid">
                       {(section.imageUrls || []).map((imageUrl, imageIndex) => (
                         <img
                           key={`${imageUrl}-${imageIndex}`}
-                          src={imageUrl}
+                          src={toImportantImageProxyUrl(imageUrl) || imageUrl}
                           alt={`${section.title || post.title} image ${imageIndex + 1}`}
                         />
                       ))}
@@ -261,56 +285,62 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                 </section>
               ))}
 
-              {(post.dataTables || []).map((table, tableIndex) => (
-                <section
-                  className="important-section"
-                  key={table.id || tableIndex}
-                >
-                  <SectionHeader
-                    title={table.title || `Data Table ${tableIndex + 1}`}
-                  />
-                  {table.imageUrl ? (
-                    <div className="important-image-grid">
-                      <img
-                        src={table.imageUrl}
-                        alt={`${table.title || "Data table"} reference`}
-                      />
-                    </div>
-                  ) : null}
-                  {table.rows.length > 0 ? (
-                    <div className="important-table-scroll">
-                      <table className="important-data-table">
-                        <thead>
-                          <tr>
-                            {table.columns.map((column, columnIndex) => (
-                              <th key={columnIndex}>
-                                {column || `Column ${columnIndex + 1}`}
-                              </th>
+              {dataTables.map((table, tableIndex) => {
+                const columns = (table.columns || []).map((column) => String(column || "").trim());
+                const showHeader = columns.some(Boolean);
+                const visibleRows = (table.rows || []).filter((row) =>
+                  (row.cells || []).some((cell) => Boolean(String(cell || "").trim()))
+                );
+                const note = String(table.note || "").trim();
+                const title = String(table.title || "").trim();
+                return (
+                  <section
+                    className="important-section"
+                    key={table.id || tableIndex}
+                  >
+                    {title ? <SectionHeader title={title} /> : null}
+                    {table.imageUrl ? (
+                      <div className="important-image-grid">
+                        <img
+                          src={toImportantImageProxyUrl(table.imageUrl) || table.imageUrl}
+                          alt={`${title || post.title} reference`}
+                        />
+                      </div>
+                    ) : null}
+                    {visibleRows.length > 0 ? (
+                      <div className="important-table-scroll">
+                        <table className="important-data-table">
+                          {showHeader ? (
+                            <thead>
+                              <tr>
+                                {columns.map((column, columnIndex) => (
+                                  <th key={columnIndex}>{column}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                          ) : null}
+                          <tbody>
+                            {visibleRows.map((row) => (
+                              <tr key={row.id}>
+                                {columns.map((_, cellIndex) => (
+                                  <td key={cellIndex}>{String(row.cells[cellIndex] || "").trim()}</td>
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {table.rows.map((row) => (
-                            <tr key={row.id}>
-                              {table.columns.map((_, cellIndex) => (
-                                <td key={cellIndex}>
-                                  {row.cells[cellIndex] || "—"}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : null}
-                </section>
-              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                    {note ? <div className="important-table-note">{note}</div> : null}
+                  </section>
+                );
+              })}
 
-              {(post.importantDates || []).length > 0 ? (
+              {importantDates.length > 0 ? (
                 <section className="important-section">
                   <SectionHeader title="Important Dates" />
                   <div className="important-simple-rows">
-                    {(post.importantDates || []).map((row, index) => (
+                    {importantDates.map((row, index) => (
                       <div key={row.id || index}>
                         <span>{row.label || row.type || "Date"}</span>
                         <strong>{row.value}</strong>
@@ -320,11 +350,11 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                 </section>
               ) : null}
 
-              {(post.importantLinks || []).length > 0 ? (
+              {importantLinks.length > 0 ? (
                 <section className="important-section">
                   <SectionHeader title="Important Links" />
                   <div className="important-link-rows">
-                    {(post.importantLinks || []).map((row, index) => (
+                    {importantLinks.map((row, index) => (
                       <a
                         key={row.id || index}
                         href={row.url}
@@ -332,7 +362,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                         rel="noopener noreferrer"
                       >
                         <span>{row.label || row.type || "Official Link"}</span>
-                        <strong>Open Link</strong>
+                        <strong>{getPublicLinkAction(row)}</strong>
                       </a>
                     ))}
                   </div>
@@ -620,8 +650,9 @@ function ImportantDetailStyles() {
 
       .important-data-table {
         width: 100%;
-        min-width: 520px;
+        min-width: 560px;
         border-collapse: collapse;
+        table-layout: auto;
       }
 
       .important-data-table th,
@@ -638,6 +669,18 @@ function ImportantDetailStyles() {
         color: #1e3a8a;
         font-size: 13px;
         font-weight: 900;
+      }
+
+      .important-table-note {
+        margin: -4px 14px 14px;
+        padding: 9px 11px;
+        border-left: 3px solid #1d4ed8;
+        border-radius: 7px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 13px;
+        line-height: 1.55;
+        white-space: pre-line;
       }
 
       .important-simple-rows,
@@ -737,6 +780,8 @@ function ImportantDetailStyles() {
       .important-share-section {
         margin-top: 22px;
         padding: 12px 13px;
+        min-width: 0;
+        overflow: visible;
         border-radius: 13px;
         background: linear-gradient(135deg, #f0fdf4, #eff6ff);
         border: 1px solid #dbeafe;
@@ -844,14 +889,19 @@ function ImportantDetailStyles() {
         .important-description { font-size: 15px; padding: 13px; text-align: left; }
         .important-video-footer { align-items: flex-start; flex-direction: column; }
         .important-video-footer a { width: 100%; justify-content: center; }
-        .important-table-scroll { overflow-x: visible; padding: 8px; }
-        .important-data-table { min-width: 0; table-layout: fixed; }
+        .important-table-scroll {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          padding: 8px;
+        }
+        .important-data-table { min-width: 560px; table-layout: auto; }
         .important-data-table th,
         .important-data-table td {
-          padding: 7px 5px;
+          padding: 7px 8px;
           font-size: 11.5px;
           line-height: 1.35;
-          overflow-wrap: anywhere;
+          overflow-wrap: normal;
+          word-break: normal;
         }
         .important-simple-rows > div,
         .important-link-rows > a {

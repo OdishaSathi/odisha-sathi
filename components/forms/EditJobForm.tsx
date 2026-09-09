@@ -45,6 +45,15 @@ import {
   getActiveAdminSubCategories,
   mergeSubCategoryNames,
 } from "@/lib/adminSubCategories";
+import {
+  findPublicSlugConflict,
+  formatPublicSlugConflict,
+} from "@/lib/adminSlugGuard";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -304,6 +313,15 @@ setYoutubeUrl3(savedYoutubeUrls[1] || data.youtubeUrl3 || data.videoUrl3 || "");
     try {
       setSaving(true);
 
+      const slugConflict = await findPublicSlugConflict(finalSlug, {
+        collectionName: "posts",
+        documentId: routeId,
+      });
+      if (slugConflict) {
+        alert(formatPublicSlugConflict(slugConflict));
+        return;
+      }
+
       const cleanedPanels = cleanJobInfoPanels(jobInfoPanels);
       const cleanedFeeRows = cleanJobFeeRows(feeStructureRows);
       const cleanedDocuments = cleanJobDocuments(documentsRequired);
@@ -320,6 +338,22 @@ const excerpt = makeExcerpt(shortDescription, description);
 const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
   .map((item) => item.trim())
   .filter(Boolean);
+
+      const validationReport = validateAdminContent(
+        {
+          title,
+          slug: finalSlug,
+          shortDescription,
+          description,
+          importantDates: cleanedDates,
+          importantLinks: cleanedLinks,
+        },
+        {
+          expectDescription: true,
+          expectOfficialLink: true,
+        }
+      );
+      if (!confirmAdminValidation(validationReport)) return;
 
       await updateDoc(doc(db, "posts", routeId), {
         title: title.trim(),
@@ -373,6 +407,10 @@ youtubeUrls: cleanedYoutubeUrls,
         importantLinks: cleanedLinks,
         links: cleanedLinks,
         sourceUrl: cleanedLinks[0]?.url || "",
+        ...buildAdminPostMetadata({
+          importantDates: cleanedDates,
+          importantLinks: cleanedLinks,
+        }),
 
         tags: subCategories,
         status,
@@ -418,10 +456,18 @@ youtubeUrls: cleanedYoutubeUrls,
               placeholder={autoSlug || "auto-generated-from-title"}
               value={manualSlug}
               onChange={(e) => setManualSlug(e.target.value)}
-              style={inputStyle}
+              readOnly={Boolean(manualSlug)}
+              title={manualSlug ? "The public URL is locked after publishing." : ""}
+              style={{
+                ...inputStyle,
+                background: manualSlug ? "#f8fafc" : inputStyle.background,
+                color: manualSlug ? "#64748b" : inputStyle.color,
+              }}
             />
             <span style={helpTextStyle}>
-              Final slug: {finalSlug || "Slug will be generated automatically"}
+              {manualSlug
+                ? `Public URL locked: ${finalSlug}`
+                : `Final slug: ${finalSlug || "Slug will be generated automatically"}`}
             </span>
           </label>
 

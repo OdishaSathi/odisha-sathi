@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 import {
   normalizeCompatiblePostLinks,
   toStoredPostLinks,
@@ -61,6 +62,10 @@ export async function addAdmitCard(admitCard: AdmitCard) {
     links: cleanLinks,
     importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
+    ...buildAdminPostMetadata({
+      importantDates: cleanImportantDates,
+      importantLinks: cleanLinks,
+    }),
     category: "admit-cards",
     type: "admit-cards",
     createdAt: serverTimestamp(),
@@ -88,6 +93,10 @@ export async function updateAdmitCard(id: string, admitCard: AdmitCard) {
     links: cleanLinks,
     importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
+    ...buildAdminPostMetadata({
+      importantDates: cleanImportantDates,
+      importantLinks: cleanLinks,
+    }),
     category: "admit-cards",
     type: "admit-cards",
     updatedAt: serverTimestamp(),

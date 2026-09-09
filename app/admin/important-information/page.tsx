@@ -2,6 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  confirmAdminValidation,
+  validateAdminContent,
+} from "@/lib/adminContentValidation";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
@@ -164,6 +168,7 @@ function preparePayload(form: ImportantInfoFormState): ImportantInfoPost {
   const slug = form.slug.trim() || makeImportantInfoSlug(form.title);
   const shareImageUrl =
     form.shareImageUrl.trim() ||
+    form.previewImageUrl.trim() ||
     imageUrls[0] ||
     getFirstImportantInfoYouTubeThumbnail({
       youtubeUrl: form.youtubeUrl,
@@ -189,7 +194,7 @@ function preparePayload(form: ImportantInfoFormState): ImportantInfoPost {
     importantLinks: cleanImportantLinks(form.importantLinks),
     shareTitle: form.shareTitle.trim(),
     shareDescription: form.shareDescription.trim(),
-    shareImageUrl: form.previewImageUrl.trim() || shareImageUrl,
+    shareImageUrl,
     isFeatured: form.isFeatured,
     featuredOrder: Number(form.featuredOrder || 0),
     status: form.status,
@@ -287,6 +292,19 @@ export default function AdminImportantInformationPage() {
       const payload: ImportantInfoPost = {
         ...basePayload,
       };
+
+      const validationReport = validateAdminContent(
+        {
+          title: payload.title,
+          slug: payload.slug,
+          shortDescription: payload.shortDescription,
+          description: payload.details,
+          importantDates: payload.importantDates,
+          importantLinks: payload.importantLinks,
+        },
+        { expectDescription: true, expectOfficialLink: false }
+      );
+      if (!confirmAdminValidation(validationReport)) return;
 
       if (editingPost?.id) {
         await updateImportantInformationPost(editingPost.id, payload);
@@ -417,9 +435,20 @@ export default function AdminImportantInformationPage() {
                 <input
                   value={form.slug}
                   onChange={(event) => updateField("slug", makeImportantInfoSlug(event.target.value))}
+                  readOnly={Boolean(editingPost)}
+                  title={editingPost ? "The public URL is locked after publishing." : ""}
                   placeholder="plus-two-admission-important-information"
-                  style={fieldStyle}
+                  style={{
+                    ...fieldStyle,
+                    background: editingPost ? "#f8fafc" : "#ffffff",
+                    color: editingPost ? "#64748b" : "#0f172a",
+                  }}
                 />
+                {editingPost ? (
+                  <small style={{ color: "#64748b", fontSize: "12px" }}>
+                    Public URL is locked after publishing to protect shared and indexed links.
+                  </small>
+                ) : null}
               </div>
             </div>
 
@@ -572,6 +601,9 @@ export default function AdminImportantInformationPage() {
                 setForm((oldValue) => ({ ...oldValue, importantLinks }))
               }
             />
+            <p style={{ margin: "-8px 0 0", color: "#64748b", fontSize: "12px", lineHeight: 1.5 }}>
+              Homepage ticker rule: if you add a Last Date / End Date / Closing Date / Deadline above, this update stays in the scrolling Important Updates bar through that date. If no end date is added, it stays there for 7 days from publication.
+            </p>
 
             <div style={{ ...cardStyle, background: "#f8fafc" }}>
               <h3 style={{ marginTop: 0 }}>Share Preview / SEO Preview</h3>
@@ -580,10 +612,13 @@ export default function AdminImportantInformationPage() {
                   <label>Share Title</label>
                   <input value={form.shareTitle} onChange={(event) => updateField("shareTitle", event.target.value)} style={fieldStyle} />
                 </div>
-                <div>
-                  <label>Share Image URL</label>
-                  <input value={form.shareImageUrl} onChange={(event) => updateField("shareImageUrl", event.target.value)} style={fieldStyle} />
-                </div>
+                <ImageUploadField
+                  label="Share / Social Image"
+                  value={form.shareImageUrl}
+                  onChange={(value) => updateField("shareImageUrl", value)}
+                  helpText="Optional. If blank, the Preview Image is used automatically for WhatsApp/Facebook/social sharing."
+                  folder="important-information/share"
+                />
               </div>
               <div style={{ marginTop: "12px" }}>
                 <label>Share Description</label>

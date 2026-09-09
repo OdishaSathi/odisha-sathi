@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { storage } from "@/lib/firebase";
+import {
+  getImageUploadErrorMessage,
+  uploadImageFile,
+} from "@/lib/clientImageUpload";
+import { normalizePublicImageUrl } from "@/lib/publicImageUrl";
 
 type Props = {
   label: string;
@@ -21,36 +24,16 @@ export default function ImageUploadField({
 }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   async function uploadImage(file?: File) {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Please select a valid image file.");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image size must be 5 MB or less.");
-      return;
-    }
-
     try {
       setUploading(true);
       setError("");
-      const safeName = file.name
-        .toLowerCase()
-        .replace(/[^a-z0-9.]+/g, "-")
-        .replace(/^-+|-+$/g, "");
-      const imageRef = ref(
-        storage,
-        `${folder}/${Date.now()}-${safeName || "image"}`
-      );
-      await uploadBytes(imageRef, file, { contentType: file.type });
-      onChange(await getDownloadURL(imageRef));
+      onChange(await uploadImageFile(file, { folder }));
     } catch (uploadError) {
       console.error(uploadError);
-      setError(
-        "Upload failed. Check Firebase Storage permission or paste an image URL."
-      );
+      setError(getImageUploadErrorMessage(uploadError));
     } finally {
       setUploading(false);
     }
@@ -65,9 +48,14 @@ export default function ImageUploadField({
           value={value}
           onChange={(event) => {
             setError("");
+            setPreviewFailed(false);
             onChange(event.target.value);
           }}
-          placeholder="Paste image URL"
+          onBlur={(event) => {
+            const normalized = normalizePublicImageUrl(event.currentTarget.value);
+            if (normalized && normalized !== event.currentTarget.value) onChange(normalized);
+          }}
+          placeholder="Paste direct image URL (JPG, PNG, WebP, GIF)"
         />
         <label className="image-upload-button">
           {uploading ? "Uploading…" : "Upload image"}
@@ -75,18 +63,30 @@ export default function ImageUploadField({
             type="file"
             accept="image/*"
             disabled={uploading}
-            onChange={(event) => uploadImage(event.target.files?.[0])}
+            onChange={(event) => {
+              uploadImage(event.target.files?.[0]);
+              event.currentTarget.value = "";
+            }}
           />
         </label>
       </div>
       {helpText ? <small>{helpText}</small> : null}
+      <small>Best support: JPG/JPEG, PNG, WebP or GIF. Google Drive and Dropbox share links are normalized automatically when possible.</small>
       {error ? <p>{error}</p> : null}
       {value.trim() ? (
         <div className="image-upload-preview">
-          <img src={value.trim()} alt={`${label} preview`} />
-          <button type="button" onClick={() => onChange("")}>
+          <img
+            src={normalizePublicImageUrl(value.trim())}
+            alt={`${label} preview`}
+            onLoad={() => setPreviewFailed(false)}
+            onError={() => setPreviewFailed(true)}
+          />
+          <button type="button" onClick={() => { setPreviewFailed(false); onChange(""); }}>
             Remove
           </button>
+          {previewFailed ? (
+            <p className="image-preview-warning">This URL cannot be previewed directly. Prefer Upload image, or use a public direct image URL.</p>
+          ) : null}
         </div>
       ) : null}
 
@@ -156,6 +156,9 @@ export default function ImageUploadField({
           border-color: #fecaca;
           background: #fff1f2;
           color: #be123c;
+        }
+        .image-preview-warning {
+          grid-column: 1 / -1;
         }
         @media (max-width: 620px) {
           .image-upload-grid,

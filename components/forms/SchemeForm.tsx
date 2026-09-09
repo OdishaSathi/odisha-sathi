@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import type { CSSProperties } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 
 type SchemeCategory = {
   id: string;
@@ -134,6 +135,7 @@ export function SchemeForm({ categories = [], onSaved }: SchemeFormProps) {
         importantDates,
         importantLinks,
         links: importantLinks,
+        ...buildAdminPostMetadata({ importantDates, importantLinks }),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

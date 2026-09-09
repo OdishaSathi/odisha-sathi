@@ -394,6 +394,8 @@ export default function AdmitCardForm({
             type="text"
             value={formData.slug}
             onChange={(event) => updateField("slug", event.target.value)}
+            readOnly={Boolean(initialData)}
+            title={initialData ? "The public URL is locked after publishing." : ""}
             placeholder="otet-admit-card-2026"
             required
           />

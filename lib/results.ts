@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
+import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
 import {
   normalizeCompatiblePostLinks,
   toStoredPostLinks,
@@ -61,6 +62,10 @@ export async function addResult(result: ResultPost) {
     links: cleanLinks,
     importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
+    ...buildAdminPostMetadata({
+      importantDates: cleanImportantDates,
+      importantLinks: cleanLinks,
+    }),
     category: "results",
     type: "results",
     createdAt: serverTimestamp(),
@@ -88,6 +93,10 @@ export async function updateResult(id: string, result: ResultPost) {
     links: cleanLinks,
     importantLinks: cleanLinks,
     importantDates: cleanImportantDates,
+    ...buildAdminPostMetadata({
+      importantDates: cleanImportantDates,
+      importantLinks: cleanLinks,
+    }),
     category: "results",
     type: "results",
     updatedAt: serverTimestamp(),

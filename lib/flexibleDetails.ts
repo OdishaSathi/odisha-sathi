@@ -3,11 +3,14 @@ export type FlexibleDetailSection = {
   title: string;
   content: string;
   imageUrls: string[];
+  titleOdia?: string;
+  contentOdia?: string;
 };
 
 export type FlexibleTableRow = {
   id: string;
   cells: string[];
+  cellsOdia?: string[];
 };
 
 export type FlexibleDataTable = {
@@ -16,6 +19,10 @@ export type FlexibleDataTable = {
   imageUrl: string;
   columns: string[];
   rows: FlexibleTableRow[];
+  note?: string;
+  titleOdia?: string;
+  noteOdia?: string;
+  columnsOdia?: string[];
 };
 
 function makeId(prefix: string) {
@@ -34,6 +41,8 @@ export function createFlexibleDetailSection(
     title,
     content: "",
     imageUrls: [],
+    titleOdia: "",
+    contentOdia: "",
   };
 }
 
@@ -41,6 +50,7 @@ export function createFlexibleTableRow(columnCount = 2): FlexibleTableRow {
   return {
     id: makeId("table_row"),
     cells: Array.from({ length: Math.max(1, columnCount) }, () => ""),
+    cellsOdia: Array.from({ length: Math.max(1, columnCount) }, () => ""),
   };
 }
 
@@ -51,6 +61,10 @@ export function createFlexibleDataTable(title = ""): FlexibleDataTable {
     imageUrl: "",
     columns: ["Particulars", "Details"],
     rows: [createFlexibleTableRow(2)],
+    note: "",
+    titleOdia: "",
+    noteOdia: "",
+    columnsOdia: ["", ""],
   };
 }
 
@@ -67,9 +81,16 @@ export function normalizeFlexibleDetailSections(
       imageUrls: Array.isArray(item?.imageUrls)
         ? item.imageUrls.map(cleanText).filter(Boolean)
         : [cleanText(item?.imageUrl)].filter(Boolean),
+      titleOdia: cleanText(item?.titleOdia || item?.odiaTitle),
+      contentOdia: cleanText(item?.contentOdia || item?.odiaContent),
     }))
     .filter(
-      (item) => item.title || item.content || item.imageUrls.length > 0
+      (item) =>
+        item.title ||
+        item.content ||
+        item.titleOdia ||
+        item.contentOdia ||
+        item.imageUrls.length > 0
     );
 }
 
@@ -99,15 +120,23 @@ export function normalizeFlexibleDataTables(
                 ? row.cells
                 : safeColumns.map((column) => row?.[column] || "");
 
+              const sourceOdiaCells = Array.isArray(row?.cellsOdia)
+                ? row.cellsOdia
+                : [];
+
               return {
                 id: cleanText(row?.id) || makeId(`table_${tableIndex}_${rowIndex}`),
                 cells: safeColumns.map((_, cellIndex) =>
                   cleanText(sourceCells[cellIndex])
                 ),
+                cellsOdia: safeColumns.map((_, cellIndex) =>
+                  cleanText(sourceOdiaCells[cellIndex])
+                ),
               };
             })
             .filter((row: FlexibleTableRow) =>
-              row.cells.some((cell) => cell)
+              row.cells.some((cell) => cell) ||
+              (row.cellsOdia || []).some((cell) => cell)
             )
         : [];
 
@@ -117,12 +146,21 @@ export function normalizeFlexibleDataTables(
         imageUrl: cleanText(table?.imageUrl || table?.image),
         columns: safeColumns,
         rows,
+        note: cleanText(table?.note || table?.tableNote || table?.noteText),
+        titleOdia: cleanText(table?.titleOdia || table?.odiaTitle),
+        noteOdia: cleanText(table?.noteOdia || table?.odiaNote),
+        columnsOdia: safeColumns.map((_, index) =>
+          cleanText(Array.isArray(table?.columnsOdia) ? table.columnsOdia[index] : "")
+        ),
       };
     })
     .filter(
       (table) =>
         table.title ||
         table.imageUrl ||
+        table.note ||
+        table.titleOdia ||
+        table.noteOdia ||
         table.rows.length > 0
     );
 }

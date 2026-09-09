@@ -109,7 +109,7 @@ export function createRequiredDocument(
 
 export function createDefaultJobDocuments() {
   return REQUIRED_JOB_DOCUMENTS.map((name) =>
-    createRequiredDocument(name, true)
+    createRequiredDocument(name, false)
   );
 }
 
@@ -194,29 +194,19 @@ function normalizeDocuments(value: unknown): RequiredDocumentRow[] {
           return {
             id: item?.id || createJobDetailId(`document_${index}`),
             name: cleanString(item?.name || item?.label),
-            required: item?.required !== false,
+            required: item?.required === true,
             custom: Boolean(item?.custom),
           };
         })
         .filter((item) => item.name)
     : [];
 
-  const uniqueSavedRows = savedRows.filter(
+  return savedRows.filter(
     (item, index, rows) =>
       rows.findIndex(
         (candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()
       ) === index
   );
-
-  const savedNames = new Set(
-    uniqueSavedRows.map((item) => item.name.toLowerCase())
-  );
-
-  const missingMandatory = REQUIRED_JOB_DOCUMENTS.filter(
-    (name) => !savedNames.has(name.toLowerCase())
-  ).map((name) => createRequiredDocument(name, true));
-
-  return [...missingMandatory, ...uniqueSavedRows];
 }
 
 export function normalizeJobDocuments(data: any): RequiredDocumentRow[] {
@@ -254,7 +244,7 @@ function normalizeFeeRow(item: any, index: number): JobFeeRow {
   if (typeof item === "string") {
     return {
       ...createJobFeeRow(),
-      postName: "All Posts",
+      postName: "",
       fee: item.trim(),
     };
   }
@@ -291,7 +281,7 @@ export function normalizeJobFeeRows(data: any): JobFeeRow[] {
     ? data.jobInfoPanels
         .map((panel: any, index: number) => ({
           id: createJobDetailId(`fee_${index}`),
-          postName: cleanString(panel?.postName) || "All Posts",
+          postName: cleanString(panel?.postName),
           category: "",
           fee: cleanString(
             panel?.feeStructure || panel?.applicationFee || panel?.fees
@@ -308,7 +298,7 @@ export function normalizeJobFeeRows(data: any): JobFeeRow[] {
   );
 
   return legacyFee
-    ? [{ ...createJobFeeRow(), postName: "All Posts", fee: legacyFee }]
+    ? [{ ...createJobFeeRow(), postName: "", fee: legacyFee }]
     : [];
 }
 

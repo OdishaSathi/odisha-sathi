@@ -5,8 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/lib/siteConfig";
+import { usePublicSiteSettings } from "@/components/public/PublicSiteSettingsProvider";
 
 export default function Header() {
+  const settings = usePublicSiteSettings();
+  const brandName = settings.siteName || siteConfig.siteName;
+  const logoSrc = settings.logoUrl || "/odisha-sathi-logo.png";
   const [hideHeader, setHideHeader] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -65,16 +69,26 @@ export default function Header() {
             className="clean-brand"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <Image
-              src="/odisha-sathi-logo.png"
-              alt="Odisha Sathi Logo"
-              width={64}
-              height={64}
-              className="clean-brand-logo"
-              priority
-            />
+            {settings.logoUrl ? (
+              <img
+                src={logoSrc}
+                alt={`${brandName} Logo`}
+                width={64}
+                height={64}
+                className="clean-brand-logo"
+              />
+            ) : (
+              <Image
+                src={logoSrc}
+                alt={`${brandName} Logo`}
+                width={64}
+                height={64}
+                className="clean-brand-logo"
+                priority
+              />
+            )}
 
-            <span className="clean-brand-title">{siteConfig.siteName}</span>
+            <span className="clean-brand-title">{brandName}</span>
           </Link>
 
           <div className="clean-header-right">
@@ -115,14 +129,13 @@ export default function Header() {
       <aside className={`mobile-side-menu ${mobileMenuOpen ? "open" : ""}`}>
         <div className="mobile-side-header">
           <div className="mobile-side-brand">
-            <Image
-              src="/odisha-sathi-logo.png"
-              alt="Odisha Sathi Logo"
-              width={46}
-              height={46}
-            />
+            {settings.logoUrl ? (
+              <img src={logoSrc} alt={`${brandName} Logo`} width={46} height={46} />
+            ) : (
+              <Image src={logoSrc} alt={`${brandName} Logo`} width={46} height={46} />
+            )}
 
-            <strong>{siteConfig.siteName}</strong>
+            <strong>{brandName}</strong>
           </div>
 
           <button
