@@ -111,11 +111,14 @@ export default async function RootLayout({
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
           <NextGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         ) : null}
-        <Script
+               <meta
+  name="google-adsense-account"
+  content="ca-pub-9732312061343542"
+/>
+ <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9732312061343542"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
       </body>
     </html>
