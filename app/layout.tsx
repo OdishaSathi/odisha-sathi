@@ -4,6 +4,7 @@ import SiteShell from "@/components/SiteShell";
 import StructuredData from "@/components/StructuredData";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { getServerPublicSiteSettings } from "@/lib/server/publicSiteSettings";
+import { GoogleAnalytics as NextGoogleAnalytics } from "@next/third-parties/google";
 
 export const revalidate = 300;
 
@@ -106,6 +107,9 @@ export default async function RootLayout({
         <StructuredData />
         <GoogleAnalytics />
         <SiteShell initialSettings={settings}>{children}</SiteShell>
+{process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ? (
+  <NextGoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+) : null}
       </body>
     </html>
   );
