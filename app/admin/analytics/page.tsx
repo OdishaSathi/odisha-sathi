@@ -10,6 +10,7 @@ type AnalyticsData = {
   today: { users: number; views: number };
   sevenDays: { users: number; views: number };
   thirtyDays: { users: number; views: number };
+  realtimePages: { title: string; views: number; users: number }[];
   pages: { title: string; path: string; views: number }[];
   devices: { name: string; users: number }[];
   updatedAt: string;
@@ -107,18 +108,18 @@ export default function AdminAnalyticsPage() {
         },
         {
           label: "Today",
-          value: data.today.users,
-          note: `${data.today.views} page views`,
+          value: data.today.views,
+          note: `${data.today.users} users`,
         },
         {
           label: "Last 7 days",
-          value: data.sevenDays.users,
-          note: `${data.sevenDays.views} page views`,
+          value: data.sevenDays.views,
+          note: `${data.sevenDays.users} users`,
         },
         {
           label: "Last 30 days",
-          value: data.thirtyDays.users,
-          note: `${data.thirtyDays.views} page views`,
+          value: data.thirtyDays.views,
+          note: `${data.thirtyDays.users} users`,
         },
       ]
     : [];
@@ -213,6 +214,23 @@ export default function AdminAnalyticsPage() {
             </section>
 
             <div className="analytics-tables">
+              <section>
+                <h2>Realtime top pages</h2>
+                {data.realtimePages.length ? (
+                  data.realtimePages.map((page) => (
+                    <div className="analytics-row" key={page.title}>
+                      <span>
+                        <b>{page.title}</b>
+                        <small>{page.users.toLocaleString("en-IN")} active users</small>
+                      </span>
+                      <strong>{page.views.toLocaleString("en-IN")}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <p>No realtime page data yet.</p>
+                )}
+              </section>
+
               <section>
                 <h2>Popular pages · 30 days</h2>
                 {data.pages.length ? (

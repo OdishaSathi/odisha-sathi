@@ -459,10 +459,21 @@ export async function getAnalyticsSummary() {
   const token = await accessToken(config);
   const base = `properties/${config.propertyId}`;
 
-  const [realtime, periods, pages, devices] = await Promise.all([
+  const [realtime, realtimePages, periods, pages, devices] = await Promise.all([
     report<ReportResponse>(
       `${base}:runRealtimeReport`,
       { metrics: [{ name: "activeUsers" }] },
+      token,
+      config,
+    ),
+    report<ReportResponse>(
+      `${base}:runRealtimeReport`,
+      {
+        dimensions: [{ name: "unifiedScreenName" }],
+        metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
+        orderBys: [{ metric: { metricName: "screenPageViews" }, desc: true }],
+        limit: 8,
+      },
       token,
       config,
     ),
@@ -529,6 +540,11 @@ export async function getAnalyticsSummary() {
       users: metricNumber(periodRows[2]),
       views: metricNumber(periodRows[2], 1),
     },
+    realtimePages: (realtimePages.rows || []).map((row) => ({
+      title: row.dimensionValues?.[0]?.value || "Untitled",
+      views: metricNumber(row),
+      users: metricNumber(row, 1),
+    })),
     pages: (pages.rows || []).map((row) => ({
       title: row.dimensionValues?.[0]?.value || "Untitled",
       path: row.dimensionValues?.[1]?.value || "/",
