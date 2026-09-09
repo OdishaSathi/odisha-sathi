@@ -21,6 +21,7 @@ type ImportantDate = {
   title?: string;
   name?: string;
   key?: string;
+  type?: string;
   value?: string;
   date?: string;
   dateValue?: string;
