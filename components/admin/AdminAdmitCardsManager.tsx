@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import AdmitCardForm from "@/components/admin/AdmitCardForm";
 import {
@@ -20,6 +21,62 @@ import {
   validateAdminContent,
 } from "@/lib/adminContentValidation";
 
+const listHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "16px",
+  flexWrap: "wrap",
+};
+
+const searchInputStyle: CSSProperties = {
+  width: "min(280px, 100%)",
+  minHeight: "38px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  padding: "8px 10px",
+  color: "#111827",
+  background: "#ffffff",
+};
+
+const savedListStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const savedItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  padding: "16px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+};
+
+const savedTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "16px",
+  lineHeight: 1.4,
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const savedMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  fontSize: "14px",
+  color: "#6b7280",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
 export default function AdminAdmitCardsManager() {
   const [admitCards, setAdmitCards] = useState<AdmitCard[]>([]);
   const [editingAdmitCard, setEditingAdmitCard] = useState<AdmitCard | null>(
@@ -28,6 +85,7 @@ export default function AdminAdmitCardsManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeView, setActiveView] = useState<"all" | "admit-card" | "exam">("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadAdmitCards = async () => {
     setIsLoading(true);
@@ -121,11 +179,36 @@ export default function AdminAdmitCardsManager() {
 
   const admitCardCount = admitCards.filter((item) => item.updateType !== "exam").length;
   const examCount = admitCards.filter((item) => item.updateType === "exam").length;
-  const visibleAdmitCards = admitCards.filter((item) => {
-    if (activeView === "all") return true;
-    if (activeView === "exam") return item.updateType === "exam";
-    return item.updateType !== "exam";
-  });
+  const visibleAdmitCards = useMemo(() => {
+    const queryText = searchQuery.trim().toLowerCase();
+
+    return admitCards
+      .filter((item) => {
+        if (activeView === "all") return true;
+        if (activeView === "exam") return item.updateType === "exam";
+        return item.updateType !== "exam";
+      })
+      .filter((item) => {
+        if (!queryText) return true;
+
+        return [
+          item.title,
+          item.slug,
+          item.updateType,
+          item.examName,
+          item.organization,
+          item.admitCardDateDisplay,
+          item.admitCardDate,
+          item.examDateDisplay,
+          item.examDate,
+          item.status,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(queryText);
+      });
+  }, [activeView, admitCards, searchQuery]);
 
   return (
     <div className="admit-admin-page">
@@ -239,89 +322,95 @@ export default function AdminAdmitCardsManager() {
       ) : null}
 
       <div className="admit-admin-card">
-        <div className="admit-admin-card-title">
-          <h2>Saved Admit Cards & Exams</h2>
-          <span>{visibleAdmitCards.length} posts</span>
+        <div style={listHeaderStyle}>
+          <div>
+            <h2 style={{ margin: 0 }}>Saved Admit Cards & Exams</h2>
+            <p className="admit-admin-muted" style={{ margin: "4px 0 0" }}>
+              {visibleAdmitCards.length} posts shown
+            </p>
+          </div>
+
+          <div style={actionRowStyle}>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search saved admit cards or exams"
+              aria-label="Search saved admit cards or exams"
+              style={searchInputStyle}
+            />
+
+            <button
+              type="button"
+              className="admin-small-btn"
+              onClick={loadAdmitCards}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
           <p className="admit-admin-muted">Loading admit cards and exams...</p>
-        ) : visibleAdmitCards.length === 0 ? (
+        ) : admitCards.length === 0 ? (
           <div className="admit-admin-empty">
             <h3>No admit card or exam posts found</h3>
             <p>Create your first update using the Create New button.</p>
           </div>
+        ) : visibleAdmitCards.length === 0 ? (
+          <p className="admit-admin-muted">No matching admit card or exam posts found.</p>
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Exam Name</th>
-                  <th>Admit Card Date</th>
-                  <th>Exam Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+          <div style={savedListStyle}>
+            {visibleAdmitCards.map((item) => (
+              <div key={item.id} style={savedItemStyle}>
+                <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+                  <h3 style={savedTitleStyle}>{item.title}</h3>
+                  <p style={savedMetaStyle}>
+                    {item.updateType === "exam" ? "Exam" : "Admit Card"} |{" "}
+                    {item.examName || "Exam name not added"} |{" "}
+                    Admit Card: {item.admitCardDateDisplay || item.admitCardDate || "Not added"} |{" "}
+                    Exam: {item.examDateDisplay || item.examDate || "Not added"} |{" "}
+                    {item.status || "published"}
+                  </p>
+                </div>
 
-              <tbody>
-                {visibleAdmitCards.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.title}</strong>
-                      <br />
-                      <small>{item.slug}</small>
-                    </td>
-                    <td>{item.updateType === "exam" ? "Exam" : "Admit Card"}</td>
-                    <td>{item.examName || "-"}</td>
-                    <td>{item.admitCardDateDisplay || item.admitCardDate || "-"}</td>
-                    <td>{item.examDateDisplay || item.examDate || "-"}</td>
-                    <td>
-                      <span className="admin-status-pill">{item.status}</span>
-                    </td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <Link
-                          href={`/post/${item.slug || item.id}`}
-                          target="_blank"
-                          className="admin-small-btn"
-                          style={{ textDecoration: "none" }}
-                        >
-                          View
-                        </Link>
+                <div style={actionRowStyle}>
+                  <Link
+                    href={`/post/${item.slug || item.id}`}
+                    target="_blank"
+                    className="admin-small-btn"
+                    style={{ textDecoration: "none" }}
+                  >
+                    View
+                  </Link>
 
-                        <button
-                          type="button"
-                          className="admin-small-btn"
-                          onClick={() => {
-                            setEditingAdmitCard(item);
-                            setShowCreateForm(false);
-                          }}
-                        >
-                          Edit
-                        </button>
+                  <button
+                    type="button"
+                    className="admin-small-btn"
+                    onClick={() => {
+                      setEditingAdmitCard(item);
+                      setShowCreateForm(false);
+                    }}
+                  >
+                    Edit
+                  </button>
 
-                        <button
-                          type="button"
-                          className="admin-danger-btn"
-                          onClick={() => handleDelete(item)}
-                        >
-                          Delete
-                        </button>
+                  <button
+                    type="button"
+                    className="admin-danger-btn"
+                    onClick={() => handleDelete(item)}
+                  >
+                    Delete
+                  </button>
 
-                        <AdminPostShareButtons
-                          title={item.title || "Odisha Sathi Admit Card & Exam Update"}
-                          publicPath={`/post/${item.slug || item.id}`}
-                          description={item.examName || item.organization || ""}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  <AdminPostShareButtons
+                    title={item.title || "Odisha Sathi Admit Card & Exam Update"}
+                    publicPath={`/post/${item.slug || item.id}`}
+                    description={item.examName || item.organization || ""}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

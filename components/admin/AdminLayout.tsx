@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { isApprovedAdminUid } from "@/lib/adminAccess";
 import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
 import AdminFormNavigator from "./AdminFormNavigator";
@@ -19,11 +20,23 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
       setCheckingAuth(false);
+
       if (!currentUser) {
+        setUser(null);
         router.replace(`/admin/login?next=${encodeURIComponent(pathname || "/admin")}`);
+        return;
       }
+
+      if (!isApprovedAdminUid(currentUser.uid)) {
+        setUser(null);
+        void signOut(auth).finally(() => {
+          router.replace("/admin/login?reason=unauthorized");
+        });
+        return;
+      }
+
+      setUser(currentUser);
     });
     return () => unsubscribe();
   }, [pathname, router]);

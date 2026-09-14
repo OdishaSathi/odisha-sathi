@@ -486,7 +486,7 @@ export async function getAnalyticsSummary() {
             metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
           },
           {
-            dateRanges: [{ startDate: "7daysAgo", endDate: "today" }],
+            dateRanges: [{ startDate: "6daysAgo", endDate: "today" }],
             metrics: [{ name: "activeUsers" }, { name: "screenPageViews" }],
           },
           {

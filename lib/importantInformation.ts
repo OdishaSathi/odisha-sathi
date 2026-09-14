@@ -23,7 +23,7 @@ import type {
   ImportantDateRow,
   ImportantLinkRow,
 } from "@/lib/postOptions";
-import { normalizePublicImageUrl, toImportantImageProxyUrl } from "@/lib/publicImageUrl";
+import { toImportantImageProxyUrl } from "@/lib/publicImageUrl";
 
 export type ImportantInfoRow = {
   label: string;
@@ -104,6 +104,19 @@ export function getFirstImportantInfoYouTubeThumbnail(post?: Partial<ImportantIn
   return "";
 }
 
+export function getImportantInfoFallbackImage(
+  post?: Partial<ImportantInfoPost> | null,
+  siteUrl?: string
+) {
+  const params = new URLSearchParams({
+    category: "Important Information",
+    department: post?.title || "Important Information",
+    posts: post?.shortDescription || "Important Update",
+  });
+  const path = `/api/og/post?${params.toString()}`;
+  return siteUrl ? new URL(path, siteUrl).toString() : path;
+}
+
 export function getImportantInfoDisplayImage(post?: Partial<ImportantInfoPost> | null) {
   const customImage =
     post?.previewImageUrl?.trim() ||
@@ -111,18 +124,13 @@ export function getImportantInfoDisplayImage(post?: Partial<ImportantInfoPost> |
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
 
-  if (customImage) return normalizePublicImageUrl(customImage);
-
   const youtubeThumbnail = getFirstImportantInfoYouTubeThumbnail(post);
+  const fallbackImage = getImportantInfoFallbackImage(post);
+  const primaryImage = customImage || youtubeThumbnail;
 
-  if (youtubeThumbnail) return youtubeThumbnail;
-
-  const params = new URLSearchParams({
-    category: "Important Information",
-    department: post?.title || "Important Information",
-    posts: post?.shortDescription || "Important Update",
-  });
-  return `/api/og/post?${params.toString()}`;
+  return primaryImage
+    ? toImportantImageProxyUrl(primaryImage, undefined, fallbackImage)
+    : fallbackImage;
 }
 
 export function getImportantInfoOgImage(
@@ -135,24 +143,13 @@ export function getImportantInfoOgImage(
     post?.imageUrls?.find((item) => String(item || "").trim()) ||
     "";
 
-  if (customImage) return toImportantImageProxyUrl(customImage, siteUrl);
-
   const youtubeThumbnail = getFirstImportantInfoYouTubeThumbnail(post);
+  const fallbackImage = getImportantInfoFallbackImage(post, siteUrl);
+  const primaryImage = customImage || youtubeThumbnail;
 
-  if (youtubeThumbnail) return youtubeThumbnail;
-
-  const imageUrl = new URL("/api/og/post", siteUrl);
-  imageUrl.searchParams.set("category", "Important Information");
-  imageUrl.searchParams.set(
-    "department",
-    post?.title || "Important Information"
-  );
-  imageUrl.searchParams.set(
-    "posts",
-    post?.shortDescription || "Important Update"
-  );
-
-  return imageUrl.toString();
+  return primaryImage
+    ? toImportantImageProxyUrl(primaryImage, siteUrl, fallbackImage)
+    : fallbackImage;
 }
 
 export function makeImportantInfoSlug(title: string) {

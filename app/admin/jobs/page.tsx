@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { collection, deleteDoc, doc, getDocs } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
@@ -21,20 +22,84 @@ type JobPost = {
   createdAt?: any;
 };
 
-const cardStyle = {
+const cardStyle: CSSProperties = {
   background: "white",
   padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const actionButtonStyle: CSSProperties = {
+  padding: "8px 14px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  background: "#ffffff",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: "14px",
+};
+
+const savedItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  padding: "16px",
   borderRadius: "12px",
   border: "1px solid #e5e7eb",
 };
 
-const actionButtonStyle = {
-  padding: "9px 13px",
-  border: "1px solid #ddd",
-  borderRadius: "8px",
-  background: "white",
-  cursor: "pointer",
+const savedTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "16px",
+  lineHeight: 1.4,
   fontWeight: 700,
+  color: "#111827",
+};
+
+const savedMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  fontSize: "14px",
+  color: "#6b7280",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const viewButtonStyle: CSSProperties = {
+  borderRadius: "8px",
+  background: "#ecfdf5",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#16a34a",
+  textDecoration: "none",
+};
+
+const editButtonStyle: CSSProperties = {
+  borderRadius: "8px",
+  background: "#f3f4f6",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#374151",
+  textDecoration: "none",
+};
+
+const deleteButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: "8px",
+  background: "#fef2f2",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#dc2626",
+  cursor: "pointer",
 };
 
 export default function AdminJobsPage() {
@@ -224,7 +289,7 @@ export default function AdminJobsPage() {
           ) : filteredJobs.length === 0 ? (
             <p>{searchQuery.trim() ? "No matching jobs found." : "No jobs found."}</p>
           ) : (
-            <div style={{ display: "grid", gap: "9px" }}>
+            <div style={{ display: "grid", gap: "12px" }}>
               {filteredJobs.map((job) => {
                 const selectedSubCategories =
                   job.subCategories && job.subCategories.length > 0
@@ -232,63 +297,31 @@ export default function AdminJobsPage() {
                     : job.subCategory
                     ? [job.subCategory]
                     : [];
+                const subCategoryText =
+                  selectedSubCategories.length > 0
+                    ? selectedSubCategories.join(" | ")
+                    : "Subcategory not selected";
 
                 return (
-                  <div
-                    key={job.id}
-                    style={{
-                      padding: "11px 12px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "10px",
-                      display: "grid",
-                      gap: "9px",
-                    }}
-                  >
-                    <h3 style={{ margin: 0, fontSize: "16px", lineHeight: 1.4 }}>
-                      {job.title}
-                    </h3>
+                  <div key={job.id} style={savedItemStyle}>
+                    <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+                      <h3 style={savedTitleStyle}>{job.title}</h3>
 
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "8px",
-                        alignItems: "center",
-                      }}
-                    >
+                      <p style={savedMetaStyle}>{subCategoryText}</p>
+                    </div>
+
+                    <div style={actionRowStyle}>
                       <Link
                         href={`/post/${job.slug || job.id}`}
                         target="_blank"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#16a34a",
-                          color: "white",
-                          borderRadius: "8px",
-                          textDecoration: "none",
-                          fontSize: "14px",
-                        }}
+                        style={viewButtonStyle}
                       >
                         View
                       </Link>
 
                       <Link
                         href={`/admin/jobs/edit/${job.id}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#2563eb",
-                          color: "white",
-                          borderRadius: "8px",
-                          textDecoration: "none",
-                          fontSize: "14px",
-                        }}
+                        style={editButtonStyle}
                       >
                         Edit
                       </Link>
@@ -298,17 +331,9 @@ export default function AdminJobsPage() {
                         disabled={deletingId === job.id}
                         onClick={() => handleDelete(job.id, job.title)}
                         style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#dc2626",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          cursor: "pointer",
-                          fontSize: "14px",
+                          ...deleteButtonStyle,
+                          cursor:
+                            deletingId === job.id ? "not-allowed" : "pointer",
                         }}
                       >
                         {deletingId === job.id ? "..." : "Delete"}
@@ -318,39 +343,6 @@ export default function AdminJobsPage() {
                         title={job.title || "Odisha Sathi Job Update"}
                         publicPath={`/post/${job.slug || job.id}`}
                       />
-                    </div>
-
-                    <div>
-                      <strong>Subcategories:</strong>
-
-                      {selectedSubCategories.length === 0 ? (
-                        <span> Not selected</span>
-                      ) : (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "8px",
-                            marginTop: "8px",
-                          }}
-                        >
-                          {selectedSubCategories.map((item) => (
-                            <span
-                              key={item}
-                              style={{
-                                padding: "5px 9px",
-                                background: "#eff6ff",
-                                color: "#1d4ed8",
-                                borderRadius: "999px",
-                                fontSize: "13px",
-                                border: "1px solid #bfdbfe",
-                              }}
-                            >
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 );

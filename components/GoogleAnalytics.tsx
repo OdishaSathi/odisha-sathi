@@ -4,8 +4,9 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-const measurementId =
-  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-QB3L8E0FPG";
+const measurementId = String(
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || ""
+).trim();
 
 declare global {
   interface Window {

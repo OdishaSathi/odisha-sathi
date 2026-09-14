@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import type { CSSProperties } from "react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 
@@ -22,6 +23,78 @@ function makeSlug(text: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+const formStyle: CSSProperties = {
+  display: "grid",
+  gap: "22px",
+};
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  resize: "vertical",
+  lineHeight: 1.55,
+};
+
+const labelStyle: CSSProperties = {
+  display: "block",
+  marginBottom: "6px",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#374151",
+};
+
+const sectionTitleStyle: CSSProperties = {
+  margin: "0 0 14px",
+  fontSize: "17px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const checkboxGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "12px",
+};
+
+const checkboxStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  color: "#111827",
+  fontSize: "14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const submitButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 export function ResultForm() {
   const [title, setTitle] = useState("");
@@ -85,64 +158,48 @@ export function ResultForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
-      <div>
-        <label>Result Title</label>
+    <form onSubmit={handleSubmit} style={formStyle}>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Basic Information</h3>
+
+        <label style={labelStyle}>Result Title</label>
         <input
           type="text"
           placeholder="Enter result title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "6px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-          }}
+          style={inputStyle}
         />
-      </div>
+      </section>
 
-      <div>
-        <label>Result Details</label>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Result Details</h3>
+
+        <label style={labelStyle}>Full Details</label>
         <textarea
           placeholder="Enter result details"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={8}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "6px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            resize: "vertical",
-          }}
+          style={textareaStyle}
         />
-      </div>
+      </section>
 
-      <div>
-        <label>Result Subcategories</label>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Result Subcategories</h3>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "10px",
-            marginTop: "8px",
-          }}
-        >
+        <div style={checkboxGridStyle}>
           {RESULT_SUB_CATEGORIES.map((item) => (
             <label
               key={item}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                cursor: "pointer",
+                ...checkboxStyle,
+                border: subCategories.includes(item)
+                  ? "1px solid #2563eb"
+                  : checkboxStyle.border,
+                background: subCategories.includes(item)
+                  ? "#eff6ff"
+                  : "#ffffff",
               }}
             >
               <input
@@ -154,20 +211,12 @@ export function ResultForm() {
             </label>
           ))}
         </div>
-      </div>
+      </section>
 
       <button
         type="submit"
         disabled={saving}
-        style={{
-          padding: "12px",
-          border: "none",
-          borderRadius: "8px",
-          background: "#2563eb",
-          color: "white",
-          fontWeight: "bold",
-          cursor: "pointer",
-        }}
+        style={submitButtonStyle}
       >
         {saving ? "Saving..." : "Save Result"}
       </button>

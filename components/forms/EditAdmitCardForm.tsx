@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -23,6 +24,84 @@ function makeSlug(text: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 }
+
+const formStyle: CSSProperties = {
+  display: "grid",
+  gap: "22px",
+};
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  resize: "vertical",
+  lineHeight: 1.55,
+};
+
+const labelStyle: CSSProperties = {
+  display: "block",
+  marginBottom: "6px",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#374151",
+};
+
+const sectionTitleStyle: CSSProperties = {
+  margin: "0 0 14px",
+  fontSize: "17px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const gridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: "16px",
+};
+
+const checkboxGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "12px",
+};
+
+const checkboxStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  color: "#111827",
+  fontSize: "14px",
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const submitButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 type EditAdmitCardFormProps = {
   id?: string;
@@ -165,123 +244,87 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
-      <div>
-        <label>Admit Card Title</label>
+    <form onSubmit={handleSubmit} style={formStyle}>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Basic Information</h3>
+
+        <label style={labelStyle}>Admit Card / Exam Title</label>
         <input
           type="text"
           placeholder="Enter admit card title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "6px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-          }}
+          style={inputStyle}
         />
-      </div>
+      </section>
 
-      <div>
-        <label>Admit Card Details</label>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Admit Card / Exam Details</h3>
+
+        <label style={labelStyle}>Full Details</label>
         <textarea
           placeholder="Enter admit card details"
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={8}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "6px",
-            border: "1px solid #ddd",
-            borderRadius: "8px",
-            resize: "vertical",
-          }}
+          style={textareaStyle}
         />
-      </div>
+      </section>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "14px",
-        }}
-      >
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Media</h3>
+
+        <div style={gridStyle}>
         <div>
-          <label>YouTube Video 1</label>
+          <label style={labelStyle}>YouTube Video 1</label>
           <input
             type="url"
             placeholder="https://www.youtube.com/watch?v=..."
             value={youtubeUrl}
             onChange={(e) => setYoutubeUrl(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              marginTop: "6px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-            }}
+            style={inputStyle}
           />
         </div>
 
         <div>
-          <label>YouTube Video 2</label>
+          <label style={labelStyle}>YouTube Video 2</label>
           <input
             type="url"
             placeholder="https://www.youtube.com/watch?v=..."
             value={youtubeUrl2}
             onChange={(e) => setYoutubeUrl2(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              marginTop: "6px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-            }}
+            style={inputStyle}
           />
         </div>
 
         <div>
-          <label>YouTube Video 3</label>
+          <label style={labelStyle}>YouTube Video 3</label>
           <input
             type="url"
             placeholder="https://www.youtube.com/watch?v=..."
             value={youtubeUrl3}
             onChange={(e) => setYoutubeUrl3(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "12px",
-              marginTop: "6px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-            }}
+            style={inputStyle}
           />
         </div>
       </div>
+      </section>
 
-      <div>
-        <label>Admit Card Subcategories</label>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Admit Card / Exam Subcategories</h3>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "10px",
-            marginTop: "8px",
-          }}
-        >
+        <div style={checkboxGridStyle}>
           {ADMIT_CARD_SUB_CATEGORIES.map((item) => (
             <label
               key={item}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                cursor: "pointer",
+                ...checkboxStyle,
+                border: subCategories.includes(item)
+                  ? "1px solid #2563eb"
+                  : checkboxStyle.border,
+                background: subCategories.includes(item)
+                  ? "#eff6ff"
+                  : "#ffffff",
               }}
             >
               <input
@@ -293,20 +336,12 @@ export function EditAdmitCardForm({ id, postId }: EditAdmitCardFormProps) {
             </label>
           ))}
         </div>
-      </div>
+      </section>
 
       <button
         type="submit"
         disabled={saving}
-        style={{
-          padding: "12px",
-          border: "none",
-          borderRadius: "8px",
-          background: "#2563eb",
-          color: "white",
-          fontWeight: "bold",
-          cursor: "pointer",
-        }}
+        style={submitButtonStyle}
       >
         {saving ? "Updating..." : "Update Admit Card"}
       </button>

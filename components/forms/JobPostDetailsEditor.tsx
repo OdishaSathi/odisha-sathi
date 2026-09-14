@@ -487,10 +487,10 @@ export default function JobPostDetailsEditor({
 
       <style jsx>{`
         .job-editor-section {
-          border: 1px solid #e2e8f0;
-          border-radius: 16px;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
           background: #ffffff;
-          padding: 16px;
+          padding: 20px;
         }
 
         .job-editor-heading,
@@ -507,9 +507,9 @@ export default function JobPostDetailsEditor({
 
         .job-editor-heading h3 {
           margin: 0;
-          color: #0f172a;
-          font-size: 18px;
-          font-weight: 900;
+          color: #111827;
+          font-size: 17px;
+          font-weight: 700;
         }
 
         .job-editor-heading p,
@@ -540,11 +540,11 @@ export default function JobPostDetailsEditor({
 
         .job-editor-panel-list {
           display: grid;
-          gap: 14px;
+          gap: 16px;
         }
 
         .job-editor-panel {
-          border: 1px solid #dbe3ee;
+          border: 1px solid #e5e7eb;
           border-radius: 14px;
           background: #f8fafc;
           overflow: hidden;
@@ -581,7 +581,7 @@ export default function JobPostDetailsEditor({
         }
 
         .job-editor-details {
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #f3f4f6;
           background: #ffffff;
         }
 
@@ -605,40 +605,36 @@ export default function JobPostDetailsEditor({
 
         .job-editor-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 12px;
-          padding: 14px;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+          padding: 16px 20px;
         }
 
         .job-editor-grid label,
         .job-editor-full-label {
           display: grid;
           gap: 6px;
-          color: #334155;
-          font-size: 13px;
-          font-weight: 800;
+          color: #374151;
+          font-size: 14px;
+          font-weight: 600;
         }
 
         .job-editor-full-label {
-          padding: 14px;
+          padding: 16px 20px;
         }
 
         input,
         textarea {
           box-sizing: border-box;
           width: 100%;
-          border: 1px solid #cbd5e1;
-          border-radius: 9px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
           background: #ffffff;
           color: #0f172a;
-          font: inherit;
+          font-size: 14px;
           font-weight: 500;
-          padding: 8px 9px;
+          padding: 10px 12px;
           outline: none;
-        }
-
-        input {
-          min-height: 38px;
         }
 
         textarea {
@@ -654,7 +650,7 @@ export default function JobPostDetailsEditor({
 
         .job-editor-table-wrap {
           overflow-x: auto;
-          padding: 12px 12px 0;
+          padding: 14px 20px 0;
         }
 
         .job-editor-table {
@@ -698,15 +694,15 @@ export default function JobPostDetailsEditor({
         }
 
         .job-editor-add-row {
-          margin: 12px;
-          padding: 8px 11px;
-          border-radius: 9px;
+          margin: 14px 20px;
+          padding: 9px 13px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #1d4ed8;
         }
 
         .job-editor-note {
-          padding: 0 14px;
+          padding: 0 20px;
         }
 
         @media (max-width: 700px) {

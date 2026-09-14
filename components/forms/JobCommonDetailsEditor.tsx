@@ -241,22 +241,22 @@ export default function JobCommonDetailsEditor({
       <style jsx>{`
         .job-common-editor {
           overflow: hidden;
-          border: 1px solid #dbe3ee;
-          border-radius: 16px;
+          border: 1px solid #e5e7eb;
+          border-radius: 14px;
           background: #ffffff;
         }
 
         .job-common-heading {
-          padding: 15px 16px;
-          background: #f8fafc;
-          border-bottom: 1px solid #e2e8f0;
+          padding: 20px 20px 14px;
+          background: #ffffff;
+          border-bottom: 1px solid #f3f4f6;
         }
 
         .job-common-heading h3 {
           margin: 0;
-          color: #0f172a;
-          font-size: 18px;
-          font-weight: 900;
+          color: #111827;
+          font-size: 17px;
+          font-weight: 700;
         }
 
         .job-common-heading p,
@@ -268,7 +268,7 @@ export default function JobCommonDetailsEditor({
         }
 
         .job-common-details {
-          border-bottom: 1px solid #e2e8f0;
+          border-bottom: 1px solid #f3f4f6;
         }
 
         .job-common-details:last-of-type {
@@ -276,10 +276,10 @@ export default function JobCommonDetailsEditor({
         }
 
         .job-common-details summary {
-          padding: 13px 16px;
-          color: #1e293b;
+          padding: 14px 20px;
+          color: #111827;
           font-size: 15px;
-          font-weight: 900;
+          font-weight: 700;
           cursor: pointer;
         }
 
@@ -289,12 +289,12 @@ export default function JobCommonDetailsEditor({
         }
 
         .job-common-note {
-          padding: 0 14px;
+          padding: 0 20px;
         }
 
         .job-common-table-wrap {
           overflow-x: auto;
-          padding: 12px 12px 0;
+          padding: 14px 20px 0;
         }
 
         .job-common-table {
@@ -325,13 +325,12 @@ export default function JobCommonDetailsEditor({
         input {
           box-sizing: border-box;
           width: 100%;
-          min-height: 38px;
-          border: 1px solid #cbd5e1;
-          border-radius: 9px;
-          padding: 8px 9px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 10px 12px;
           background: #ffffff;
           color: #0f172a;
-          font: inherit;
+          font-size: 14px;
           font-weight: 500;
           outline: none;
         }
@@ -349,9 +348,9 @@ export default function JobCommonDetailsEditor({
         }
 
         .job-common-add {
-          margin: 12px;
-          padding: 8px 11px;
-          border-radius: 9px;
+          margin: 14px 20px;
+          padding: 9px 13px;
+          border-radius: 8px;
           background: #eff6ff;
           color: #1d4ed8;
         }
@@ -368,22 +367,22 @@ export default function JobCommonDetailsEditor({
 
         .job-common-document-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 8px;
-          padding: 12px 14px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+          padding: 14px 20px;
         }
 
         .job-common-document-grid label {
           display: flex;
           align-items: center;
           gap: 8px;
-          padding: 9px;
-          border: 1px solid #e2e8f0;
-          border-radius: 9px;
+          padding: 10px 12px;
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
           background: #ffffff;
-          color: #334155;
-          font-size: 12px;
-          font-weight: 750;
+          color: #374151;
+          font-size: 14px;
+          font-weight: 600;
         }
 
         .job-common-document-grid label.required {
@@ -402,7 +401,7 @@ export default function JobCommonDetailsEditor({
         .job-common-custom-documents {
           display: grid;
           gap: 8px;
-          padding: 0 14px;
+          padding: 0 20px;
         }
 
         .job-common-custom-documents > div {

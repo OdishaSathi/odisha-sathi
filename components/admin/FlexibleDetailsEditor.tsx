@@ -1,10 +1,4 @@
 "use client";
-
-import { useState } from "react";
-import {
-  getImageUploadErrorMessage,
-  uploadImageFile,
-} from "@/lib/clientImageUpload";
 import {
   FlexibleDataTable,
   FlexibleDetailSection,
@@ -34,31 +28,6 @@ export default function FlexibleDetailsEditor({
   sectionLabel = "Optional Details and Data Tables",
   enableOdia = false,
 }: Props) {
-  const [uploadingKey, setUploadingKey] = useState("");
-  const [uploadError, setUploadError] = useState("");
-
-  async function uploadImage(
-    file: File | undefined,
-    key: string,
-    onUploaded: (url: string) => void
-  ) {
-    try {
-      setUploadingKey(key);
-      setUploadError("");
-      onUploaded(
-        await uploadImageFile(file, {
-          folder: "detail-media",
-          fallbackName: "detail-image",
-        })
-      );
-    } catch (error) {
-      console.error(error);
-      setUploadError(getImageUploadErrorMessage(error));
-    } finally {
-      setUploadingKey("");
-    }
-  }
-
   function updateSection(
     id: string,
     field: "title" | "content" | "titleOdia" | "contentOdia",
@@ -343,6 +312,7 @@ export default function FlexibleDetailsEditor({
                     <div className="flex-image-row" key={imageIndex}>
                       <div>
                         <input
+                          type="url"
                           value={imageUrl}
                           onChange={(event) =>
                             updateSectionImage(
@@ -399,26 +369,6 @@ export default function FlexibleDetailsEditor({
                   >
                     + Image link
                   </button>
-                  <label className="upload-label">
-                    {uploadingKey === section.id ? "Uploading…" : "Upload image"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={Boolean(uploadingKey)}
-                      onChange={(event) => {
-                        uploadImage(event.target.files?.[0], section.id, (url) =>
-                          onDetailSectionsChange(
-                            detailSections.map((item) =>
-                              item.id === section.id
-                                ? { ...item, imageUrls: [...item.imageUrls, url] }
-                                : item
-                            )
-                          )
-                        );
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
                 </div>
               </div>
             </details>
@@ -469,6 +419,7 @@ export default function FlexibleDetailsEditor({
 
                 <div>
                   <input
+                    type="url"
                     value={table.imageUrl}
                     onChange={(event) =>
                       updateTable(table.id, "imageUrl", event.target.value)
@@ -482,20 +433,6 @@ export default function FlexibleDetailsEditor({
                       alt={`${table.title || "Table"} preview`}
                     />
                   ) : null}
-                  <label className="upload-label table-upload">
-                    {uploadingKey === table.id ? "Uploading…" : "Upload table image"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={Boolean(uploadingKey)}
-                      onChange={(event) => {
-                        uploadImage(event.target.files?.[0], table.id, (url) =>
-                          updateTable(table.id, "imageUrl", url)
-                        );
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                  </label>
                 </div>
 
                 <div className="flex-table-scroll">
@@ -708,8 +645,6 @@ export default function FlexibleDetailsEditor({
         </div>
       </details>
 
-      {uploadError ? <p className="flex-upload-error">{uploadError}</p> : null}
-
       <style jsx>{`
         .flex-details-editor{overflow:hidden;border:1px solid #dbe3ee;border-radius:14px;background:#fff}
         .flex-editor-heading{padding:12px 13px;border-bottom:1px solid #e2e8f0;background:#f8fafc;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -726,14 +661,12 @@ export default function FlexibleDetailsEditor({
         .flex-editor-card-body{display:grid;gap:9px;padding:10px}
         .flex-editor-card-head,.flex-image-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
         input,textarea{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:8px 9px;background:#fff;color:#0f172a;font:inherit;resize:vertical}
-        input[type="file"]{display:none}
-        button,.upload-label{width:fit-content;border:1px solid #cbd5e1;border-radius:8px;padding:7px 10px;background:#fff;color:#1d4ed8;font-size:12px;font-weight:850;cursor:pointer;text-decoration:none}
-        button:hover,.upload-label:hover{background:#eff6ff} button.danger{border-color:#fecaca;background:#fff1f2;color:#be123c} button.compact{padding:4px 7px} button:disabled{cursor:not-allowed;opacity:.55}
-        .upload-label{display:inline-flex;align-items:center}.table-upload{margin-top:7px}.flex-upload-error{margin:0 12px 12px;color:#b91c1c;font-size:12px;font-weight:800}
+        button{width:fit-content;border:1px solid #cbd5e1;border-radius:8px;padding:7px 10px;background:#fff;color:#1d4ed8;font-size:12px;font-weight:850;cursor:pointer;text-decoration:none}
+        button:hover{background:#eff6ff} button.danger{border-color:#fecaca;background:#fff1f2;color:#be123c} button.compact{padding:4px 7px} button:disabled{cursor:not-allowed;opacity:.55}
         .flex-image-list{display:grid;gap:8px}.flex-image-row>div{flex:1 1 280px}.flex-image-row img,.flex-table-image-preview{display:block;width:min(100%,520px);max-height:220px;margin-top:7px;object-fit:contain;border:1px solid #e2e8f0;border-radius:9px;background:#fff}
         .flex-table-scroll{width:100%;overflow-x:auto;overscroll-behavior-inline:contain} table{width:100%;min-width:560px;border-collapse:collapse} th,td{min-width:140px;padding:6px;border:1px solid #dbe3ee;vertical-align:top} th:last-child,td:last-child{width:70px;min-width:70px;text-align:center} th{background:#eff6ff}.flex-column-head{display:flex;gap:5px;align-items:flex-start}.flex-column-head input{min-width:0}.flex-row-actions{justify-content:center;flex-wrap:nowrap}
         .flex-note-field{display:grid;gap:5px;color:#334155;font-size:12px;font-weight:850}.flex-note-field small{color:#64748b;font-weight:700}.flex-odia-box{border:1px dashed #cbd5e1!important;border-radius:9px;background:#fff}.flex-odia-box>summary{padding:8px 9px;color:#7c3aed}.flex-odia-box[open]{padding-bottom:9px}.flex-odia-box[open]>input,.flex-odia-box[open]>textarea,.flex-odia-box[open]>.flex-table-scroll,.flex-odia-box[open]>.flex-note-field{width:calc(100% - 18px);margin:8px 9px 0}.flex-empty{margin:0;padding:9px;border-radius:8px;background:#f8fafc;color:#64748b;font-size:12px}
-        @media(max-width:600px){.flex-editor-heading{align-items:flex-start}.flex-editor-quick-actions{width:100%}.flex-editor-quick-actions button{flex:1}.flex-editor-card-head{align-items:center}.flex-table-scroll{margin-inline:-2px;width:calc(100% + 4px)}table{min-width:620px}.flex-editor-actions button,.flex-editor-actions .upload-label{flex:1;justify-content:center}.flex-inline-actions{width:100%}.flex-inline-actions button{flex:1}}
+        @media(max-width:600px){.flex-editor-heading{align-items:flex-start}.flex-editor-quick-actions{width:100%}.flex-editor-quick-actions button{flex:1}.flex-editor-card-head{align-items:center}.flex-table-scroll{margin-inline:-2px;width:calc(100% + 4px)}table{min-width:620px}.flex-editor-actions button{flex:1;justify-content:center}.flex-inline-actions{width:100%}.flex-inline-actions button{flex:1}}
       `}</style>
     </section>
   );

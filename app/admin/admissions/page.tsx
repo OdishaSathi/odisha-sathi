@@ -1186,7 +1186,48 @@ export default function AdminAdmissionsPage() {
         ) : null}
 
         <section style={cardStyle}>
-          <h2 style={sectionTitleStyle}>Saved Admission Posts</h2>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "16px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <h2 style={{ ...sectionTitleStyle, marginBottom: 0 }}>
+                Saved Admission Posts
+              </h2>
+              <p
+                style={{
+                  margin: "4px 0 0",
+                  fontSize: "14px",
+                  color: "#6b7280",
+                }}
+              >
+                {admissions.length} posts saved
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={fetchAdmissions}
+              style={{
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                background: "#ffffff",
+                padding: "8px 14px",
+                fontSize: "14px",
+                fontWeight: 700,
+                color: "#111827",
+                cursor: "pointer",
+              }}
+            >
+              Refresh
+            </button>
+          </div>
 
           {listLoading ? (
             <p style={{ fontSize: "14px", color: "#6b7280" }}>

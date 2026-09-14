@@ -1,33 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  doc,
-  getDocs,
-  updateDoc,
-} from "firebase/firestore";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { db } from "@/lib/firebase";
+import {
+  getAdminContentCategoryLabel,
+  getAdminContentRecordKey,
+  getAdminContentRecords,
+  updateAdminContentRecord,
+  type AdminContentCollection,
+} from "@/lib/adminContentRepository";
 import { isPublicListingPost } from "@/lib/publicPostQuality";
 
 type HomePost = {
   id: string;
+  sourceCollection: AdminContentCollection;
   title: string;
   category: string;
   homeLatestSelected: boolean;
   homeLatestHidden: boolean;
   homeLatestOrder: number;
   createdAt?: any;
+  status?: string;
+  published?: boolean;
 };
-
-const allowedCategories = [
-  "jobs",
-  "results",
-  "admissions",
-  "admit-cards",
-  "citizen-services",
-];
 
 export default function AdminHomepagePostsPage() {
   const [posts, setPosts] = useState<HomePost[]>([]);
@@ -38,25 +33,22 @@ export default function AdminHomepagePostsPage() {
   async function loadPosts() {
     try {
       setLoading(true);
-      const snapshot = await getDocs(collection(db, "posts"));
+      const records = await getAdminContentRecords();
       setPosts(
-        snapshot.docs
+        records
           .map((item) => ({
             id: item.id,
-            title: item.data().title || "Untitled Post",
-            category: item.data().category || "",
-            homeLatestSelected: Boolean(item.data().homeLatestSelected),
-            homeLatestHidden: Boolean(item.data().homeLatestHidden),
-            homeLatestOrder: Number(item.data().homeLatestOrder || 999),
-            createdAt: item.data().createdAt || null,
-            status: item.data().status,
-            published: item.data().published,
+            sourceCollection: item.sourceCollection,
+            title: item.title || "Untitled Post",
+            category: item.category,
+            homeLatestSelected: Boolean(item.homeLatestSelected),
+            homeLatestHidden: Boolean(item.homeLatestHidden),
+            homeLatestOrder: Number(item.homeLatestOrder || 999),
+            createdAt: item.createdAt || null,
+            status: item.status,
+            published: item.published,
           }))
-          .filter(
-            (item) =>
-              allowedCategories.includes(item.category) &&
-              isPublicListingPost(item, item.id)
-          )
+          .filter((item) => isPublicListingPost(item, item.id))
           .sort((a, b) => {
             if (a.homeLatestSelected !== b.homeLatestSelected) {
               return a.homeLatestSelected ? -1 : 1;
@@ -96,15 +88,18 @@ export default function AdminHomepagePostsPage() {
     changes: Partial<HomePost>
   ) {
     const nextPost = { ...post, ...changes };
+    const recordKey = getAdminContentRecordKey(post);
     try {
-      setSavingId(post.id);
-      await updateDoc(doc(db, "posts", post.id), {
+      setSavingId(recordKey);
+      await updateAdminContentRecord(post, {
         homeLatestSelected: nextPost.homeLatestSelected,
         homeLatestHidden: nextPost.homeLatestHidden,
         homeLatestOrder: Number(nextPost.homeLatestOrder || 999),
       });
       setPosts((items) =>
-        items.map((item) => (item.id === post.id ? nextPost : item))
+        items.map((item) =>
+          getAdminContentRecordKey(item) === recordKey ? nextPost : item
+        )
       );
     } catch (error) {
       console.error(error);
@@ -146,9 +141,9 @@ export default function AdminHomepagePostsPage() {
         ) : (
           <div className="homepage-control-list">
             {visiblePosts.map((post) => (
-              <article key={post.id}>
+              <article key={getAdminContentRecordKey(post)}>
                 <div>
-                  <span>{post.category.replace(/-/g, " ")}</span>
+                  <span>{getAdminContentCategoryLabel(post.category)}</span>
                   <h2>{post.title}</h2>
                 </div>
 
@@ -157,7 +152,7 @@ export default function AdminHomepagePostsPage() {
                     <input
                       type="checkbox"
                       checked={post.homeLatestSelected}
-                      disabled={savingId === post.id}
+                      disabled={savingId === getAdminContentRecordKey(post)}
                       onChange={(event) =>
                         savePost(post, {
                           homeLatestSelected: event.target.checked,
@@ -176,11 +171,12 @@ export default function AdminHomepagePostsPage() {
                       type="number"
                       min={1}
                       value={post.homeLatestOrder}
-                      disabled={savingId === post.id}
+                      disabled={savingId === getAdminContentRecordKey(post)}
                       onChange={(event) =>
                         setPosts((items) =>
                           items.map((item) =>
-                            item.id === post.id
+                            getAdminContentRecordKey(item) ===
+                            getAdminContentRecordKey(post)
                               ? {
                                   ...item,
                                   homeLatestOrder: Number(
@@ -203,7 +199,7 @@ export default function AdminHomepagePostsPage() {
                     <input
                       type="checkbox"
                       checked={post.homeLatestHidden}
-                      disabled={savingId === post.id}
+                      disabled={savingId === getAdminContentRecordKey(post)}
                       onChange={(event) =>
                         savePost(post, {
                           homeLatestHidden: event.target.checked,

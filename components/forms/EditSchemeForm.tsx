@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
@@ -25,15 +26,64 @@ type EditSchemeFormProps = {
   postId?: string;
 };
 
-function fieldStyle() {
-  return {
-    width: "100%",
-    padding: "12px",
-    marginTop: "6px",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-  };
-}
+const formStyle: CSSProperties = {
+  display: "grid",
+  gap: "22px",
+};
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const inputStyle: CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+  fontSize: "14px",
+  outline: "none",
+};
+
+const textareaStyle: CSSProperties = {
+  ...inputStyle,
+  resize: "vertical",
+  lineHeight: 1.55,
+};
+
+const labelStyle: CSSProperties = {
+  display: "block",
+  marginBottom: "6px",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#374151",
+};
+
+const sectionTitleStyle: CSSProperties = {
+  margin: "0 0 14px",
+  fontSize: "17px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const gridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: "16px",
+};
+
+const submitButtonStyle: CSSProperties = {
+  padding: "12px 16px",
+  border: "none",
+  borderRadius: "8px",
+  background: "#2563eb",
+  color: "#ffffff",
+  fontSize: "15px",
+  fontWeight: 700,
+  cursor: "pointer",
+};
 
 export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
   const router = useRouter();
@@ -264,236 +314,234 @@ export function EditSchemeForm({ id, postId }: EditSchemeFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
-      <div>
-        <label>Scheme Category</label>
-        <select
-          value={schemeCategorySlug}
-          onChange={(e) => setSchemeCategorySlug(e.target.value)}
-          style={fieldStyle()}
-        >
-          <option value="">Select category</option>
-          {categories.map((item) => (
-            <option key={item.id} value={item.slug}>
-              {item.categoryName}
-            </option>
-          ))}
-        </select>
-      </div>
+    <form onSubmit={handleSubmit} style={formStyle}>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Basic Information</h3>
 
-      <div>
-        <label>Scheme Name</label>
-        <input
-          type="text"
-          placeholder="Example: State Scholarship 2026"
-          value={schemeName}
-          onChange={(e) => setSchemeName(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
+        <div style={gridStyle}>
+          <div>
+            <label style={labelStyle}>Scheme Category</label>
+            <select
+              value={schemeCategorySlug}
+              onChange={(e) => setSchemeCategorySlug(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">Select category</option>
+              {categories.map((item) => (
+                <option key={item.id} value={item.slug}>
+                  {item.categoryName}
+                </option>
+              ))}
+            </select>
+          </div>
 
-      <div>
-        <label>Department / Portal</label>
-        <input
-          type="text"
-          placeholder="Example: State Scholarship Portal Odisha"
-          value={department}
-          onChange={(e) => setDepartment(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
+          <div>
+            <label style={labelStyle}>Scheme Name</label>
+            <input
+              type="text"
+              placeholder="Example: State Scholarship 2026"
+              value={schemeName}
+              onChange={(e) => setSchemeName(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
 
-      <div>
-        <label>Eligibility</label>
-        <textarea
-          placeholder="Enter eligibility details"
-          value={eligibility}
-          onChange={(e) => setEligibility(e.target.value)}
-          rows={4}
-          style={{
-            ...fieldStyle(),
-            resize: "vertical",
-          }}
-        />
-      </div>
+          <div>
+            <label style={labelStyle}>Department / Portal</label>
+            <input
+              type="text"
+              placeholder="Example: State Scholarship Portal Odisha"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
 
-      <div>
-        <label>Benefit / Amount</label>
-        <input
-          type="text"
-          placeholder="Example: ₹5,000 / Tuition fee support"
-          value={benefit}
-          onChange={(e) => setBenefit(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "14px",
-        }}
-      >
-        <div>
-          <label>Application Start Date</label>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={fieldStyle()}
-          />
-          <input
-            type="text"
-            value={startDateDisplay}
-            onChange={(e) => setStartDateDisplay(e.target.value)}
-            placeholder="Optional display: July 2026 / Coming Soon"
-            style={fieldStyle()}
-          />
+          <div>
+            <label style={labelStyle}>Benefit / Amount</label>
+            <input
+              type="text"
+              placeholder="Example: ₹5,000 / Tuition fee support"
+              value={benefit}
+              onChange={(e) => setBenefit(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
         </div>
+      </section>
 
-        <div>
-          <label>Last Date</label>
-          <input
-            type="date"
-            value={lastDate}
-            onChange={(e) => setLastDate(e.target.value)}
-            style={fieldStyle()}
-          />
-          <input
-            type="text"
-            value={lastDateDisplay}
-            onChange={(e) => setLastDateDisplay(e.target.value)}
-            placeholder="Optional display: Expected in July 2026"
-            style={fieldStyle()}
-          />
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Important Dates</h3>
+
+        <div style={gridStyle}>
+          <div>
+            <label style={labelStyle}>Application Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              type="text"
+              value={startDateDisplay}
+              onChange={(e) => setStartDateDisplay(e.target.value)}
+              placeholder="Optional display: July 2026 / Coming Soon"
+              style={{ ...inputStyle, marginTop: "8px" }}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Last Date</label>
+            <input
+              type="date"
+              value={lastDate}
+              onChange={(e) => setLastDate(e.target.value)}
+              style={inputStyle}
+            />
+            <input
+              type="text"
+              value={lastDateDisplay}
+              onChange={(e) => setLastDateDisplay(e.target.value)}
+              placeholder="Optional display: Expected in July 2026"
+              style={{ ...inputStyle, marginTop: "8px" }}
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label>Description</label>
-        <textarea
-          placeholder="Enter full scheme details"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={8}
-          style={{
-            ...fieldStyle(),
-            resize: "vertical",
-          }}
-        />
-      </div>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Eligibility and Description</h3>
 
-      <div>
-        <label>Official Site Link</label>
-        <input
-          type="url"
-          placeholder="https://example.gov.in"
-          value={officialSite}
-          onChange={(e) => setOfficialSite(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
+        <div style={{ display: "grid", gap: "16px" }}>
+          <div>
+            <label style={labelStyle}>Eligibility</label>
+            <textarea
+              placeholder="Enter eligibility details"
+              value={eligibility}
+              onChange={(e) => setEligibility(e.target.value)}
+              rows={4}
+              style={textareaStyle}
+            />
+          </div>
 
-      <div>
-        <label>Official PDF / Guideline Link</label>
-        <input
-          type="url"
-          placeholder="https://example.gov.in/scheme.pdf"
-          value={officialPdf}
-          onChange={(e) => setOfficialPdf(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
-
-      <div>
-        <label>Apply Online Link</label>
-        <input
-          type="url"
-          placeholder="https://example.gov.in/apply"
-          value={applyLink}
-          onChange={(e) => setApplyLink(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
-
-      <div>
-        <label>Notification / Guideline Link</label>
-        <input
-          type="url"
-          placeholder="https://example.gov.in/notification"
-          value={notificationLink}
-          onChange={(e) => setNotificationLink(e.target.value)}
-          style={fieldStyle()}
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "14px",
-        }}
-      >
-        <div>
-          <label>YouTube Video 1</label>
-          <input
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            value={youtubeUrl}
-            onChange={(e) => setYoutubeUrl(e.target.value)}
-            style={fieldStyle()}
-          />
+          <div>
+            <label style={labelStyle}>Description</label>
+            <textarea
+              placeholder="Enter full scheme details"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={8}
+              style={textareaStyle}
+            />
+          </div>
         </div>
+      </section>
 
-        <div>
-          <label>YouTube Video 2</label>
-          <input
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            value={youtubeUrl2}
-            onChange={(e) => setYoutubeUrl2(e.target.value)}
-            style={fieldStyle()}
-          />
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Important Links</h3>
+
+        <div style={gridStyle}>
+          <div>
+            <label style={labelStyle}>Official Site Link</label>
+            <input
+              type="url"
+              placeholder="https://example.gov.in"
+              value={officialSite}
+              onChange={(e) => setOfficialSite(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Official PDF / Guideline Link</label>
+            <input
+              type="url"
+              placeholder="https://example.gov.in/scheme.pdf"
+              value={officialPdf}
+              onChange={(e) => setOfficialPdf(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Apply Online Link</label>
+            <input
+              type="url"
+              placeholder="https://example.gov.in/apply"
+              value={applyLink}
+              onChange={(e) => setApplyLink(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Notification / Guideline Link</label>
+            <input
+              type="url"
+              placeholder="https://example.gov.in/notification"
+              value={notificationLink}
+              onChange={(e) => setNotificationLink(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
         </div>
+      </section>
 
-        <div>
-          <label>YouTube Video 3</label>
-          <input
-            type="url"
-            placeholder="https://www.youtube.com/watch?v=..."
-            value={youtubeUrl3}
-            onChange={(e) => setYoutubeUrl3(e.target.value)}
-            style={fieldStyle()}
-          />
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Media</h3>
+
+        <div style={gridStyle}>
+          <div>
+            <label style={labelStyle}>YouTube Video 1</label>
+            <input
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>YouTube Video 2</label>
+            <input
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={youtubeUrl2}
+              onChange={(e) => setYoutubeUrl2(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>YouTube Video 3</label>
+            <input
+              type="url"
+              placeholder="https://www.youtube.com/watch?v=..."
+              value={youtubeUrl3}
+              onChange={(e) => setYoutubeUrl3(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label>Status</label>
+      <section style={cardStyle}>
+        <h3 style={sectionTitleStyle}>Status</h3>
+
+        <label style={labelStyle}>Scheme Status</label>
         <select
           value={schemeStatus}
           onChange={(e) => setSchemeStatus(e.target.value)}
-          style={fieldStyle()}
+          style={inputStyle}
         >
           <option value="active">Active</option>
           <option value="closed">Closed</option>
         </select>
-      </div>
+      </section>
 
-      <button
-        type="submit"
-        disabled={saving}
-        style={{
-          padding: "12px",
-          border: "none",
-          borderRadius: "8px",
-          background: "#2563eb",
-          color: "white",
-          fontWeight: "bold",
-          cursor: "pointer",
-        }}
-      >
+      <button type="submit" disabled={saving} style={submitButtonStyle}>
         {saving ? "Updating..." : "Update Scheme"}
       </button>
     </form>

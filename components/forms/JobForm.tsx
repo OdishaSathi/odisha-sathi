@@ -99,7 +99,6 @@ export function JobForm({ onSaved }: { onSaved?: () => void } = {}) {
   >(createDefaultJobDocuments());
 
   const [previewImageUrl, setPreviewImageUrl] = useState("");
-  const [imageUploading, setImageUploading] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState("");
 const [youtubeUrl2, setYoutubeUrl2] = useState("");
 const [youtubeUrl3, setYoutubeUrl3] = useState("");
@@ -502,7 +501,6 @@ youtubeUrls: cleanedYoutubeUrls,
         youtubeUrl2={youtubeUrl2}
         youtubeUrl3={youtubeUrl3}
         onImageUrlChange={setPreviewImageUrl}
-        onUploadingChange={setImageUploading}
         onYoutubeUrlChange={(index, value) => {
           if (index === 0) setYoutubeUrl(value);
           if (index === 1) setYoutubeUrl2(value);
@@ -547,14 +545,10 @@ youtubeUrls: cleanedYoutubeUrls,
 
       <button
         type="submit"
-        disabled={saving || imageUploading}
+        disabled={saving}
         style={submitButtonStyle}
       >
-        {imageUploading
-          ? "Wait for image upload..."
-          : saving
-          ? "Saving..."
-          : "Save Job"}
+        {saving ? "Saving..." : "Save Job"}
       </button>
     </form>
   );
@@ -562,9 +556,9 @@ youtubeUrls: cleanedYoutubeUrls,
 
 const sectionStyle: CSSProperties = {
   border: "1px solid #e5e7eb",
-  borderRadius: "18px",
+  borderRadius: "14px",
   background: "#ffffff",
-  padding: "16px",
+  padding: "20px",
 };
 
 const sectionHeaderStyle: CSSProperties = {
@@ -577,16 +571,16 @@ const sectionHeaderStyle: CSSProperties = {
 };
 
 const sectionTitleStyle: CSSProperties = {
-  margin: "0 0 12px",
-  fontSize: "18px",
-  fontWeight: 900,
+  margin: "0 0 14px",
+  fontSize: "17px",
+  fontWeight: 700,
   color: "#111827",
 };
 
 const compactSummaryStyle: CSSProperties = {
   color: "#111827",
-  fontSize: "16px",
-  fontWeight: 900,
+  fontSize: "17px",
+  fontWeight: 700,
   cursor: "pointer",
 };
 
@@ -598,24 +592,23 @@ const sectionTextStyle: CSSProperties = {
 
 const gridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-  gap: "14px",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: "16px",
 };
 
 const labelStyle: CSSProperties = {
   display: "grid",
   gap: "6px",
-  fontSize: "13px",
-  fontWeight: 800,
-  color: "#334155",
+  fontSize: "14px",
+  fontWeight: 600,
+  color: "#374151",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
-  minHeight: "42px",
-  border: "1px solid #cbd5e1",
-  borderRadius: "12px",
-  padding: "9px 11px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  padding: "10px 12px",
   fontSize: "14px",
   color: "#0f172a",
   background: "#ffffff",
@@ -636,16 +629,16 @@ const helpTextStyle: CSSProperties = {
 
 const checkboxGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: "10px",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "12px",
 };
 
 const checkboxCardStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "8px",
-  padding: "10px",
-  borderRadius: "10px",
+  padding: "10px 12px",
+  borderRadius: "8px",
   cursor: "pointer",
   color: "#0f172a",
   fontWeight: 700,
@@ -688,14 +681,14 @@ const removeButtonStyle: CSSProperties = {
 };
 
 const submitButtonStyle: CSSProperties = {
-  padding: "14px",
+  padding: "12px 16px",
   border: "none",
-  borderRadius: "12px",
+  borderRadius: "8px",
   background: "#2563eb",
   color: "white",
-  fontWeight: 900,
+  fontWeight: 700,
   cursor: "pointer",
-  fontSize: "16px",
+  fontSize: "15px",
 };
 
 export default JobForm;

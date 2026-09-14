@@ -27,7 +27,23 @@ export function normalizePublicImageUrl(value?: string) {
   }
 }
 
-export function toImportantImageProxyUrl(value?: string, siteUrl?: string) {
+export function isSupportedPublicImageUrl(value?: string) {
+  const normalized = normalizePublicImageUrl(value);
+  if (!normalized) return true;
+  if (normalized.startsWith("/") && !normalized.startsWith("//")) return true;
+
+  try {
+    return /^https?:$/.test(new URL(normalized).protocol);
+  } catch {
+    return false;
+  }
+}
+
+export function toImportantImageProxyUrl(
+  value?: string,
+  siteUrl?: string,
+  fallbackValue?: string
+) {
   const normalized = normalizePublicImageUrl(value);
   if (!normalized) return "";
 
@@ -37,13 +53,36 @@ export function toImportantImageProxyUrl(value?: string, siteUrl?: string) {
     const imageUrl = new URL(normalized, baseUrl);
     const site = new URL(baseUrl);
 
-    if (imageUrl.origin === site.origin) {
+    const isBuiltInImage =
+      imageUrl.pathname.startsWith("/api/og/") ||
+      imageUrl.pathname.startsWith("/api/important-image") ||
+      imageUrl.pathname === "/odisha-sathi-logo.png";
+
+    if (imageUrl.origin === site.origin && isBuiltInImage) {
       if (!siteUrl && normalized.startsWith("/")) return normalized;
       return imageUrl.toString();
     }
 
     const proxy = new URL("/api/important-image", site);
     proxy.searchParams.set("url", imageUrl.toString());
+
+    if (fallbackValue) {
+      const fallbackUrl = new URL(fallbackValue, site);
+      const isSafeFallback =
+        fallbackUrl.origin === site.origin &&
+        (fallbackUrl.pathname.startsWith("/api/og/") ||
+          fallbackUrl.pathname === "/odisha-sathi-logo.png");
+
+      if (isSafeFallback) {
+        proxy.searchParams.set(
+          "fallback",
+          siteUrl
+            ? fallbackUrl.toString()
+            : `${fallbackUrl.pathname}${fallbackUrl.search}`
+        );
+      }
+    }
+
     return siteUrl ? proxy.toString() : `${proxy.pathname}${proxy.search}`;
   } catch {
     return normalized;

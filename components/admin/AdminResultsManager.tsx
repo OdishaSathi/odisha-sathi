@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import ResultForm from "@/components/admin/ResultForm";
 import {
@@ -20,11 +21,89 @@ import {
   validateAdminContent,
 } from "@/lib/adminContentValidation";
 
+const listHeaderStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "16px",
+  flexWrap: "wrap",
+};
+
+const searchInputStyle: CSSProperties = {
+  width: "min(260px, 100%)",
+  minHeight: "38px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  padding: "8px 10px",
+  color: "#111827",
+  background: "#ffffff",
+};
+
+const savedListStyle: CSSProperties = {
+  display: "grid",
+  gap: "12px",
+};
+
+const savedItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  padding: "16px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+};
+
+const savedTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "16px",
+  lineHeight: 1.4,
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const savedMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  fontSize: "14px",
+  color: "#6b7280",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
 export default function AdminResultsManager() {
   const [results, setResults] = useState<ResultPost[]>([]);
   const [editingResult, setEditingResult] = useState<ResultPost | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredResults = useMemo(() => {
+    const queryText = searchQuery.trim().toLowerCase();
+    if (!queryText) return results;
+
+    return results.filter((item) =>
+      [
+        item.title,
+        item.slug,
+        item.examName,
+        item.organization,
+        item.resultDateDisplay,
+        item.resultDate,
+        item.status,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(queryText)
+    );
+  }, [results, searchQuery]);
 
   const loadResults = async () => {
     setIsLoading(true);
@@ -162,9 +241,32 @@ export default function AdminResultsManager() {
       ) : null}
 
       <div className="admit-admin-card">
-        <div className="admit-admin-card-title">
-          <h2>Saved Results</h2>
-          <span>{results.length} posts</span>
+        <div style={listHeaderStyle}>
+          <div>
+            <h2 style={{ margin: 0 }}>Saved Results</h2>
+            <p className="admit-admin-muted" style={{ margin: "4px 0 0" }}>
+              {results.length} posts saved
+            </p>
+          </div>
+
+          <div style={actionRowStyle}>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search saved results"
+              aria-label="Search saved results"
+              style={searchInputStyle}
+            />
+
+            <button
+              type="button"
+              className="admin-small-btn"
+              onClick={loadResults}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -174,75 +276,59 @@ export default function AdminResultsManager() {
             <h3>No result posts found</h3>
             <p>Create your first result update using the Create New button.</p>
           </div>
+        ) : filteredResults.length === 0 ? (
+          <p className="admit-admin-muted">No matching results found.</p>
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Title</th>
-                  <th>Exam Name</th>
-                  <th>Organization</th>
-                  <th>Result Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+          <div style={savedListStyle}>
+            {filteredResults.map((item) => (
+              <div key={item.id} style={savedItemStyle}>
+                <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+                  <h3 style={savedTitleStyle}>{item.title}</h3>
+                  <p style={savedMetaStyle}>
+                    {item.examName || "Exam name not added"} |{" "}
+                    {item.organization || "Organization not added"} |{" "}
+                    {item.resultDateDisplay || item.resultDate || "Result date not added"} |{" "}
+                    {item.status || "published"}
+                  </p>
+                </div>
 
-              <tbody>
-                {results.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.title}</strong>
-                      <br />
-                      <small>{item.slug}</small>
-                    </td>
-                    <td>{item.examName || "-"}</td>
-                    <td>{item.organization || "-"}</td>
-                    <td>{item.resultDateDisplay || item.resultDate || "-"}</td>
-                    <td>
-                      <span className="admin-status-pill">{item.status}</span>
-                    </td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <Link
-                          href={`/post/${item.slug || item.id}`}
-                          target="_blank"
-                          className="admin-small-btn"
-                          style={{ textDecoration: "none" }}
-                        >
-                          View
-                        </Link>
+                <div style={actionRowStyle}>
+                  <Link
+                    href={`/post/${item.slug || item.id}`}
+                    target="_blank"
+                    className="admin-small-btn"
+                    style={{ textDecoration: "none" }}
+                  >
+                    View
+                  </Link>
 
-                        <button
-                          type="button"
-                          className="admin-small-btn"
-                          onClick={() => {
-                            setEditingResult(item);
-                            setShowCreateForm(false);
-                          }}
-                        >
-                          Edit
-                        </button>
+                  <button
+                    type="button"
+                    className="admin-small-btn"
+                    onClick={() => {
+                      setEditingResult(item);
+                      setShowCreateForm(false);
+                    }}
+                  >
+                    Edit
+                  </button>
 
-                        <button
-                          type="button"
-                          className="admin-danger-btn"
-                          onClick={() => handleDelete(item)}
-                        >
-                          Delete
-                        </button>
+                  <button
+                    type="button"
+                    className="admin-danger-btn"
+                    onClick={() => handleDelete(item)}
+                  >
+                    Delete
+                  </button>
 
-                        <AdminPostShareButtons
-                          title={item.title || "Odisha Sathi Result Update"}
-                          publicPath={`/post/${item.slug || item.id}`}
-                          description={item.examName || item.organization || ""}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                  <AdminPostShareButtons
+                    title={item.title || "Odisha Sathi Result Update"}
+                    publicPath={`/post/${item.slug || item.id}`}
+                    description={item.examName || item.organization || ""}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

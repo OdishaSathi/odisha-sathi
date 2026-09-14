@@ -13,13 +13,16 @@ import {
 } from "firebase/firestore";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { db } from "@/lib/firebase";
+import {
+  ADMIN_CONTENT_SECTIONS,
+  getAdminContentRecords,
+} from "@/lib/adminContentRepository";
 
 type SubCategoryPost = {
   id: string;
   category?: string;
   subCategory?: string;
   subCategories?: string[];
-  schemeCategory?: string;
 };
 
 type ManagedSubCategory = {
@@ -43,13 +46,10 @@ type SubCategoryForm = {
   description: string;
 };
 
-const parentSections = [
-  { key: "jobs", label: "Jobs" },
-  { key: "admissions", label: "Admissions & Scholarships" },
-  { key: "admit-cards", label: "Admit Cards & Exams" },
-  { key: "results", label: "Results" },
-  { key: "citizen-services", label: "Citizen Services" },
-];
+const parentSections = ADMIN_CONTENT_SECTIONS.map(({ key, label }) => ({
+  key,
+  label,
+}));
 
 const defaultForm: SubCategoryForm = {
   parentSection: "jobs",
@@ -105,6 +105,20 @@ function normalizeStatus(value: unknown): "active" | "hidden" {
   return value === "hidden" ? "hidden" : "active";
 }
 
+function getPostSubCategories(post: SubCategoryPost) {
+  const names = new Set<string>();
+
+  (post.subCategories || []).forEach((item) => {
+    const cleanName = cleanText(item);
+    if (cleanName) names.add(cleanName);
+  });
+
+  const singleSubCategory = cleanText(post.subCategory);
+  if (singleSubCategory) names.add(singleSubCategory);
+
+  return names;
+}
+
 export default function AdminCategoriesPage() {
   const [posts, setPosts] = useState<SubCategoryPost[]>([]);
   const [managedCategories, setManagedCategories] = useState<ManagedSubCategory[]>([]);
@@ -119,21 +133,17 @@ export default function AdminCategoriesPage() {
       setLoading(true);
       setMessage("");
 
-      const [postSnapshot, categorySnapshot] = await Promise.all([
-        getDocs(collection(db, "posts")),
+      const [contentRecords, categorySnapshot] = await Promise.all([
+        getAdminContentRecords(),
         getDocs(collection(db, "subCategories")),
       ]);
 
-      const postList = postSnapshot.docs.map((docItem) => {
-        const data = docItem.data();
-        return {
-          id: docItem.id,
-          category: data.category || "",
-          subCategory: data.subCategory || "",
-          subCategories: Array.isArray(data.subCategories) ? data.subCategories : [],
-          schemeCategory: data.schemeCategory || "",
-        };
-      });
+      const postList = contentRecords.map((item) => ({
+        id: `${item.sourceCollection}:${item.id}`,
+        category: item.category,
+        subCategory: item.subCategory || "",
+        subCategories: item.subCategories || [],
+      }));
 
       const categoryList = categorySnapshot.docs
         .map((docItem) => {
@@ -176,19 +186,7 @@ export default function AdminCategoriesPage() {
       posts
         .filter((post) => post.category === section.key)
         .forEach((post) => {
-          const names = new Set<string>();
-
-          if (Array.isArray(post.subCategories)) {
-            post.subCategories.forEach((item) => {
-              const cleanName = cleanText(item);
-              if (cleanName) names.add(cleanName);
-            });
-          }
-
-          const singleSubCategory = cleanText(post.subCategory);
-          if (singleSubCategory) names.add(singleSubCategory);
-
-          names.forEach((name) => {
+          getPostSubCategories(post).forEach((name) => {
             counter.set(name, (counter.get(name) || 0) + 1);
           });
         });
@@ -328,8 +326,18 @@ export default function AdminCategoriesPage() {
   }
 
   function getPostCount(sectionKey: string, item: ManagedSubCategory) {
-    const counter = postUsageBySection[sectionKey] || new Map<string, number>();
-    return (counter.get(item.name) || 0) + (item.slug !== item.name ? counter.get(item.slug) || 0 : 0);
+    const targetNames = new Set(
+      [item.name, item.slug]
+        .map((value) => cleanText(value).toLowerCase())
+        .filter(Boolean)
+    );
+
+    return posts.filter((post) => {
+      if (post.category !== sectionKey) return false;
+      return Array.from(getPostSubCategories(post)).some((name) =>
+        targetNames.has(name.toLowerCase())
+      );
+    }).length;
   }
 
   return (

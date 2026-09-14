@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import {
   addDoc,
@@ -18,6 +19,93 @@ import AdminPostShareButtons from "@/components/admin/AdminPostShareButtons";
 
 const AdminLayout: any =
   (AdminLayoutModule as any).default || (AdminLayoutModule as any).AdminLayout;
+
+const cardStyle: CSSProperties = {
+  background: "#ffffff",
+  padding: "20px",
+  borderRadius: "14px",
+  border: "1px solid #e5e7eb",
+};
+
+const actionButtonStyle: CSSProperties = {
+  padding: "8px 14px",
+  border: "1px solid #d1d5db",
+  borderRadius: "8px",
+  background: "#ffffff",
+  cursor: "pointer",
+  fontWeight: 700,
+  fontSize: "14px",
+};
+
+const primaryButtonStyle: CSSProperties = {
+  ...actionButtonStyle,
+  borderColor: "#2563eb",
+  background: "#2563eb",
+  color: "#ffffff",
+};
+
+const savedItemStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+  flexWrap: "wrap",
+  padding: "16px",
+  borderRadius: "12px",
+  border: "1px solid #e5e7eb",
+};
+
+const savedTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: "16px",
+  lineHeight: 1.4,
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const savedMetaStyle: CSSProperties = {
+  margin: "4px 0 0",
+  fontSize: "14px",
+  color: "#6b7280",
+};
+
+const actionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: "8px",
+  flexWrap: "wrap",
+  alignItems: "center",
+};
+
+const viewButtonStyle: CSSProperties = {
+  borderRadius: "8px",
+  background: "#ecfdf5",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#16a34a",
+  textDecoration: "none",
+};
+
+const editButtonStyle: CSSProperties = {
+  borderRadius: "8px",
+  background: "#f3f4f6",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#374151",
+  textDecoration: "none",
+};
+
+const deleteButtonStyle: CSSProperties = {
+  border: "none",
+  borderRadius: "8px",
+  background: "#fef2f2",
+  padding: "8px 14px",
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#dc2626",
+  cursor: "pointer",
+};
 
 type SchemePost = {
   id: string;
@@ -55,6 +143,26 @@ export default function AdminSchemesPage() {
   const [deletingCategoryId, setDeletingCategoryId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredSchemes = useMemo(() => {
+    const queryText = searchQuery.trim().toLowerCase();
+    if (!queryText) return schemes;
+
+    return schemes.filter((scheme) =>
+      [
+        scheme.schemeName,
+        scheme.title,
+        scheme.department,
+        scheme.schemeCategory,
+        scheme.schemeCategorySlug,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(queryText)
+    );
+  }, [schemes, searchQuery]);
 
   const loadSchemesAndCategories = async () => {
     try {
@@ -281,13 +389,8 @@ export default function AdminSchemesPage() {
               type="button"
               onClick={() => setShowCategoryManager((oldValue) => !oldValue)}
               style={{
-                border: "1px solid #d1d5db",
-                borderRadius: "10px",
-                background: "#ffffff",
-                color: "#111827",
-                padding: "10px 14px",
-                fontWeight: 800,
-                cursor: "pointer",
+                ...actionButtonStyle,
+                background: showCategoryManager ? "#f3f4f6" : "#ffffff",
               }}
             >
               {showCategoryManager ? "Hide Categories" : "Scheme Categories"}
@@ -297,13 +400,9 @@ export default function AdminSchemesPage() {
               type="button"
               onClick={() => setShowCreateForm((oldValue) => !oldValue)}
               style={{
-                border: "1px solid #2563eb",
-                borderRadius: "10px",
+                ...primaryButtonStyle,
                 background: showCreateForm ? "#f3f4f6" : "#2563eb",
                 color: showCreateForm ? "#111827" : "#ffffff",
-                padding: "10px 14px",
-                fontWeight: 800,
-                cursor: "pointer",
               }}
             >
               {showCreateForm ? "Hide Form" : "+ Create New Scheme"}
@@ -312,15 +411,8 @@ export default function AdminSchemesPage() {
         </div>
 
         {showCategoryManager ? (
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <h2>Scheme Categories</h2>
+        <div style={cardStyle}>
+          <h2 style={{ margin: 0 }}>Scheme Categories</h2>
           <p style={{ color: "#6b7280", marginTop: "4px" }}>
             Add or delete categories like Scholarships, Farmer Schemes, Student
             Schemes, Women Schemes, Pension Schemes etc.
@@ -342,9 +434,11 @@ export default function AdminSchemesPage() {
               onChange={(event) => setNewCategoryName(event.target.value)}
               style={{
                 width: "100%",
-                padding: "12px",
-                border: "1px solid #ddd",
+                padding: "10px 12px",
+                border: "1px solid #d1d5db",
                 borderRadius: "8px",
+                fontSize: "14px",
+                outline: "none",
               }}
             />
 
@@ -352,13 +446,8 @@ export default function AdminSchemesPage() {
               type="submit"
               disabled={categorySaving}
               style={{
-                padding: "12px 16px",
-                border: "none",
-                borderRadius: "8px",
-                background: "#2563eb",
-                color: "white",
-                fontWeight: "bold",
-                cursor: "pointer",
+                ...primaryButtonStyle,
+                padding: "10px 14px",
               }}
             >
               {categorySaving ? "Adding..." : "Add Category"}
@@ -380,9 +469,9 @@ export default function AdminSchemesPage() {
                     justifyContent: "space-between",
                     alignItems: "center",
                     gap: "12px",
-                    padding: "12px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "10px",
+                      padding: "16px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "12px",
                   }}
                 >
                   <div>
@@ -398,12 +487,7 @@ export default function AdminSchemesPage() {
                     disabled={deletingCategoryId === item.id || item.id.startsWith("managed-")}
                     onClick={() => handleDeleteCategory(item)}
                     style={{
-                      padding: "8px 12px",
-                      border: "none",
-                      borderRadius: "8px",
-                      background: "#fee2e2",
-                      color: "#dc2626",
-                      fontWeight: "bold",
+                      ...deleteButtonStyle,
                       cursor: item.id.startsWith("managed-") ? "not-allowed" : "pointer",
                     }}
                   >
@@ -417,15 +501,8 @@ export default function AdminSchemesPage() {
         ) : null}
 
         {showCreateForm ? (
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
-          <h2>Create New Scheme</h2>
+        <div style={cardStyle}>
+          <h2 style={{ margin: "0 0 16px" }}>Create New Scheme</h2>
           <SchemeForm
             categories={categories}
             onSaved={() => {
@@ -436,14 +513,7 @@ export default function AdminSchemesPage() {
         </div>
         ) : null}
 
-        <div
-          style={{
-            background: "white",
-            padding: "20px",
-            borderRadius: "12px",
-            border: "1px solid #e5e7eb",
-          }}
-        >
+        <div style={cardStyle}>
           <div
             style={{
               display: "flex",
@@ -451,99 +521,77 @@ export default function AdminSchemesPage() {
               alignItems: "center",
               gap: "12px",
               marginBottom: "16px",
+              flexWrap: "wrap",
             }}
           >
-            <h2>Saved Schemes</h2>
+            <div>
+              <h2 style={{ margin: 0 }}>Saved Schemes</h2>
+              <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "14px" }}>
+                {schemes.length} posts saved
+              </p>
+            </div>
 
+            <div style={actionRowStyle}>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search saved schemes"
+              aria-label="Search saved schemes"
+              style={{
+                width: "min(260px, 100%)",
+                minHeight: "38px",
+                border: "1px solid #d1d5db",
+                borderRadius: "8px",
+                padding: "8px 10px",
+                color: "#111827",
+                background: "#ffffff",
+              }}
+            />
             <button
               type="button"
               onClick={loadSchemesAndCategories}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                background: "white",
-                cursor: "pointer",
-              }}
+              style={actionButtonStyle}
             >
               Refresh
             </button>
+            </div>
           </div>
 
           {loading ? (
             <p>Loading schemes...</p>
           ) : schemes.length === 0 ? (
             <p>No schemes found.</p>
+          ) : filteredSchemes.length === 0 ? (
+            <p>No matching schemes found.</p>
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
-              {schemes.map((scheme) => {
+              {filteredSchemes.map((scheme) => {
                 const name =
                   scheme.schemeName || scheme.title || "Untitled Scheme";
 
                 return (
-                  <div
-                    key={scheme.id}
-                    style={{
-                      padding: "14px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "10px",
-                      display: "grid",
-                      gap: "10px",
-                    }}
-                  >
-                    <div>
-                      <h3 style={{ margin: 0 }}>{name}</h3>
-                      <p style={{ margin: "6px 0 0", color: "#4b5563" }}>
-                        {scheme.department || "Department not added"}
-                      </p>
-                      <p style={{ margin: "6px 0 0", color: "#2563eb" }}>
-                        Category:{" "}
+                  <div key={scheme.id} style={savedItemStyle}>
+                    <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+                      <h3 style={savedTitleStyle}>{name}</h3>
+                      <p style={savedMetaStyle}>
+                        {scheme.department || "Department not added"} |{" "}
                         {scheme.schemeCategory || "Government Schemes"}
                       </p>
                     </div>
 
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "74px 74px 74px auto",
-                        gap: "10px",
-                        alignItems: "center",
-                        width: "fit-content",
-                      }}
-                    >
+                    <div style={actionRowStyle}>
                       <Link
                         href={`/schemes/${scheme.id}`}
                         target="_blank"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#16a34a",
-                          color: "white",
-                          borderRadius: "8px",
-                          textDecoration: "none",
-                          fontSize: "14px",
-                        }}
+                        style={viewButtonStyle}
                       >
                         View
                       </Link>
 
                       <Link
                         href={`/admin/schemes/edit/${scheme.id}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#2563eb",
-                          color: "white",
-                          borderRadius: "8px",
-                          textDecoration: "none",
-                          fontSize: "14px",
-                        }}
+                        style={editButtonStyle}
                       >
                         Edit
                       </Link>
@@ -553,17 +601,11 @@ export default function AdminSchemesPage() {
                         disabled={deletingId === scheme.id}
                         onClick={() => handleDelete(scheme.id, name)}
                         style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          width: "74px",
-                          height: "36px",
-                          background: "#dc2626",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          cursor: "pointer",
-                          fontSize: "14px",
+                          ...deleteButtonStyle,
+                          cursor:
+                            deletingId === scheme.id
+                              ? "not-allowed"
+                              : "pointer",
                         }}
                       >
                         {deletingId === scheme.id ? "..." : "Delete"}

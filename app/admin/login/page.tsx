@@ -2,8 +2,13 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { isApprovedAdminUid } from "@/lib/adminAccess";
 
 function getSafeNextPath() {
   if (typeof window === "undefined") return "/admin";
@@ -51,11 +56,22 @@ export default function AdminLoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
+        if (!isApprovedAdminUid(user.uid)) {
+          setCheckingAuth(false);
+          setErrorMessage("This Firebase account is not approved for the Odisha Sathi admin panel.");
+          void signOut(auth);
+          return;
+        }
+
         router.replace(getSafeNextPath());
         return;
       }
 
       setCheckingAuth(false);
+      const reason = new URLSearchParams(window.location.search).get("reason");
+      if (reason === "unauthorized") {
+        setErrorMessage("This Firebase account is not approved for the Odisha Sathi admin panel.");
+      }
     });
 
     return () => unsubscribe();
@@ -78,7 +94,17 @@ export default function AdminLoginPage() {
       setSaving(true);
       setErrorMessage("");
 
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      if (!isApprovedAdminUid(credential.user.uid)) {
+        await signOut(auth);
+        setErrorMessage("This Firebase account is not approved for the Odisha Sathi admin panel.");
+        return;
+      }
 
       router.replace(getSafeNextPath());
     } catch (error) {

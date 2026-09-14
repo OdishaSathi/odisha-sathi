@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, getDocs } from "firebase/firestore";
 import {
   AlertTriangle,
   BarChart3,
@@ -14,59 +13,16 @@ import {
   Search,
   TimerReset,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
 import AdminLayout from "@/components/admin/AdminLayout";
+import {
+  ADMIN_CONTENT_SECTIONS,
+  getAdminContentOverview,
+  type AdminContentRecord,
+} from "@/lib/adminContentRepository";
 
-type ImportantDate = { label?: string; value?: string };
-type ImportantLink = { label?: string; title?: string; url?: string; href?: string };
+type AdminPost = AdminContentRecord;
 
-type AdminPost = {
-  id: string;
-  title: string;
-  slug?: string;
-  category?: string;
-  schemeName?: string;
-  department?: string;
-  organization?: string;
-  shortDescription?: string;
-  description?: string;
-  content?: string;
-  createdAt?: any;
-  updatedAt?: any;
-  lastDate?: string;
-  lastDateDisplay?: string;
-  applicationLastDate?: string;
-  applyLastDate?: string;
-  applicationEndDate?: string;
-  closingDate?: string;
-  endDate?: string;
-  deadline?: string;
-  examDate?: string;
-  examDateDisplay?: string;
-  importantDates?: ImportantDate[];
-  importantLinks?: ImportantLink[];
-  links?: ImportantLink[];
-  sourceUrl?: string;
-  canonicalStartDate?: string;
-  canonicalLastDate?: string;
-  canonicalExamDate?: string;
-  canonicalResultDate?: string;
-  lifecycleStatus?: string;
-  sourceReferenceStatus?: string;
-  sourceReferenceType?: string;
-  sourceReferenceLabel?: string;
-  sourceReferenceUrl?: string;
-  dataQualityVersion?: number;
-};
-
-const categories = [
-  ["jobs", "Jobs", "/admin/jobs"],
-  ["results", "Results", "/admin/results"],
-  ["admissions", "Admissions", "/admin/admissions"],
-  ["admit-cards", "Exams", "/admin/admit-cards"],
-  ["schemes", "Schemes", "/admin/schemes"],
-  ["citizen-services", "Citizen Services", "/admin/citizen-services"],
-] as const;
+const categories = ADMIN_CONTENT_SECTIONS;
 
 function publicLink(post: AdminPost) {
   return post.category === "citizen-services"
@@ -80,24 +36,12 @@ function editLink(post: AdminPost) {
     results: "results",
     admissions: "admissions/edit",
     "admit-cards": "admit-cards/edit",
-    schemes: "schemes/edit",
   };
 
   if (post.category === "citizen-services") return "/admin/citizen-services";
 
   const section = map[post.category || ""];
   return section ? `/admin/${section}/${post.id}` : "/admin";
-}
-
-function timeValue(value: any) {
-  if (!value) return 0;
-  if (typeof value?.toMillis === "function") return value.toMillis();
-  if (typeof value?.seconds === "number") return value.seconds * 1000;
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
 }
 
 function normalizeDate(date: Date) {
@@ -173,7 +117,7 @@ function daysFromToday(date: Date) {
 }
 
 function categoryLabel(category?: string) {
-  return categories.find(([key]) => key === category)?.[1] || category || "Post";
+  return categories.find((section) => section.key === category)?.label || category || "Post";
 }
 
 function lifecycleLabel(post: AdminPost) {
@@ -224,17 +168,9 @@ export default function AdminDashboardPage() {
     try {
       setLoading(true);
       setError("");
-      const [postSnapshot, infoSnapshot] = await Promise.all([
-        getDocs(collection(db, "posts")),
-        getDocs(collection(db, "importantInformation")),
-      ]);
-
-      setPosts(
-        postSnapshot.docs
-          .map((item) => ({ id: item.id, ...(item.data() as Omit<AdminPost, "id">) }))
-          .sort((a, b) => Math.max(timeValue(b.updatedAt), timeValue(b.createdAt)) - Math.max(timeValue(a.updatedAt), timeValue(a.createdAt)))
-      );
-      setImportantCount(infoSnapshot.size);
+      const overview = await getAdminContentOverview();
+      setPosts(overview.records);
+      setImportantCount(overview.importantInformationCount);
     } catch (err) {
       console.error(err);
       setError("Dashboard data could not be loaded. Check your connection and Firestore permissions.");
@@ -255,7 +191,7 @@ export default function AdminDashboardPage() {
   }, [posts, search]);
 
   const contentPosts = useMemo(
-    () => posts.filter((post) => categories.some(([key]) => key === post.category)),
+    () => posts.filter((post) => categories.some((section) => section.key === post.category)),
     [posts]
   );
 
@@ -351,19 +287,19 @@ export default function AdminDashboardPage() {
             </div>
             <div className="action-list">
               {operations.closingSoon.slice(0, 5).map(({ post, days }) => (
-                <article key={`closing-${post.id}`}>
+                <article key={`closing-${post.sourceCollection}-${post.id}`}>
                   <div><span className="action-tag red">{days === 0 ? "Closes today" : `Closes in ${days} day${days === 1 ? "" : "s"}`}</span><h3>{post.title || post.schemeName || "Untitled post"}</h3><p>{categoryLabel(post.category)}</p></div>
                   <div className="post-actions"><Link href={publicLink(post)} target="_blank"><ExternalLink size={15}/>View</Link><Link href={editLink(post)}>Edit</Link></div>
                 </article>
               ))}
               {operations.upcomingExams.slice(0, 4).map(({ post, days }) => (
-                <article key={`exam-${post.id}`}>
+                <article key={`exam-${post.sourceCollection}-${post.id}`}>
                   <div><span className="action-tag blue">{days === 0 ? "Exam today" : `Exam in ${days} day${days === 1 ? "" : "s"}`}</span><h3>{post.title || "Untitled post"}</h3><p>{categoryLabel(post.category)}</p></div>
                   <div className="post-actions"><Link href={publicLink(post)} target="_blank"><ExternalLink size={15}/>View</Link><Link href={editLink(post)}>Edit</Link></div>
                 </article>
               ))}
               {operations.incomplete.slice(0, 4).map(({ post, reason }) => (
-                <article key={`incomplete-${post.id}`}>
+                <article key={`incomplete-${post.sourceCollection}-${post.id}`}>
                   <div><span className="action-tag amber">Review</span><h3>{post.title || post.schemeName || "Untitled post"}</h3><p>{reason}</p></div>
                   <div className="post-actions"><Link href={publicLink(post)} target="_blank"><ExternalLink size={15}/>View</Link><Link href={editLink(post)}>Edit</Link></div>
                 </article>
@@ -397,7 +333,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="section-heading"><div><h2>Content totals</h2><p>{contentPosts.length + importantCount} managed items</p></div></div>
           <div className="count-grid">
-            {categories.map(([key, label, href]) => <Link href={href} className="count-card" key={key}><span>{label}</span><strong>{loading ? "—" : posts.filter((post) => post.category === key).length}</strong></Link>)}
+            {categories.map(({ key, label, adminHref }) => <Link href={adminHref} className="count-card" key={key}><span>{label}</span><strong>{loading ? "—" : posts.filter((post) => post.category === key).length}</strong></Link>)}
             <Link href="/admin/important-information" className="count-card"><span>Important Info</span><strong>{loading ? "—" : importantCount}</strong></Link>
           </div>
         </section>
@@ -405,7 +341,7 @@ export default function AdminDashboardPage() {
         <section>
           <div className="section-heading"><div><h2>Quick create</h2><p>Jump directly to a content section</p></div></div>
           <div className="quick-grid">
-            {categories.map(([key, label, href]) => <Link key={key} href={href}><FilePlus2 size={18}/>New {label}</Link>)}
+            {categories.map(({ key, label, adminHref }) => <Link key={key} href={adminHref}><FilePlus2 size={18}/>New {label}</Link>)}
             <Link href="/admin/important-information"><FilePlus2 size={18}/>New Important Info</Link>
           </div>
         </section>
@@ -415,7 +351,7 @@ export default function AdminDashboardPage() {
           <label className="dashboard-search"><Search size={18}/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search title, department or category…" /></label>
           {loading ? <p className="empty-state">Loading recent posts…</p> : visiblePosts.length === 0 ? <p className="empty-state">No matching posts found.</p> : (
             <div className="recent-list">{visiblePosts.map((post) => (
-              <article key={post.id}>
+              <article key={`${post.sourceCollection}-${post.id}`}>
                 <div>
                   <div className="recent-badges">
                     <span>{categoryLabel(post.category)}</span>
@@ -439,7 +375,7 @@ export default function AdminDashboardPage() {
         .attention-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.attention-card{min-height:92px;border:1px solid #e2e8f0;border-radius:13px;background:#fff;padding:16px;display:flex;align-items:center;gap:13px}.attention-card>div{display:flex;flex-direction:column;gap:4px}.attention-card span{font-size:12px;font-weight:750;color:#64748b}.attention-card strong{font-size:27px;line-height:1;color:#102a4c}.attention-card.urgent{color:#dc2626}.attention-card.exam{color:#2563eb}.attention-card.expired{color:#d97706}.attention-card.incomplete{color:#0f766e}
         .action-panel,.analytics-placeholder,.recent-panel,.operations-panel{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px}.action-list{display:grid;gap:8px;margin-top:14px}.action-list article{border:1px solid #e2e8f0;border-radius:10px;padding:12px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px}.action-list h3{margin:4px 0;color:#172b4d;font-size:14px}.action-list p{margin:0;color:#64748b;font-size:12px}.action-tag{display:inline-flex;border-radius:999px;padding:3px 8px;font-size:10px;font-weight:850}.action-tag.red{background:#fff1f2;color:#be123c}.action-tag.blue{background:#eff6ff;color:#1d4ed8}.action-tag.amber{background:#fffbeb;color:#b45309}
         .analytics-placeholder{margin-top:12px;display:flex;align-items:center;gap:14px;color:#2563eb}.analytics-placeholder div{flex:1}.analytics-placeholder strong{color:#172b4d}.analytics-placeholder p{margin:4px 0 0;color:#64748b;font-size:13px}.analytics-placeholder a{padding:10px 13px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:750;white-space:nowrap}
-        .health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.health-grid article{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:5px}.health-grid article.needs-review{border-color:#fed7aa;background:#fffaf5}.health-grid article.legacy{border-color:#fde68a;background:#fffdf3}.health-grid span{font-size:12px;font-weight:800;color:#64748b}.health-grid strong{font-size:25px;line-height:1;color:#102a4c}.health-grid small{color:#64748b;line-height:1.35}.count-grid{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:10px;margin-top:12px}.count-card{min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;text-decoration:none;color:#64748b;display:flex;flex-direction:column;gap:7px;box-shadow:0 2px 5px rgba(15,39,71,.03)}.count-card:hover{border-color:#93c5fd;box-shadow:0 8px 18px rgba(30,64,175,.07)}.count-card span{font-size:13px;font-weight:700;line-height:1.3}.count-card strong{font-size:28px;line-height:1;color:#102a4c}
+        .health-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.health-grid article{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:5px}.health-grid article.needs-review{border-color:#fed7aa;background:#fffaf5}.health-grid article.legacy{border-color:#fde68a;background:#fffdf3}.health-grid span{font-size:12px;font-weight:800;color:#64748b}.health-grid strong{font-size:25px;line-height:1;color:#102a4c}.health-grid small{color:#64748b;line-height:1.35}.count-grid{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px;margin-top:12px}.count-card{min-width:0;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;text-decoration:none;color:#64748b;display:flex;flex-direction:column;gap:7px;box-shadow:0 2px 5px rgba(15,39,71,.03)}.count-card:hover{border-color:#93c5fd;box-shadow:0 8px 18px rgba(30,64,175,.07)}.count-card span{font-size:13px;font-weight:700;line-height:1.3}.count-card strong{font-size:28px;line-height:1;color:#102a4c}
         .quick-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.quick-grid a{min-height:48px;padding:0 14px;border:1px solid #d7e6fb;border-radius:10px;background:#eaf2ff;color:#174a8b;text-decoration:none;font-weight:750;display:flex;align-items:center;gap:9px}
         .dashboard-search{max-width:520px;margin:15px 0;min-height:44px;padding:0 12px;border:1px solid #cbd5e1;border-radius:9px;display:flex;align-items:center;gap:8px;color:#64748b}.dashboard-search input{width:100%;border:0;outline:0;font:inherit;background:transparent}.recent-list{display:grid;gap:9px}.recent-list article{border:1px solid #e2e8f0;border-radius:10px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:12px}.recent-list>article>div:first-child{min-width:0}.recent-badges{display:flex;align-items:center;flex-wrap:wrap;gap:6px}.recent-list .recent-badges>span:first-child{text-transform:capitalize;font-size:11px;font-weight:800;color:#2563eb}.lifecycle-badge,.source-badge{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:10px!important;font-weight:850!important;text-transform:none!important}.lifecycle-badge.good{background:#ecfdf5;color:#047857!important}.lifecycle-badge.warn{background:#fff1f2;color:#be123c!important}.lifecycle-badge.info{background:#eff6ff;color:#1d4ed8!important}.lifecycle-badge.neutral{background:#f1f5f9;color:#475569!important}.source-badge.linked{background:#f0fdf4;color:#15803d!important}.source-badge.missing{background:#fff7ed;color:#c2410c!important}.recent-list h3{font-size:15px;margin:4px 0;color:#172b4d}.recent-list p{font-size:12px;margin:0;color:#64748b}.post-actions{display:flex;gap:7px}.post-actions a{min-height:38px;padding:0 11px;border-radius:8px;background:#eff6ff;color:#1d4ed8;text-decoration:none;font-weight:750;display:flex;align-items:center;gap:5px}.empty-state{color:#64748b}
         .operations-panel h2{font-size:18px}.operations-panel>div{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.operations-panel a{min-height:40px;padding:0 12px;border:1px solid #dbe3ed;border-radius:8px;color:#17365f;text-decoration:none;display:flex;align-items:center;gap:6px;font-weight:700}

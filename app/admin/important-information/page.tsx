@@ -492,8 +492,7 @@ export default function AdminImportantInformationPage() {
               label="Preview Image / Title Banner"
               value={form.previewImageUrl}
               onChange={(value) => updateField("previewImageUrl", value)}
-              helpText="Priority: uploaded image or image URL → YouTube thumbnail → default Odisha Sathi banner."
-              folder="important-information"
+              helpText="Priority: direct image URL → YouTube thumbnail → default Odisha Sathi banner."
             />
 
             <FlexibleDetailsEditor
@@ -617,7 +616,6 @@ export default function AdminImportantInformationPage() {
                   value={form.shareImageUrl}
                   onChange={(value) => updateField("shareImageUrl", value)}
                   helpText="Optional. If blank, the Preview Image is used automatically for WhatsApp/Facebook/social sharing."
-                  folder="important-information/share"
                 />
               </div>
               <div style={{ marginTop: "12px" }}>

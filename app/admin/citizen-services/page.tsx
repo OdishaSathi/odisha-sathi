@@ -611,7 +611,6 @@ export default function AdminCitizenServicesPage() {
               value={form.previewImageUrl}
               onChange={(value) => updateField("previewImageUrl", value)}
               helpText="Leave blank for YouTube thumbnail or the Citizen Services default banner."
-              folder="citizen-services"
             />
 
             <section>

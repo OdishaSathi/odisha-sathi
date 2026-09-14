@@ -6,6 +6,7 @@ import { dbServer } from "@/lib/firebaseServer";
 import {
   cleanImportantInfoPost,
   getImportantInfoDisplayImage,
+  getImportantInfoFallbackImage,
   getImportantInfoOgImage,
   getImportantInfoYouTubeId,
   type ImportantInfoPost,
@@ -222,7 +223,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
   const shareDescription = post.shareDescription || post.shortDescription || "";
   const shareUrl = `https://odishasathi.in/important-information/${post.slug || post.id}`;
   const previewImageUrl = getImportantInfoDisplayImage(post);
-  const proxiedPreviewImageUrl = toImportantImageProxyUrl(previewImageUrl);
+  const fallbackImageUrl = getImportantInfoFallbackImage(post);
   return (
     <main className="important-detail-page">
       <div className="important-detail-container">
@@ -247,7 +248,7 @@ export default async function ImportantInformationDetailPage({ params }: Importa
             <section className="important-main-column">
               {previewImageUrl ? (
                 <div className="important-title-image">
-                  <img src={proxiedPreviewImageUrl || previewImageUrl} alt={`${post.title} preview`} />
+                  <img src={previewImageUrl} alt={`${post.title} preview`} />
                 </div>
               ) : null}
 
@@ -273,7 +274,13 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                       {(section.imageUrls || []).map((imageUrl, imageIndex) => (
                         <img
                           key={`${imageUrl}-${imageIndex}`}
-                          src={toImportantImageProxyUrl(imageUrl) || imageUrl}
+                          src={
+                            toImportantImageProxyUrl(
+                              imageUrl,
+                              undefined,
+                              fallbackImageUrl
+                            ) || fallbackImageUrl
+                          }
                           alt={`${section.title || post.title} image ${imageIndex + 1}`}
                         />
                       ))}
@@ -302,7 +309,13 @@ export default async function ImportantInformationDetailPage({ params }: Importa
                     {table.imageUrl ? (
                       <div className="important-image-grid">
                         <img
-                          src={toImportantImageProxyUrl(table.imageUrl) || table.imageUrl}
+                          src={
+                            toImportantImageProxyUrl(
+                              table.imageUrl,
+                              undefined,
+                              fallbackImageUrl
+                            ) || fallbackImageUrl
+                          }
                           alt={`${title || post.title} reference`}
                         />
                       </div>

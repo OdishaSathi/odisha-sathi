@@ -988,13 +988,18 @@ function ImportantUpdatesTicker({
   items: ImportantInformationItem[];
 }) {
   if (items.length === 0) return null;
-  const tickerItems = [...items, ...items];
+  const isSingleItem = items.length === 1;
+  const tickerItems = isSingleItem ? items : [...items, ...items];
 
   return (
     <section className="os-important-ticker" aria-label="Important Updates">
       <strong>Important Updates</strong>
       <div className="os-important-ticker-window">
-        <div className="os-important-ticker-track">
+        <div
+          className={`os-important-ticker-track${
+            isSingleItem ? " os-important-ticker-track-single" : ""
+          }`}
+        >
           {tickerItems.map((item, index) => (
             <Link
               href={getImportantInfoLink(item)}
@@ -1224,6 +1229,12 @@ export default function HomePage({ initialGroups }: { initialGroups: Record<stri
 
   return (
     <main className="os-board-home">
+      <style>{`
+        .os-board-home .os-board-container {
+          visibility: hidden;
+        }
+      `}</style>
+
       <div className="os-board-container">
         <section className="os-board-top">
           <div>
@@ -1386,11 +1397,15 @@ export default function HomePage({ initialGroups }: { initialGroups: Record<stri
         )}
       </div>
 
-      <style jsx global>{`
+      <style>{`
         .os-board-home {
           min-height: 100vh;
           background: #ffffff;
           color: #0f172a;
+        }
+
+        .os-board-home .os-board-container {
+          visibility: visible;
         }
 
         .os-board-container {
@@ -1490,6 +1505,11 @@ export default function HomePage({ initialGroups }: { initialGroups: Record<stri
 
         .os-important-ticker:hover .os-important-ticker-track {
           animation-play-state: paused;
+        }
+
+        .os-important-ticker-track-single {
+          width: 100%;
+          animation: none;
         }
 
         .os-important-ticker-track a {
