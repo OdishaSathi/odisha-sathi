@@ -29,9 +29,9 @@ const menuGroups = [
     label: "Content",
     items: [
       { label: "Jobs", href: "/admin/jobs", icon: BriefcaseBusiness },
+      { label: "Admissions", href: "/admin/admissions", icon: GraduationCap },
       { label: "Results", href: "/admin/results", icon: FileText },
-      { label: "Admissions & Scholarships", href: "/admin/admissions", icon: GraduationCap },
-      { label: "Admit Cards & Exams", href: "/admin/admit-cards", icon: ShieldCheck },
+      { label: "Exams & Admit Cards", href: "/admin/admit-cards", icon: ShieldCheck },
       { label: "Citizen Services", href: "/admin/citizen-services", icon: LayoutGrid },
       { label: "Important Info", href: "/admin/important-information", icon: Info },
     ],

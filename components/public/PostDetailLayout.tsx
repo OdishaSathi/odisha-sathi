@@ -147,10 +147,10 @@ function getRelatedSectionTitle(category?: string) {
   if (value === "jobs" || value === "job") return "Related Jobs";
   if (value === "results" || value === "result") return "Related Results";
   if (value === "admissions" || value === "admission") {
-    return "Related Admissions & Scholarships";
+    return "Related Admissions";
   }
   if (value.includes("admit") || value === "exams" || value === "exam") {
-    return "Related Admit Cards & Exams";
+    return "Related Exams & Admit Cards";
   }
   if (
     value === "schemes" ||
@@ -875,9 +875,9 @@ Telegram
 
                 <div className="post-detail-quick-access">
                   <Link href="/jobs">Latest Jobs</Link>
-                  <Link href="/admit-cards">Admit Cards</Link>
+                  <Link href="/admit-cards">Exams & Admit Cards</Link>
                   <Link href="/results">Results</Link>
-                  <Link href="/admissions">Admissions & Scholarships</Link>
+                  <Link href="/admissions">Admissions</Link>
                   <Link href="/citizen-services">Citizen Services</Link>
                 </div>
               </div>

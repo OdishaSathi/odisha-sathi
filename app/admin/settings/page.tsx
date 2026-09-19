@@ -67,8 +67,8 @@ const defaultSettings: SettingsForm = {
   quickAccessLinks: [
     { label: "Latest Jobs", href: "/jobs", order: 1, enabled: true },
     { label: "Admissions", href: "/admissions", order: 2, enabled: true },
-    { label: "Admit Cards & Exams", href: "/admit-cards", order: 3, enabled: true },
-    { label: "Results", href: "/results", order: 4, enabled: true },
+    { label: "Results", href: "/results", order: 3, enabled: true },
+    { label: "Exams & Admit Cards", href: "/admit-cards", order: 4, enabled: true },
     { label: "Citizen Services", href: "/citizen-services", order: 5, enabled: true },
   ],
 };

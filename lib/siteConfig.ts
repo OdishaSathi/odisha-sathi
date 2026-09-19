@@ -1,7 +1,7 @@
 export const siteConfig = {
   siteName: "Odisha Sathi",
   siteUrl: "https://odishasathi.in",
-  tagline: "Jobs, Results, Admissions, Scholarships, Exams & Citizen Services",
+  tagline: "Jobs, Admissions, Results, Exams & Admit Cards, Citizen Services",
   description:
     "Odisha Sathi provides latest updates on Odisha jobs, results, admissions, admit cards, exams, important information and citizen services.",
   disclaimer:
@@ -31,9 +31,9 @@ export const siteConfig = {
 
   footerMainLinks: [
     { label: "Latest Jobs", href: "/jobs" },
-    { label: "Admissions & Scholarships", href: "/admissions" },
-    { label: "Admit Cards & Exams", href: "/admit-cards" },
+    { label: "Admissions", href: "/admissions" },
     { label: "Results", href: "/results" },
+    { label: "Exams & Admit Cards", href: "/admit-cards" },
     { label: "Citizen Services", href: "/citizen-services" },
   ],
 

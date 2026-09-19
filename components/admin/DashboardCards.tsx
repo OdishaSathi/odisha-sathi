@@ -85,9 +85,9 @@ export default function DashboardCards() {
       }}
     >
       <DashboardCard title="Total Jobs" count={counts.jobs} />
-      <DashboardCard title="Results" count={counts.results} />
       <DashboardCard title="Admissions" count={counts.admissions} />
-      <DashboardCard title="Admit Cards" count={counts.admitCards} />
+      <DashboardCard title="Results" count={counts.results} />
+      <DashboardCard title="Exams & Admit Cards" count={counts.admitCards} />
       <DashboardCard title="Citizen Services" count={counts.citizenServices} />
     </div>
   );

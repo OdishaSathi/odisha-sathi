@@ -10,7 +10,7 @@ const pageTitles: Record<string, string> = {
   "/admin/jobs": "Jobs",
   "/admin/results": "Results",
   "/admin/admissions": "Admissions",
-  "/admin/admit-cards": "Admit Cards & Exams",
+  "/admin/admit-cards": "Exams & Admit Cards",
   "/admin/citizen-services": "Citizen Services",
   "/admin/homepage-posts": "Homepage Latest Posts",
   "/admin/important-information": "Important Information",

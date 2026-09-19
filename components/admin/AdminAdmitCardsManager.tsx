@@ -214,7 +214,7 @@ export default function AdminAdmitCardsManager() {
     <div className="admit-admin-page admin-manager-page">
       <div className="admit-admin-header admin-manager-header">
         <div>
-          <h1>Admit Cards & Exams</h1>
+          <h1>Exams & Admit Cards</h1>
           <p>
             Saved admit card and exam updates first. Use Create New only when
             needed.
