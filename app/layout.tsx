@@ -102,19 +102,21 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
-        <StructuredData />
-        <GoogleAnalytics />
-        <SiteShell initialSettings={settings}>{children}</SiteShell>
-               <meta
-  name="google-adsense-account"
-  content="ca-pub-9732312061343542"
-/>
- <script
+      <head>
+        <meta
+          name="google-adsense-account"
+          content="ca-pub-9732312061343542"
+        />
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9732312061343542"
           crossOrigin="anonymous"
         />
+      </head>
+      <body>
+        <StructuredData />
+        <GoogleAnalytics />
+        <SiteShell initialSettings={settings}>{children}</SiteShell>
       </body>
     </html>
   );
