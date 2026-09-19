@@ -54,6 +54,7 @@ import {
   validateAdminContent,
 } from "@/lib/adminContentValidation";
 import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
+import { makeCanonicalSubCategorySlugs } from "@/lib/subCategoryIdentity";
 
 const JOB_SUB_CATEGORIES = [
   "Odisha Jobs",
@@ -359,6 +360,7 @@ const cleanedYoutubeUrls = [youtubeUrl2, youtubeUrl3]
         slug: finalSlug,
         category: "jobs",
         subCategories: [...subCategories],
+        subCategorySlugs: makeCanonicalSubCategorySlugs(subCategories),
 
         excerpt,
         content: description.trim(),

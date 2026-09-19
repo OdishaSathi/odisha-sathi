@@ -8,6 +8,10 @@ import {
   buildCitizenServiceSearchText,
   filterCitizenServices,
 } from "@/lib/citizenServiceDiscovery";
+import {
+  getRecordSubCategoryValues,
+  makeCanonicalSubCategorySlug,
+} from "@/lib/subCategoryIdentity";
 
 type PostRow = {
   id: string;
@@ -16,6 +20,8 @@ type PostRow = {
   category?: string;
   subCategory?: string;
   subCategoryLabel?: string;
+  subCategories?: string[];
+  subCategorySlugs?: string[];
   shortDescription?: string;
   searchText?: string;
   createdAt?: any;
@@ -24,6 +30,7 @@ type PostRow = {
 type CategoryRow = {
   label: string;
   value: string;
+  legacySlugs?: string[];
   description?: string;
 };
 
@@ -37,6 +44,18 @@ function getPostHref(item: PostRow) {
     : `/post/${item.slug || item.id}`;
 }
 
+function matchesCategory(item: PostRow, category: CategoryRow) {
+  const acceptedKeys = new Set(
+    [category.value, category.label, ...(category.legacySlugs || [])]
+      .map(makeCanonicalSubCategorySlug)
+      .filter(Boolean)
+  );
+
+  return getRecordSubCategoryValues(item).some((value) =>
+    acceptedKeys.has(makeCanonicalSubCategorySlug(value))
+  );
+}
+
 function buildInitialData(groups?: Record<string, PublicRecord[]>) {
   if (!groups) return { categories: [] as CategoryRow[], services: [] as PostRow[], latestPosts: [] as PostRow[] };
   const allPosts = (groups.posts || []).map((item) => ({
@@ -44,6 +63,8 @@ function buildInitialData(groups?: Record<string, PublicRecord[]>) {
     title: item.data.title || item.data.schemeName || "Odisha Sathi Update",
     slug: item.data.slug || "", category: item.data.category || "",
     subCategory: item.data.subCategory || "", subCategoryLabel: item.data.subCategoryLabel || "",
+    subCategories: Array.isArray(item.data.subCategories) ? item.data.subCategories : [],
+    subCategorySlugs: Array.isArray(item.data.subCategorySlugs) ? item.data.subCategorySlugs : [],
     shortDescription: item.data.shortDescription || item.data.description || item.data.content || "",
     searchText: buildCitizenServiceSearchText(item.data as Record<string, unknown>),
     createdAt: item.data.createdAt || null, status: item.data.status, published: item.data.published,
@@ -51,10 +72,11 @@ function buildInitialData(groups?: Record<string, PublicRecord[]>) {
   const categories = (groups.subCategories || []).map((item) => ({
     id: item.id, parentSection: String(item.data.parentSection || "").trim(),
     label: String(item.data.name || "").trim(), value: String(item.data.slug || "").trim(),
+    legacySlugs: Array.isArray(item.data.legacySlugs) ? item.data.legacySlugs : [],
     displayOrder: Number(item.data.displayOrder || 999), status: item.data.status === "hidden" ? "hidden" : "active",
   })).filter((item) => item.parentSection === "citizen-services" && item.status !== "hidden" && item.label && item.value)
     .sort((a,b) => a.displayOrder-b.displayOrder || a.label.localeCompare(b.label))
-    .map((item) => ({ label: item.label, value: item.value, description: "" }));
+    .map((item) => ({ label: item.label, value: item.value, legacySlugs: item.legacySlugs, description: "" }));
   return {
     categories,
     services: allPosts.filter((item) => item.category === "citizen-services"),
@@ -108,9 +130,7 @@ export default function CitizenServicesPage({ initialGroups }: { initialGroups: 
               <p>
                 {
                   services.filter(
-                    (item) =>
-                      item.subCategory === category.value ||
-                      item.subCategoryLabel === category.label
+                    (item) => matchesCategory(item, category)
                   ).length
                 }{" "}
                 service posts

@@ -29,6 +29,7 @@ export type CitizenServicePost = {
   subCategory: string;
   subCategoryLabel: string;
   subCategories: string[];
+  subCategorySlugs?: string[];
   shortDescription: string;
   description: string;
   titleOdia?: string;

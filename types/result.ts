@@ -20,6 +20,7 @@ export type ResultPost = {
   organization: string;
   subCategory?: string;
   subCategories?: string[];
+  subCategorySlugs?: string[];
   resultCategory?: string;
   resultCategories?: string[];
   categoryName?: string;

@@ -3,6 +3,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
+import { makeCanonicalSubCategorySlugs } from "@/lib/subCategoryIdentity";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryNames,
+} from "@/lib/adminSubCategories";
 import type { ResultPost } from "@/types/result";
 
 const RESULT_SUB_CATEGORIES = [
@@ -148,6 +153,8 @@ export default function ResultForm({
   const [youtubeUrl2, setYoutubeUrl2] = useState("");
   const [youtubeUrl3, setYoutubeUrl3] = useState("");
   const [subCategories, setSubCategories] = useState<string[]>([]);
+  const [subCategoryOptions, setSubCategoryOptions] =
+    useState<string[]>(RESULT_SUB_CATEGORIES);
   const [status, setStatus] = useState("published");
   const [saving, setSaving] = useState(false);
 
@@ -189,6 +196,26 @@ export default function ResultForm({
     );
     setStatus(data.status || "published");
   }, [initialData]);
+
+  useEffect(() => {
+    let active = true;
+
+    getActiveAdminSubCategories("results")
+      .then((managedOptions) => {
+        if (active) {
+          setSubCategoryOptions(
+            mergeSubCategoryNames(RESULT_SUB_CATEGORIES, managedOptions)
+          );
+        }
+      })
+      .catch((error) => {
+        console.warn("Managed Result subcategories could not be loaded", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function toggleSubCategory(value: string) {
     setSubCategories((oldItems) =>
@@ -257,6 +284,7 @@ export default function ResultForm({
         youtubeUrl: youtubeUrl.trim(),
         youtubeUrls,
         subCategories: [...subCategories],
+        subCategorySlugs: makeCanonicalSubCategorySlugs(subCategories),
         status,
         published: true,
         importantDates,
@@ -441,7 +469,7 @@ export default function ResultForm({
         <h3 style={sectionTitleStyle}>Result Subcategories</h3>
 
         <div style={checkboxGridStyle}>
-          {RESULT_SUB_CATEGORIES.map((item) => (
+          {subCategoryOptions.map((item) => (
             <label
               key={item}
               style={{

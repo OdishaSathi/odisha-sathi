@@ -8,6 +8,10 @@ import {
   buildCitizenServiceSearchText,
   filterCitizenServices,
 } from "@/lib/citizenServiceDiscovery";
+import {
+  getRecordSubCategoryValues,
+  makeCanonicalSubCategorySlug,
+} from "@/lib/subCategoryIdentity";
 
 type ServiceRow = {
   id: string;
@@ -15,15 +19,12 @@ type ServiceRow = {
   slug?: string;
   subCategory?: string;
   subCategoryLabel?: string;
+  subCategories?: string[];
+  subCategorySlugs?: string[];
   shortDescription?: string;
   searchText?: string;
   createdAt?: any;
 };
-
-function normalize(value?: string) {
-  return String(value || "").trim().toLowerCase();
-}
-
 
 function buildCategoryData(
   groups: Record<string, PublicRecord[]>,
@@ -35,6 +36,9 @@ function buildCategoryData(
       parentSection: String(record.data.parentSection || "").trim(),
       label: String(record.data.name || "").trim(),
       value: String(record.data.slug || "").trim(),
+      legacySlugs: Array.isArray(record.data.legacySlugs)
+        ? record.data.legacySlugs
+        : [],
       displayOrder: Number(record.data.displayOrder || 999),
       status: record.data.status === "hidden" ? "hidden" : "active",
     }))
@@ -49,8 +53,20 @@ function buildCategoryData(
 
   const matchedCategory = categories.find(
     (item) =>
-      normalize(item.value) === normalize(selected) ||
-      normalize(item.label) === normalize(selected)
+      [item.value, item.label, ...item.legacySlugs]
+        .map(makeCanonicalSubCategorySlug)
+        .includes(makeCanonicalSubCategorySlug(selected))
+  );
+
+  const selectedKeys = new Set(
+    [
+      selected,
+      matchedCategory?.value,
+      matchedCategory?.label,
+      ...(matchedCategory?.legacySlugs || []),
+    ]
+      .map(makeCanonicalSubCategorySlug)
+      .filter(Boolean)
   );
 
   const services = (groups.posts || [])
@@ -64,6 +80,9 @@ function buildCategoryData(
       subCategories: Array.isArray(record.data.subCategories)
         ? record.data.subCategories
         : [],
+      subCategorySlugs: Array.isArray(record.data.subCategorySlugs)
+        ? record.data.subCategorySlugs
+        : [],
       shortDescription: record.data.shortDescription || "",
       searchText: buildCitizenServiceSearchText(
         record.data as Record<string, unknown>
@@ -76,11 +95,9 @@ function buildCategoryData(
       (item) =>
         item.category === "citizen-services" &&
         isPublicListingPost(item, item.id) &&
-        (normalize(item.subCategory) === normalize(selected) ||
-          normalize(item.subCategoryLabel) === normalize(selected) ||
-          item.subCategories.some(
-            (value: string) => normalize(value) === normalize(selected)
-          ))
+        getRecordSubCategoryValues(item).some((value) =>
+          selectedKeys.has(makeCanonicalSubCategorySlug(value))
+        )
     )
     .sort(
       (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)

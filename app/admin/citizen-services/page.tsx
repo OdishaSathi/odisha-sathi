@@ -246,31 +246,39 @@ export default function AdminCitizenServicesPage() {
   }
 
   function startEdit(post: CitizenServicePost) {
+    const savedCategoryValues = [
+      ...(post.subCategorySlugs || []),
+      ...(post.subCategories || []),
+    ];
+    const resolvedCategoryValues = categories
+      .filter((option) =>
+        savedCategoryValues.some(
+          (item) => item === option.value || item === option.label
+        )
+      )
+      .map((option) => option.value);
+    const resolvedPrimaryCategory =
+      categories.find(
+        (option) =>
+          option.value === post.subCategory ||
+          option.label === post.subCategory ||
+          (post.subCategorySlugs || []).includes(option.value)
+      )?.value ||
+      resolvedCategoryValues[0] ||
+      post.subCategory ||
+      "";
+
     setEditingId(post.id || "");
     setShowForm(true);
     setForm({
       title: post.title || "",
       slug: post.slug || "",
-      subCategory: post.subCategory || "",
-      subCategories: categories
-        .filter((option) =>
-          (post.subCategories || []).some(
-            (item) => item === option.value || item === option.label
-          )
-        )
-        .map((option) => option.value)
-        .concat(
-          post.subCategory &&
-            !categories.some(
-              (option) =>
-                option.value === post.subCategory &&
-                (post.subCategories || []).some(
-                  (item) => item === option.value || item === option.label
-                )
-            )
-            ? [post.subCategory]
-            : []
-        ),
+      subCategory: resolvedPrimaryCategory,
+      subCategories: resolvedCategoryValues.length
+        ? resolvedCategoryValues
+        : resolvedPrimaryCategory
+        ? [resolvedPrimaryCategory]
+        : [],
       shortDescription: post.shortDescription || "",
       description: post.description || "",
       titleOdia: post.titleOdia || "",
@@ -342,10 +350,8 @@ export default function AdminCitizenServicesPage() {
       category: "citizen-services",
       subCategory: selectedCategory.value,
       subCategoryLabel: selectedCategory.label,
-      subCategories: selectedCategories.flatMap((item) => [
-        item.label,
-        item.value,
-      ]),
+      subCategories: selectedCategories.map((item) => item.label),
+      subCategorySlugs: selectedCategories.map((item) => item.value),
       shortDescription: form.shortDescription.trim(),
       description: form.description.trim(),
       titleOdia: form.titleOdia.trim(),

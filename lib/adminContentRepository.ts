@@ -37,6 +37,7 @@ export type AdminContentRecord = {
   published?: boolean;
   subCategory?: string;
   subCategories?: string[];
+  subCategorySlugs?: string[];
   createdAt?: any;
   updatedAt?: any;
   homeLatestSelected?: boolean;
@@ -137,6 +138,11 @@ function normalizeRecord(
     subCategory: String(rawData.subCategory || "").trim(),
     subCategories: Array.isArray(rawData.subCategories)
       ? rawData.subCategories
+          .map((item: unknown) => String(item || "").trim())
+          .filter(Boolean)
+      : [],
+    subCategorySlugs: Array.isArray(rawData.subCategorySlugs)
+      ? rawData.subCategorySlugs
           .map((item: unknown) => String(item || "").trim())
           .filter(Boolean)
       : [],

@@ -22,6 +22,7 @@ export type Post = {
   slug: string;
   category: string;
   subCategories?: string[];
+  subCategorySlugs?: string[];
 
   // Old fields kept for existing website support
   excerpt: string;

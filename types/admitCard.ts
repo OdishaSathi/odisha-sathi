@@ -22,6 +22,7 @@ export type AdmitCard = {
   updateTypeLabel?: string;
   subCategory?: string;
   subCategories?: string[];
+  subCategorySlugs?: string[];
   admitCardCategory?: string;
   admitCardCategories?: string[];
   examCategory?: string;

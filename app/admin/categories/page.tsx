@@ -23,6 +23,7 @@ type SubCategoryPost = {
   category?: string;
   subCategory?: string;
   subCategories?: string[];
+  subCategorySlugs?: string[];
 };
 
 type ManagedSubCategory = {
@@ -113,6 +114,11 @@ function getPostSubCategories(post: SubCategoryPost) {
     if (cleanName) names.add(cleanName);
   });
 
+  (post.subCategorySlugs || []).forEach((item) => {
+    const cleanName = cleanText(item);
+    if (cleanName) names.add(cleanName);
+  });
+
   const singleSubCategory = cleanText(post.subCategory);
   if (singleSubCategory) names.add(singleSubCategory);
 
@@ -143,6 +149,7 @@ export default function AdminCategoriesPage() {
         category: item.category,
         subCategory: item.subCategory || "",
         subCategories: item.subCategories || [],
+        subCategorySlugs: item.subCategorySlugs || [],
       }));
 
       const categoryList = categorySnapshot.docs

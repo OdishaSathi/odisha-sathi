@@ -283,10 +283,8 @@ function buildAdmissionPayload(form: AdmissionForm) {
     category: "admissions",
     type: "admissions",
     subCategory: resolvedCategory.value,
-    subCategories: resolvedCategories.flatMap((item) => [
-      item.label,
-      item.value,
-    ]),
+    subCategories: resolvedCategories.map((item) => item.label),
+    subCategorySlugs: resolvedCategories.map((item) => item.value),
     admissionCategory: resolvedCategory.label,
     admissionCategories: resolvedCategories.map((item) => item.label),
     categoryName: resolvedCategory.label,

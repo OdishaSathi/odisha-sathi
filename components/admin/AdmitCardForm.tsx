@@ -3,17 +3,24 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
+import { makeCanonicalSubCategorySlugs } from "@/lib/subCategoryIdentity";
+import {
+  getActiveAdminSubCategories,
+  mergeSubCategoryNames,
+} from "@/lib/adminSubCategories";
 import type { AdmitCard } from "@/types/admitCard";
 
 const ADMIT_CARD_SUB_CATEGORIES = [
-  "Recruitment Admit Cards",
-  "Entrance Admit Cards",
-  "Board Admit Cards",
-  "University Admit Cards",
-  "School Admit Cards",
+  "Odisha Admit Cards & Exams",
+  "Central Admit Cards & Exams",
+  "Entrance Admit Cards & Exams",
+  "Recruitment Admit Cards & Exams",
+  "Board Admit Cards & Exams",
+  "University Admit Cards & Exams",
+  "School Admit Cards & Exams",
   "Exam City Intimation",
   "Hall Tickets",
-  "Other Admit Cards",
+  "Other Admit Cards & Exams",
 ];
 
 type AdmitCardFormProps = {
@@ -154,6 +161,8 @@ export default function AdmitCardForm({
   const [youtubeUrl2, setYoutubeUrl2] = useState("");
   const [youtubeUrl3, setYoutubeUrl3] = useState("");
   const [subCategories, setSubCategories] = useState<string[]>([]);
+  const [subCategoryOptions, setSubCategoryOptions] =
+    useState<string[]>(ADMIT_CARD_SUB_CATEGORIES);
   const [status, setStatus] = useState("published");
   const [saving, setSaving] = useState(false);
 
@@ -198,6 +207,29 @@ export default function AdmitCardForm({
     );
     setStatus(data.status || "published");
   }, [initialData]);
+
+  useEffect(() => {
+    let active = true;
+
+    getActiveAdminSubCategories("admit-cards")
+      .then((managedOptions) => {
+        if (active) {
+          setSubCategoryOptions(
+            mergeSubCategoryNames(ADMIT_CARD_SUB_CATEGORIES, managedOptions)
+          );
+        }
+      })
+      .catch((error) => {
+        console.warn(
+          "Managed Admit Card & Exam subcategories could not be loaded",
+          error
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function toggleSubCategory(value: string) {
     setSubCategories((oldItems) =>
@@ -277,6 +309,7 @@ export default function AdmitCardForm({
         youtubeUrl: youtubeUrl.trim(),
         youtubeUrls,
         subCategories: [...subCategories],
+        subCategorySlugs: makeCanonicalSubCategorySlugs(subCategories),
         status,
         published: true,
         importantDates,
@@ -494,7 +527,7 @@ export default function AdmitCardForm({
         <h3 style={sectionTitleStyle}>Subcategories</h3>
 
         <div style={checkboxGridStyle}>
-          {ADMIT_CARD_SUB_CATEGORIES.map((item) => (
+          {subCategoryOptions.map((item) => (
             <label
               key={item}
               style={{

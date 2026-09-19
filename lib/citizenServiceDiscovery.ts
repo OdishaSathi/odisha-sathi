@@ -2,6 +2,7 @@ export type CitizenServiceSearchable = {
   title?: string;
   subCategory?: string;
   subCategoryLabel?: string;
+  subCategorySlugs?: string[];
   shortDescription?: string;
   searchText?: string;
   createdAt?: any;
@@ -61,6 +62,7 @@ export function buildCitizenServiceSearchText(data: Record<string, unknown>) {
     "subCategory",
     "subCategoryLabel",
     "subCategories",
+    "subCategorySlugs",
     "shortDescription",
     "description",
     "notificationNumber",
