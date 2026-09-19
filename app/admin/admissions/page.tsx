@@ -571,8 +571,9 @@ export default function AdminAdmissionsPage() {
 
   return (
     <AdminLayout>
-      <div style={{ display: "grid", gap: "24px" }}>
+      <div className="admin-manager-page" style={{ display: "grid", gap: "24px" }}>
         <div
+          className="admin-manager-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1183,8 +1184,9 @@ export default function AdminAdmissionsPage() {
         </form>
         ) : null}
 
-        <section style={cardStyle}>
+        <section className="admin-saved-panel" style={cardStyle}>
           <div
+            className="admin-saved-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -1236,9 +1238,10 @@ export default function AdminAdmissionsPage() {
               No admission posts added yet.
             </p>
           ) : (
-            <div style={{ display: "grid", gap: "12px" }}>
+            <div className="admin-saved-list" style={{ display: "grid", gap: "12px" }}>
               {admissions.map((post) => (
                 <div
+                  className="admin-saved-item"
                   key={post.id}
                   style={{
                     display: "flex",
@@ -1251,7 +1254,7 @@ export default function AdminAdmissionsPage() {
                     border: "1px solid #e5e7eb",
                   }}
                 >
-                  <div>
+                  <div className="admin-saved-copy">
                     <p
                       style={{
                         fontSize: "16px",
@@ -1274,7 +1277,7 @@ export default function AdminAdmissionsPage() {
                     </p>
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  <div className="admin-saved-actions" style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                     <Link
                       href={`/post/${post.slug || post.id}`}
                       target="_blank"

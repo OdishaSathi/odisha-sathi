@@ -211,8 +211,8 @@ export default function AdminAdmitCardsManager() {
   }, [activeView, admitCards, searchQuery]);
 
   return (
-    <div className="admit-admin-page">
-      <div className="admit-admin-header">
+    <div className="admit-admin-page admin-manager-page">
+      <div className="admit-admin-header admin-manager-header">
         <div>
           <h1>Admit Cards & Exams</h1>
           <p>
@@ -321,8 +321,8 @@ export default function AdminAdmitCardsManager() {
         </div>
       ) : null}
 
-      <div className="admit-admin-card">
-        <div style={listHeaderStyle}>
+      <div className="admit-admin-card admin-saved-panel">
+        <div className="admin-saved-header" style={listHeaderStyle}>
           <div>
             <h2 style={{ margin: 0 }}>Saved Admit Cards & Exams</h2>
             <p className="admit-admin-muted" style={{ margin: "4px 0 0" }}>
@@ -330,7 +330,7 @@ export default function AdminAdmitCardsManager() {
             </p>
           </div>
 
-          <div style={actionRowStyle}>
+          <div className="admin-saved-tools" style={actionRowStyle}>
             <input
               type="search"
               value={searchQuery}
@@ -360,10 +360,10 @@ export default function AdminAdmitCardsManager() {
         ) : visibleAdmitCards.length === 0 ? (
           <p className="admit-admin-muted">No matching admit card or exam posts found.</p>
         ) : (
-          <div style={savedListStyle}>
+          <div className="admin-saved-list" style={savedListStyle}>
             {visibleAdmitCards.map((item) => (
-              <div key={item.id} style={savedItemStyle}>
-                <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+              <div className="admin-saved-item" key={item.id} style={savedItemStyle}>
+                <div className="admin-saved-copy" style={{ minWidth: 0, flex: "1 1 360px" }}>
                   <h3 style={savedTitleStyle}>{item.title}</h3>
                   <p style={savedMetaStyle}>
                     {item.updateType === "exam" ? "Exam" : "Admit Card"} |{" "}
@@ -374,7 +374,7 @@ export default function AdminAdmitCardsManager() {
                   </p>
                 </div>
 
-                <div style={actionRowStyle}>
+                <div className="admin-saved-actions" style={actionRowStyle}>
                   <Link
                     href={`/post/${item.slug || item.id}`}
                     target="_blank"

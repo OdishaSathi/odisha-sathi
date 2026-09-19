@@ -192,8 +192,9 @@ export default function AdminJobsPage() {
 
   return (
     <AdminLayout>
-      <div style={{ display: "grid", gap: "24px" }}>
+      <div className="admin-manager-page" style={{ display: "grid", gap: "24px" }}>
         <div
+          className="admin-manager-header"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -235,8 +236,9 @@ export default function AdminJobsPage() {
           </div>
         ) : null}
 
-        <div style={cardStyle}>
+        <div className="admin-saved-panel" style={cardStyle}>
           <div
+            className="admin-saved-header"
             style={{
               display: "flex",
               justifyContent: "space-between",
@@ -254,6 +256,7 @@ export default function AdminJobsPage() {
             </div>
 
             <div
+              className="admin-saved-tools"
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -289,7 +292,7 @@ export default function AdminJobsPage() {
           ) : filteredJobs.length === 0 ? (
             <p>{searchQuery.trim() ? "No matching jobs found." : "No jobs found."}</p>
           ) : (
-            <div style={{ display: "grid", gap: "12px" }}>
+            <div className="admin-saved-list" style={{ display: "grid", gap: "12px" }}>
               {filteredJobs.map((job) => {
                 const selectedSubCategories =
                   job.subCategories && job.subCategories.length > 0
@@ -303,14 +306,14 @@ export default function AdminJobsPage() {
                     : "Subcategory not selected";
 
                 return (
-                  <div key={job.id} style={savedItemStyle}>
-                    <div style={{ minWidth: 0, flex: "1 1 360px" }}>
+                  <div className="admin-saved-item" key={job.id} style={savedItemStyle}>
+                    <div className="admin-saved-copy" style={{ minWidth: 0, flex: "1 1 360px" }}>
                       <h3 style={savedTitleStyle}>{job.title}</h3>
 
                       <p style={savedMetaStyle}>{subCategoryText}</p>
                     </div>
 
-                    <div style={actionRowStyle}>
+                    <div className="admin-saved-actions" style={actionRowStyle}>
                       <Link
                         href={`/post/${job.slug || job.id}`}
                         target="_blank"

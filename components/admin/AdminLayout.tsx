@@ -109,6 +109,25 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         .admin-layout-content form.admin-compact-form textarea{padding:8px 9px!important;border-radius:8px!important;line-height:1.45!important}
         .admin-layout-content form.admin-compact-form h2,.admin-layout-content form.admin-compact-form h3{margin-top:0!important}
         .admin-layout-content form.admin-compact-form button{touch-action:manipulation}
+        .admin-manager-page{display:grid;gap:22px;min-width:0}
+        .admin-manager-header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+        .admin-manager-header>div:first-child{min-width:0;flex:1 1 320px}
+        .admin-manager-header h1{margin:0;color:#0f172a;font-size:24px;line-height:1.25}
+        .admin-manager-header p{margin:5px 0 0;color:#64748b;font-size:14px;line-height:1.5}
+        .admin-saved-panel{display:grid!important;gap:16px!important;padding:20px!important;border:1px solid #e2e8f0!important;border-radius:14px!important;background:#fff!important;box-shadow:0 1px 2px rgba(15,23,42,.03)}
+        .admin-saved-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important;margin:0!important}
+        .admin-saved-header h2{margin:0!important;color:#0f172a;font-size:20px;line-height:1.3}
+        .admin-saved-header p{margin:4px 0 0!important;color:#64748b!important;font-size:13px!important}
+        .admin-saved-tools{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;flex-wrap:wrap!important}
+        .admin-saved-tools input[type="search"]{width:min(280px,100%)!important;min-height:40px!important;border:1px solid #cbd5e1!important;border-radius:9px!important;padding:8px 11px!important;background:#fff!important;color:#0f172a!important}
+        .admin-saved-list{display:grid!important;gap:10px!important;min-width:0}
+        .admin-saved-item{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:16px!important;min-width:0;padding:15px 16px!important;border:1px solid #e2e8f0!important;border-radius:12px!important;background:#fff!important;transition:border-color .15s ease,box-shadow .15s ease}
+        .admin-saved-item:hover{border-color:#cbd5e1!important;box-shadow:0 6px 18px rgba(15,23,42,.05)}
+        .admin-saved-copy{min-width:0!important;flex:1 1 420px!important}
+        .admin-saved-copy h3,.admin-saved-copy>p:first-child{margin:0!important;color:#0f172a!important;font-size:15px!important;font-weight:750!important;line-height:1.4!important;overflow-wrap:anywhere}
+        .admin-saved-copy>p:not(:first-child),.admin-saved-copy h3+p,.admin-saved-copy>span{display:block;margin:5px 0 0!important;color:#64748b!important;font-size:13px!important;font-weight:500!important;line-height:1.45!important;overflow-wrap:anywhere}
+        .admin-saved-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;flex:0 0 auto!important;flex-wrap:nowrap!important}
+        .admin-saved-actions>a,.admin-saved-actions>button{min-height:38px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important}
         @media(min-width:901px){.admin-layout-content form.admin-compact-form{max-width:1180px;margin-inline:auto}}
         @media(max-width:900px){
           .admin-layout-main{margin-left:0}.admin-layout-content{padding:16px 12px 88px}.admin-header{min-height:64px;padding:8px 12px}.admin-menu-button{width:44px;height:44px;flex:0 0 44px;border:1px solid #d7e0ea;border-radius:9px;background:#fff;color:#17365f;display:grid;place-items:center}.admin-header-text h1{font-size:17px}.admin-header-text p{max-width:38vw}.admin-header-actions a,.admin-header-actions button{width:44px;height:44px;padding:0;justify-content:center}.admin-header-actions span{display:none}
@@ -150,6 +169,22 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           .admin-layout-content form.admin-compact-form h2{font-size:17px!important;line-height:1.3}
           .admin-layout-content form.admin-compact-form h3{font-size:15px!important;line-height:1.3}
           .admin-layout-content form.admin-compact-form p{max-width:100%;overflow-wrap:anywhere}
+          .admin-manager-page{gap:14px!important}
+          .admin-manager-header{align-items:stretch!important;gap:10px!important}
+          .admin-manager-header>div:first-child{flex-basis:100%!important}
+          .admin-manager-header h1{font-size:21px!important}
+          .admin-manager-header>button,.admin-manager-header>.citizen-admin-actions{width:100%!important}
+          .admin-manager-header>.citizen-admin-actions{display:grid!important;grid-template-columns:1fr 1fr!important}
+          .admin-manager-header>.citizen-admin-actions>*{width:100%!important;justify-content:center!important;text-align:center!important;box-sizing:border-box!important}
+          .admin-saved-panel{padding:13px 11px!important;gap:13px!important;border-radius:12px!important}
+          .admin-saved-header{align-items:stretch!important}
+          .admin-saved-header>div:first-child{width:100%!important}
+          .admin-saved-tools{width:100%!important;display:grid!important;grid-template-columns:minmax(0,1fr) auto!important}
+          .admin-saved-tools input[type="search"]{width:100%!important;min-width:0!important}
+          .admin-saved-item{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:12px!important;padding:13px 12px!important}
+          .admin-saved-copy{width:100%!important;min-width:0!important}
+          .admin-saved-actions{width:100%!important;justify-content:flex-start!important;flex-wrap:wrap!important;padding-top:10px!important;border-top:1px solid #eef2f7!important}
+          .admin-saved-actions>a,.admin-saved-actions>button{min-width:68px!important;flex:0 0 auto!important}
         }
         @media(max-width:420px){
           .admin-header-text p{display:none}.admin-header-actions{gap:5px}

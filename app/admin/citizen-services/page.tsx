@@ -442,8 +442,8 @@ export default function AdminCitizenServicesPage() {
 
   return (
     <AdminLayout>
-      <div className="citizen-admin-page">
-        <div className="citizen-admin-header">
+      <div className="citizen-admin-page admin-manager-page">
+        <div className="citizen-admin-header admin-manager-header">
           <div>
             <h1>Citizen Services</h1>
             <p>Saved services first. Open the form only when needed.</p>
@@ -946,8 +946,8 @@ export default function AdminCitizenServicesPage() {
           </form>
         ) : null}
 
-        <section className="citizen-saved">
-          <div className="citizen-section-head">
+        <section className="citizen-saved admin-saved-panel">
+          <div className="citizen-section-head admin-saved-header">
             <div>
               <h2>Saved Citizen Services</h2>
               <p>{posts.length} posts saved</p>
@@ -960,14 +960,14 @@ export default function AdminCitizenServicesPage() {
           ) : posts.length === 0 ? (
             <p>No Citizen Services saved yet.</p>
           ) : (
-            <div className="citizen-post-list">
+            <div className="citizen-post-list admin-saved-list">
               {posts.map((post) => (
-                <article key={post.id}>
-                  <div>
+                <article className="admin-saved-item" key={post.id}>
+                  <div className="admin-saved-copy">
                     <span>{post.subCategoryLabel || post.subCategory}</span>
                     <h3>{post.title}</h3>
                   </div>
-                  <div className="citizen-post-actions">
+                  <div className="citizen-post-actions admin-saved-actions">
                     <Link
                       href={`/citizen-services/${post.slug || post.id}`}
                       target="_blank"
