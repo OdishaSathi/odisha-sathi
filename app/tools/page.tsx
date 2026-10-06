@@ -1,7 +1,7 @@
 import ToolsPageClient from "@/components/public/ToolsPageClient";
 import { getPublicCollectionGroups } from "@/lib/server/publicCollections";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const LATEST_COLLECTIONS = [
   "posts",

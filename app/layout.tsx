@@ -5,7 +5,7 @@ import StructuredData from "@/components/StructuredData";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import { getServerPublicSiteSettings } from "@/lib/server/publicSiteSettings";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 function safeSiteUrl(value: string) {
   try {

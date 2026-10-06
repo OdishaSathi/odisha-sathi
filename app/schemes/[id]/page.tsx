@@ -1,7 +1,7 @@
 import SchemeCategoryPageClient from "@/components/public/SchemeCategoryPageClient";
 import { getPublicCollectionGroups } from "@/lib/server/publicCollections";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const SCHEME_COLLECTIONS = [
   "posts",

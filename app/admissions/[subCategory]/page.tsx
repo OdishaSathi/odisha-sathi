@@ -1,7 +1,7 @@
 import AdmissionSubCategoryPageClient from "@/components/public/AdmissionSubCategoryPageClient";
 import { getPublicCollectionGroups } from "@/lib/server/publicCollections";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 function safeDecode(value: string) {
   try {

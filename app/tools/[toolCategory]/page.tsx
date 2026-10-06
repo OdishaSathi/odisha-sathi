@@ -1,7 +1,7 @@
 import ToolCategoryPageClient from "@/components/public/ToolCategoryPageClient";
 import { getPublicCollectionRecords } from "@/lib/server/publicCollections";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 function safeDecode(value: string) {
   try {

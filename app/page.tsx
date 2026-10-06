@@ -1,7 +1,7 @@
 import HomePageClient from "@/components/public/HomePageClient";
 import { getPublicCollectionGroups } from "@/lib/server/publicCollections";
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const HOME_COLLECTIONS = ["posts","jobs","admissions","admitCards","admit-cards","admitcards","results","result","schemes","scheme","governmentSchemes","government-schemes","importantInformation"];
 

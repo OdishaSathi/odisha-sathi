@@ -7,7 +7,7 @@ import {
   isPublishedPublicPost,
 } from "@/lib/publicPostQuality";
 
-export const revalidate = 300;
+export const revalidate = 86400;
 
 const STATIC_ROUTES = [
   "/",

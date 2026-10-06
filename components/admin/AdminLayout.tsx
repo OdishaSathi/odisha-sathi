@@ -9,6 +9,7 @@ import AdminHeader from "./AdminHeader";
 import AdminSidebar from "./AdminSidebar";
 import AdminFormNavigator from "./AdminFormNavigator";
 import AdminWritingToolbar from "./AdminWritingToolbar";
+import AdminPublicRefresh from "./AdminPublicRefresh";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -78,7 +79,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           onMenu={() => setMenuOpen(true)}
           onLogout={handleLogout}
         />
-        <main className="admin-layout-content"><div className="admin-layout-inner"><AdminFormNavigator />{children}</div></main>
+        <main className="admin-layout-content"><div className="admin-layout-inner"><AdminPublicRefresh /><AdminFormNavigator />{children}</div></main>
         <AdminWritingToolbar />
       </div>
       <style jsx global>{`

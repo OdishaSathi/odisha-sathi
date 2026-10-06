@@ -359,7 +359,7 @@ async function loadPublicSearchIndexUncached(): Promise<IndexedSearchRecord[]> {
 const loadPublicSearchIndex = unstable_cache(
   loadPublicSearchIndexUncached,
   ["odisha-sathi-public-search-index-v1"],
-  { revalidate: 300 }
+  { revalidate: 3600, tags: ["public-search"] }
 );
 
 function tokenAlternatives(token: string) {
