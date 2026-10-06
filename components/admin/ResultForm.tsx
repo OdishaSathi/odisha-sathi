@@ -9,6 +9,22 @@ import {
   mergeSubCategoryNames,
 } from "@/lib/adminSubCategories";
 import type { ResultPost } from "@/types/result";
+import ImageUploadField from "@/components/admin/ImageUploadField";
+import CommonDocumentsEditor from "@/components/admin/CommonDocumentsEditor";
+import FlexibleDetailsEditor from "@/components/admin/FlexibleDetailsEditor";
+import {
+  cleanFlexibleDataTables,
+  cleanFlexibleDetailSections,
+  normalizeFlexibleDataTables,
+  normalizeFlexibleDetailSections,
+  type FlexibleDataTable,
+  type FlexibleDetailSection,
+} from "@/lib/flexibleDetails";
+import {
+  cleanJobDocuments,
+  normalizeJobDocuments,
+  type RequiredDocumentRow,
+} from "@/lib/jobDetails";
 
 const RESULT_SUB_CATEGORIES = [
   "Board Results",
@@ -147,6 +163,14 @@ export default function ResultForm({
   const [resultDate, setResultDate] = useState("");
   const [resultDateDisplay, setResultDateDisplay] = useState("");
   const [description, setDescription] = useState("");
+  const [notificationNumber, setNotificationNumber] = useState("");
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [resultCheckingProcess, setResultCheckingProcess] = useState("");
+  const [applicationProcess, setApplicationProcess] = useState("");
+  const [documentsRequired, setDocumentsRequired] = useState<RequiredDocumentRow[]>([]);
+  const [detailSections, setDetailSections] = useState<FlexibleDetailSection[]>([]);
+  const [dataTables, setDataTables] = useState<FlexibleDataTable[]>([]);
+  const [extraLinks, setExtraLinks] = useState<Array<{ label: string; url: string }>>([]);
   const [resultLink, setResultLink] = useState("");
   const [notificationLink, setNotificationLink] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -174,6 +198,14 @@ export default function ResultForm({
     setResultDate(data.resultDate || "");
     setResultDateDisplay(data.resultDateDisplay || "");
     setDescription(data.description || data.content || "");
+    setNotificationNumber(data.notificationNumber || data.notificationNo || "");
+    setPreviewImageUrl(data.previewImageUrl || data.imageUrl || data.sharingImageUrl || "");
+    setResultCheckingProcess(data.resultCheckingProcess || data.checkingProcess || "");
+    setApplicationProcess(data.applicationProcess || "");
+    setDocumentsRequired(normalizeJobDocuments(data));
+    setDetailSections(normalizeFlexibleDetailSections(data.contentSections || data.detailSections));
+    setDataTables(normalizeFlexibleDataTables(data.dataTables || data.customTables));
+    setExtraLinks(Array.isArray(data.extraLinks) ? data.extraLinks : []);
     setResultLink(
       data.resultLink ||
         data.resultUrl ||
@@ -258,6 +290,10 @@ export default function ResultForm({
     const importantLinks = [
       { label: "Check Result", url: resultLink.trim() },
       { label: "Official Notification", url: notificationLink.trim() },
+      ...extraLinks.map((item) => ({
+        label: item.label.trim(),
+        url: item.url.trim(),
+      })),
     ].filter((item) => item.url);
 
     const youtubeUrls = [youtubeUrl2, youtubeUrl3]
@@ -279,8 +315,22 @@ export default function ResultForm({
         resultDateDisplay: resultDateDisplay.trim(),
         description: description.trim(),
         content: description.trim(),
+        notificationNumber: notificationNumber.trim(),
+        previewImageUrl: previewImageUrl.trim(),
+        imageUrl: previewImageUrl.trim(),
+        resultCheckingProcess: resultCheckingProcess.trim(),
+        applicationProcess: applicationProcess.trim(),
+        documentsRequired: cleanJobDocuments(documentsRequired),
+        contentSections: cleanFlexibleDetailSections(detailSections),
+        detailSections: cleanFlexibleDetailSections(detailSections),
+        dataTables: cleanFlexibleDataTables(dataTables),
+        customTables: cleanFlexibleDataTables(dataTables),
         resultLink: resultLink.trim(),
         notificationLink: notificationLink.trim(),
+        extraLinks: extraLinks
+          .map((item) => ({ label: item.label.trim(), url: item.url.trim() }))
+          .filter((item) => item.label && item.url),
+        sourceUrl: resultLink.trim() || notificationLink.trim(),
         youtubeUrl: youtubeUrl.trim(),
         youtubeUrls,
         subCategories: [...subCategories],
@@ -298,7 +348,7 @@ export default function ResultForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
+    <form className="admin-compact-form" onSubmit={handleSubmit} style={formStyle}>
       <section style={cardStyle}>
         <h3 style={sectionTitleStyle}>Basic Information</h3>
 
@@ -343,6 +393,17 @@ export default function ResultForm({
               placeholder="Example: OSSSC"
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Notification / Reference Number</label>
+            <input
+              type="text"
+              placeholder="Optional notification number"
+              value={notificationNumber}
+              onChange={(e) => setNotificationNumber(e.target.value)}
               style={inputStyle}
             />
           </div>
@@ -396,6 +457,29 @@ export default function ResultForm({
           rows={8}
           style={textareaStyle}
         />
+
+        <div style={{ ...gridStyle, marginTop: "16px" }}>
+          <div>
+            <label style={labelStyle}>How to Check Result</label>
+            <textarea
+              placeholder="Optional step-by-step result checking process"
+              value={resultCheckingProcess}
+              onChange={(e) => setResultCheckingProcess(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </div>
+          <div>
+            <label style={labelStyle}>Application / Previous Process</label>
+            <textarea
+              placeholder="Optional application or related process"
+              value={applicationProcess}
+              onChange={(e) => setApplicationProcess(e.target.value)}
+              rows={5}
+              style={textareaStyle}
+            />
+          </div>
+        </div>
       </section>
 
       <section style={cardStyle}>
@@ -424,12 +508,48 @@ export default function ResultForm({
             />
           </div>
         </div>
+
+        <div style={{ marginTop: "14px", display: "grid", gap: "10px" }}>
+          {extraLinks.map((item, index) => (
+            <div key={index} style={gridStyle}>
+              <input
+                type="text"
+                aria-label={`Additional link ${index + 1} label`}
+                placeholder="Link label"
+                value={item.label}
+                onChange={(e) => setExtraLinks((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, label: e.target.value } : row))}
+                style={inputStyle}
+              />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  inputMode="url"
+                  aria-label={`Additional link ${index + 1} URL`}
+                  placeholder="https://..."
+                  value={item.url}
+                  onChange={(e) => setExtraLinks((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, url: e.target.value } : row))}
+                  style={inputStyle}
+                />
+                <button type="button" style={cancelButtonStyle} onClick={() => setExtraLinks((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}>Remove</button>
+              </div>
+            </div>
+          ))}
+          <button type="button" style={{ ...cancelButtonStyle, width: "fit-content" }} onClick={() => setExtraLinks((rows) => [...rows, { label: "", url: "" }])}>
+            + Add Another Link
+          </button>
+        </div>
       </section>
 
       <section style={cardStyle}>
         <h3 style={sectionTitleStyle}>Media</h3>
 
-        <div style={gridStyle}>
+        <ImageUploadField
+          label="Preview / Sharing Image URL"
+          value={previewImageUrl}
+          onChange={setPreviewImageUrl}
+        />
+
+        <div style={{ ...gridStyle, marginTop: "16px" }}>
           <div>
             <label style={labelStyle}>YouTube Video 1</label>
             <input
@@ -464,6 +584,20 @@ export default function ResultForm({
           </div>
         </div>
       </section>
+
+      <CommonDocumentsEditor
+        documents={documentsRequired}
+        onChange={setDocumentsRequired}
+        title="Documents Required (Optional)"
+      />
+
+      <FlexibleDetailsEditor
+        detailSections={detailSections}
+        dataTables={dataTables}
+        onDetailSectionsChange={setDetailSections}
+        onDataTablesChange={setDataTables}
+        sectionLabel="Additional Result Details and Data Tables"
+      />
 
       <section style={cardStyle}>
         <h3 style={sectionTitleStyle}>Result Subcategories</h3>

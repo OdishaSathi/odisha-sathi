@@ -223,7 +223,7 @@ export default function AdminAdmitCardsManager() {
 
         <button
           type="button"
-          className="admin-small-btn"
+          className="admin-small-btn admin-create-button"
           onClick={() => setShowCreateForm((oldValue) => !oldValue)}
         >
           {showCreateForm ? "Hide Form" : "+ Create New Admit Card / Exam"}
@@ -286,7 +286,7 @@ export default function AdminAdmitCardsManager() {
       ) : null}
 
       {showCreateForm || editingAdmitCard ? (
-        <div className="admit-admin-card">
+        <div className="admit-admin-card" id="admit-card-create-form">
           <div className="admit-admin-card-title">
             <h2>
               {editingAdmitCard
@@ -319,6 +319,21 @@ export default function AdminAdmitCardsManager() {
             }
           />
         </div>
+      ) : null}
+
+      {!showCreateForm && !editingAdmitCard ? (
+        <button
+          type="button"
+          className="admin-small-btn admin-mobile-create-button"
+          onClick={() => {
+            setShowCreateForm(true);
+            window.setTimeout(() => {
+              document.getElementById("admit-card-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 0);
+          }}
+        >
+          + Create New Admit Card / Exam
+        </button>
       ) : null}
 
       <div className="admit-admin-card admin-saved-panel">

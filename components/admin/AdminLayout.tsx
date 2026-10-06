@@ -114,6 +114,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         .admin-manager-header>div:first-child{min-width:0;flex:1 1 320px}
         .admin-manager-header h1{margin:0;color:#0f172a;font-size:24px;line-height:1.25}
         .admin-manager-header p{margin:5px 0 0;color:#64748b;font-size:14px;line-height:1.5}
+        .admin-create-button{display:inline-flex!important;align-items:center;justify-content:center;visibility:visible!important;opacity:1!important}
+        .admin-mobile-create-button{display:none!important}
         .admin-saved-panel{display:grid!important;gap:16px!important;padding:20px!important;border:1px solid #e2e8f0!important;border-radius:14px!important;background:#fff!important;box-shadow:0 1px 2px rgba(15,23,42,.03)}
         .admin-saved-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important;margin:0!important}
         .admin-saved-header h2{margin:0!important;color:#0f172a;font-size:20px;line-height:1.3}
@@ -175,6 +177,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           .admin-manager-header>div:first-child{flex-basis:100%!important}
           .admin-manager-header h1{font-size:21px!important}
           .admin-manager-header>button,.admin-manager-header>.citizen-admin-actions{width:100%!important}
+          .admin-manager-header>.admin-create-button{display:flex!important;min-height:46px!important}
+          .admin-mobile-create-button{display:flex!important;position:fixed!important;left:12px!important;right:12px!important;bottom:12px!important;z-index:34!important;width:auto!important;min-height:50px!important;align-items:center!important;justify-content:center!important;box-shadow:0 12px 30px rgba(15,23,42,.28)!important}
           .admin-manager-header>.citizen-admin-actions{display:grid!important;grid-template-columns:1fr 1fr!important}
           .admin-manager-header>.citizen-admin-actions>*{width:100%!important;justify-content:center!important;text-align:center!important;box-sizing:border-box!important}
           .admin-saved-panel{padding:13px 11px!important;gap:13px!important;border-radius:12px!important}

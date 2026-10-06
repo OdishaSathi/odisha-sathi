@@ -207,7 +207,7 @@ export default function AdminResultsManager() {
 
         <button
           type="button"
-          className="admin-small-btn"
+          className="admin-small-btn admin-create-button"
           onClick={() => setShowCreateForm((oldValue) => !oldValue)}
         >
           {showCreateForm ? "Hide Form" : "+ Create New Result"}
@@ -215,7 +215,7 @@ export default function AdminResultsManager() {
       </div>
 
       {showCreateForm || editingResult ? (
-        <div className="admit-admin-card">
+        <div className="admit-admin-card" id="result-create-form">
           <div className="admit-admin-card-title">
             <h2>{editingResult ? "Edit Result" : "Create Result"}</h2>
 
@@ -238,6 +238,21 @@ export default function AdminResultsManager() {
             submitLabel={editingResult ? "Update Result" : "Save Result"}
           />
         </div>
+      ) : null}
+
+      {!showCreateForm && !editingResult ? (
+        <button
+          type="button"
+          className="admin-small-btn admin-mobile-create-button"
+          onClick={() => {
+            setShowCreateForm(true);
+            window.setTimeout(() => {
+              document.getElementById("result-create-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 0);
+          }}
+        >
+          + Create New Result
+        </button>
       ) : null}
 
       <div className="admit-admin-card admin-saved-panel">
