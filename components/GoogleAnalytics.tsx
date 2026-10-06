@@ -35,10 +35,10 @@ export default function GoogleAnalytics() {
   function prepareTracking() {
     window.dataLayer = window.dataLayer || [];
     window.gtag =
-      window.gtag ||
-      ((...args: unknown[]) => {
-        window.dataLayer?.push(args);
-      });
+  window.gtag ||
+  function () {
+    window.dataLayer?.push(arguments);
+  };
     window.gtag("js", new Date());
     window.gtag("config", measurementId, {
       anonymize_ip: true,
