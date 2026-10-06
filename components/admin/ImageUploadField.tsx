@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   isSupportedPublicImageUrl,
   normalizePublicImageUrl,
@@ -20,25 +20,18 @@ export default function ImageUploadField({
   helpText,
 }: Props) {
   const [previewFailed, setPreviewFailed] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const normalizedValue = normalizePublicImageUrl(value);
   const unsupportedUrl = Boolean(value.trim()) && !isSupportedPublicImageUrl(value);
-  const invalidImage = unsupportedUrl || previewFailed;
-
-  useEffect(() => {
-    inputRef.current?.setCustomValidity(
-      invalidImage
-        ? "Enter a working public JPG, PNG, WebP or GIF image URL, or leave this field blank."
-        : ""
-    );
-  }, [invalidImage]);
 
   return (
     <div className="image-url-field">
       <label>{label}</label>
       <input
-        ref={inputRef}
-        type="url"
+        type="text"
+        inputMode="url"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         value={value}
         onChange={(event) => {
           setPreviewFailed(false);
@@ -78,9 +71,9 @@ export default function ImageUploadField({
           </button>
           {previewFailed ? (
             <p>
-              This address is not a working direct image URL. Paste another
-              public image link or leave the field blank for the automatic
-              fallback banner.
+              The preview could not be loaded here. You can still save this
+              public image URL, paste another link, or leave it blank for the
+              automatic fallback banner.
             </p>
           ) : null}
         </div>
@@ -88,8 +81,8 @@ export default function ImageUploadField({
 
       {unsupportedUrl ? (
         <p className="image-url-error">
-          Only a public HTTP or HTTPS image URL is supported. Remove this value
-          to use the automatic fallback banner.
+          This does not look like a complete public image URL. Use an address
+          beginning with https://, or remove it to use the fallback banner.
         </p>
       ) : null}
 

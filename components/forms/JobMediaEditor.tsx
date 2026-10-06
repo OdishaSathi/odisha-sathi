@@ -37,7 +37,11 @@ export default function JobMediaEditor({
         <label>
           Direct image URL
           <input
-            type="url"
+            type="text"
+            inputMode="url"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             value={imageUrl}
             onChange={(event) => {
               setPreviewFailed(false);
@@ -79,8 +83,9 @@ export default function JobMediaEditor({
             </button>
             {previewFailed ? (
               <p>
-                This address is not a working direct image URL. Paste another
-                link or leave it blank for the automatic fallback banner.
+                The preview could not be loaded here. You can still save this
+                public image URL, paste another link, or leave it blank for the
+                automatic fallback banner.
               </p>
             ) : null}
           </div>

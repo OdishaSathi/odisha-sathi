@@ -158,6 +158,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           .admin-layout-content .admin-checkbox-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important}
           .admin-layout-content .admin-checkbox-card{min-width:0!important;min-height:40px!important;padding:7px 8px!important;font-size:12px!important}
           .admin-layout-content form.admin-compact-form button{max-width:100%;min-height:40px;white-space:normal;line-height:1.25}
+          .admin-layout-content form.admin-compact-form button[type="submit"]{position:sticky;bottom:8px;z-index:24;width:100%!important;min-height:48px!important;margin-top:8px!important;border-radius:10px!important;box-shadow:0 10px 26px rgba(15,23,42,.2)!important}
           .admin-layout-content form.admin-compact-form [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
           .admin-layout-content form.admin-compact-form [style*="display: flex"],
           .admin-layout-content form.admin-compact-form [style*="display:flex"]{flex-wrap:wrap!important;max-width:100%}

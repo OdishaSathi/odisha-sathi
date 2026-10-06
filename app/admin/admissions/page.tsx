@@ -35,6 +35,7 @@ import {
   validateAdminContent,
 } from "@/lib/adminContentValidation";
 import { buildAdminPostMetadata } from "@/lib/adminPostMetadata";
+import ImageUploadField from "@/components/admin/ImageUploadField";
 
 const ADMISSION_BASE_CATEGORY_OPTIONS = [
   { label: "+2 Admission", value: "plus-two-admission" },
@@ -1093,18 +1094,12 @@ export default function AdminAdmissionsPage() {
                 />
               </div>
 
-              <div>
-                <label style={labelStyle}>Sharing Media Image Link</label>
-                <input
-                  type="url"
-                  value={form.sharingImageUrl}
-                  onChange={(event) =>
-                    handleChange("sharingImageUrl", event.target.value)
-                  }
-                  placeholder="https://image-link..."
-                  style={inputStyle}
-                />
-              </div>
+              <ImageUploadField
+                label="Preview / Sharing Image URL"
+                value={form.sharingImageUrl}
+                onChange={(value) => handleChange("sharingImageUrl", value)}
+                helpText="Leave blank to use the first YouTube thumbnail or the default Admissions banner."
+              />
             </div>
           </section>
 
